@@ -10,12 +10,9 @@ import com.foodshare.repository.TicketRepository;
 import com.foodshare.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
-import java.time.format.TextStyle;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
