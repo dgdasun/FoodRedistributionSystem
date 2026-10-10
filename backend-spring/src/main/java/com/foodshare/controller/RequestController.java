@@ -1,7 +1,6 @@
 package com.foodshare.controller;
 
 import com.foodshare.dto.RecommendationDTO;
-import com.foodshare.model.Donation;
 import com.foodshare.model.FoodRequest;
 import com.foodshare.model.User;
 import com.foodshare.repository.DonationRepository;
