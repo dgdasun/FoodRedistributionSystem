@@ -1,0 +1,23 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: foodshare-backend
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/foodshare}
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+foodshare:
+  ai-service:
+    base-url: ${AI_SERVICE_URL:http://localhost:8000}
+  cors:
+    allowed-origins: ${FRONTEND_ORIGIN:http://localhost:5173}
+
+logging:
+  level:
+    com.foodshare: INFO

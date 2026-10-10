@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100" fill="none">
+  <!-- Top Arc with Arrow -->
+  <path d="M 22 46 A 30 30 0 0 1 82 46" stroke="#6CBE2E" stroke-width="11" stroke-linecap="round" />
+  <polygon points="18,48 24,36 30,48" fill="#6CBE2E" />
+  <!-- Bottom Arc with Arrow -->
+  <path d="M 78 54 A 30 30 0 0 1 18 54" stroke="#469A1F" stroke-width="11" stroke-linecap="round" />
+  <polygon points="82,52 76,64 70,52" fill="#469A1F" />
+  <!-- Top dot -->
+  <circle cx="54" cy="15.5" r="2.6" fill="#6CBE2E" />
+</svg>

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Zero Waste — Smart Surplus Food Redistribution &amp; Waste Reduction</title>
+    <link rel="icon" type="image/png" href="/title@3x.png" />
+    <link rel="apple-touch-icon" href="/favicon.png" />
+    <script>
+      /* Resolve the theme before first paint. Without this the page renders
+         with the light tokens for a frame and then flips, which reads as a
+         white flash on a dark-mode device. Mirrors ThemeContext's rules:
+         a stored choice wins, otherwise follow the OS. */
+      (function () {
+        try {
+          var stored = localStorage.getItem("foodshare-theme");
+          var theme =
+            stored === "light" || stored === "dark"
+              ? stored
+              : window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
+              ? "dark"
+              : "light";
+          document.documentElement.dataset.theme = theme;
+          document.documentElement.style.colorScheme = theme;
+        } catch (e) {
+          document.documentElement.dataset.theme = "light";
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

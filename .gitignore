@@ -1,0 +1,26 @@
+# Node / React
+node_modules/
+dist/
+
+# Java / Spring Boot
+target/
+*.class
+.mvn/
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Env / OS
+.env
+.DS_Store
+*.log
+
+# Build archive - 87MB, rebuildable from ai-service/
+ai-service.zip
+
+# Runtime uploads: verification documents people submit through the app.
+# Personal data, and regenerated per environment - not source.
+backend-spring/uploads/

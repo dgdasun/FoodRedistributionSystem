@@ -1,0 +1,44 @@
+version: "3.9"
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: foodshare-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    restart: unless-stopped
+
+  ai-service:
+    build: ./ai-service
+    container_name: foodshare-ai-service
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  backend:
+    build: ./backend-spring
+    container_name: foodshare-backend
+    depends_on:
+      - mongodb
+      - ai-service
+    environment:
+      MONGODB_URI: mongodb://mongodb:27017/foodshare
+      AI_SERVICE_URL: http://ai-service:8000
+      FRONTEND_ORIGIN: http://localhost:5173,http://localhost:3000
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: foodshare-frontend
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+    restart: unless-stopped
+
+volumes:
+  mongo-data:
