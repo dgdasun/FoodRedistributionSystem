@@ -1,0 +1,420 @@
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Eye, EyeOff } from "lucide-react";
+import { useAuth } from "../AuthContext.jsx";
+import { api } from "../api.js";
+import {
+  BrandWordmark,
+  IconStatStore,
+  IconStepDistribute,
+} from "../components/Icons.jsx";
+import BeneficiaryRegistrationForm from "../components/BeneficiaryRegistrationForm.jsx";
+
+const TOP_ROLES = [
+  {
+    key: "donor",
+    label: "Donor",
+    sub: "Supermarket / Store",
+    IconComponent: IconStatStore,
+  },
+  {
+    key: "organization",
+    label: "Receiving Organization",
+    sub: "Beneficiary or farm partner",
+    IconComponent: IconStepDistribute,
+  },
+];
+
+const AGREEMENTS = {
+  donor: {
+    title: "Donor Pledge",
+    body:
+      "As a registered food donor on Zero Waste, I pledge to only list food that is safe, accurately described, and fit for its stated purpose — for human consumption while fresh or surplus, and for farm/compost redistribution once flagged expired. I understand that listing inaccurate, unsafe, or misleading items may result in my account being suspended.",
+  },
+  beneficiary: {
+    title: "Recipient Disclaimer",
+    body:
+      "I understand that Zero Waste is a redistribution platform connecting my organization with surplus and near-expiry food donated in good faith by third-party donors. Zero Waste and its donors are not responsible for the quality, safety, or condition of food received through this platform. My organization accepts full responsibility for inspecting all items before use or further distribution.",
+  },
+};
+
+const FARM_AGREEMENT = {
+  title: "Farm & Compost Partner Disclaimer",
+  body:
+    "I understand that Zero Waste connects my facility with surplus and expired food donated in good faith by third-party donors, intended for composting or animal feed. Zero Waste and its donors are not responsible for the quality, safety, or condition of food received through this platform. My facility accepts full responsibility for inspecting and handling all items appropriately.",
+};
+
+function getRoleConfig(role) {
+  if (role === "donor") {
+    return {
+      orgLabel: "Store / Supermarket Name",
+      orgPlaceholder: "e.g. ABC Supermarket Hub",
+    };
+  }
+  return {
+    orgLabel: "Farm / Facility Name",
+    orgPlaceholder: "e.g. Green Acres Farm",
+  };
+}
+
+export default function Register() {
+  const navigate = useNavigate();
+  const { login } = useAuth();
+  const [form, setForm] = useState({
+    role: "donor",
+    orgType: "Donor",
+    name: "",
+    email: "",
+    phone: "",
+    organizationName: "",
+    organizationSize: "",
+    handlingCapacityKg: "",
+    location: "",
+    password: "",
+    confirmPassword: "",
+  });
+  const [beneficiaryValues, setBeneficiaryValues] = useState(null);
+  const [beneficiaryFile, setBeneficiaryFile] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [stage, setStage] = useState("form"); // form | agreement
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const roleConfig = getRoleConfig(form.role);
+  const agreement =
+    form.role === "donor" ? AGREEMENTS.donor : form.role === "farm" ? FARM_AGREEMENT : AGREEMENTS.beneficiary;
+
+  const update = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  const selectTopRole = (key) => {
+    setError("");
+    if (key === "donor") {
+      setForm((f) => ({ ...f, role: "donor", orgType: "Donor" }));
+    } else {
+      setForm((f) => ({ ...f, role: "organization", orgType: "" }));
+    }
+  };
+
+  const proceedToAgreement = (e) => {
+    e.preventDefault();
+    setError("");
+    if (form.password && form.confirmPassword && form.password !== form.confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+    setStage("agreement");
+  };
+
+  const handleBeneficiarySubmit = (values, file) => {
+    setError("");
+    setBeneficiaryValues(values);
+    setBeneficiaryFile(file);
+    setForm((f) => ({ ...f, role: values.organizationCategory }));
+    setStage("agreement");
+  };
+
+  const confirmAgreement = async () => {
+    setError("");
+    setLoading(true);
+    try {
+      let payload;
+      if (beneficiaryValues && (form.role === "beneficiary" || form.role === "farm")) {
+        const v = beneficiaryValues;
+        payload = {
+          role: v.organizationCategory,
+          orgType: v.organizationCategory === "farm" ? "Farm" : "Beneficiary Organization",
+          name: v.contactPersonName,
+          email: v.email,
+          password: v.password,
+          organizationName: v.organizationName,
+          organizationSize: Number(v.capacity) || 0,
+          location: v.location,
+          phone: v.phone,
+          storageCapacity: v.storageFacility,
+        };
+      } else {
+        payload = {
+          ...form,
+          organizationSize: Number(form.organizationSize) || 0,
+          handlingCapacityKg: Number(form.handlingCapacityKg) || 0,
+        };
+      }
+
+      const { user } = await api.post("/auth/register", payload);
+
+      if (form.role === "beneficiary" && beneficiaryFile) {
+        const formData = new FormData();
+        formData.append("file", beneficiaryFile);
+        const { user: updated } = await api.upload(`/beneficiaries/${user.id}/documents`, formData);
+        login(updated);
+      } else {
+        login(user);
+      }
+      navigate("/dashboard");
+    } catch (e2) {
+      setError(e2.message || "Failed to register. Please try again.");
+      setStage("form");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const rejectAgreement = () => {
+    navigate("/");
+  };
+
+  const isOrganizationMode = form.role !== "donor";
+  const showBeneficiaryForm = stage === "form" && isOrganizationMode;
+
+  const roleSelector = (
+    <div className="mb-4">
+      <label className="block text-xs font-semibold text-slate-700 mb-1.5">Select Partner Role</label>
+      <div className="grid grid-cols-2 gap-2.5">
+        {TOP_ROLES.map((r) => {
+          const isSelected = r.key === "donor" ? form.role === "donor" : form.role !== "donor";
+          const RoleIcon = r.IconComponent;
+          return (
+            <button
+              key={r.key}
+              type="button"
+              onClick={() => selectTopRole(r.key)}
+              className={[
+                "flex items-center gap-2.5 rounded-xl border-2 py-2.5 px-3 text-left transition-all",
+                isSelected
+                  ? "border-emerald-600 bg-emerald-50/50 shadow-sm"
+                  : "border-slate-200 bg-white hover:border-emerald-300 hover:bg-emerald-50/30",
+              ].join(" ")}
+            >
+              <div
+                className={[
+                  "flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg",
+                  isSelected ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500",
+                ].join(" ")}
+              >
+                <RoleIcon size={16} color={isSelected ? "var(--status-ok-fg)" : "var(--stone)"} />
+              </div>
+              <div className="min-w-0 leading-tight">
+                <div className={`text-[12px] font-bold ${isSelected ? "text-emerald-700" : "text-slate-800"}`}>
+                  {r.label}
+                </div>
+                <div className={`text-[10px] font-medium ${isSelected ? "text-emerald-700/80" : "text-slate-400"}`}>
+                  {r.sub}
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="auth-page-container">
+      <div className="auth-card-split auth-signup-card">
+        {/* Left Hero Column */}
+        <div className="auth-hero-panel">
+          <div className="auth-hero-overlay" />
+          <div className="auth-hero-content">
+            <span className="auth-hero-badge">AI Powered</span>
+            <h1 className="auth-hero-title">
+              Smart Surplus Food Redistribution and Waste Reduction System
+            </h1>
+            <p className="auth-hero-subtitle">
+              Reducing Waste. Feeding Hope. Building a Sustainable Future. 🌿
+            </p>
+          </div>
+        </div>
+
+        {/* Right Form Column */}
+        <div className="auth-form-panel auth-scrollbar">
+          <div className="auth-form-header">
+            <div className="auth-logo-badge">
+              <BrandWordmark size={30} />
+            </div>
+            <h2>Create an Account</h2>
+            <p>Join the Zero Waste network</p>
+          </div>
+
+          <div className="w-full">
+            {stage === "agreement" ? (
+              <div className="flex flex-col gap-4">
+                <div className="max-h-64 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5">
+                  <h3 className="mb-2 text-[14px] font-bold text-slate-900">{agreement.title}</h3>
+                  <p className="text-[13px] leading-6 text-slate-700">{agreement.body}</p>
+                </div>
+
+                {error && (
+                  <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-center text-sm text-rose-600">
+                    {error}
+                  </div>
+                )}
+
+                <div className="flex gap-2.5">
+                  <button
+                    type="button"
+                    className="h-11 flex-1 rounded-xl bg-[var(--primary-strong)] text-sm font-medium text-white shadow-md transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:bg-slate-300"
+                    onClick={confirmAgreement}
+                    disabled={loading}
+                  >
+                    {loading ? "Creating Account..." : "I Agree — Continue"}
+                  </button>
+                  <button
+                    type="button"
+                    className="h-11 flex-1 rounded-xl border border-rose-300 text-sm font-medium text-rose-600 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={rejectAgreement}
+                    disabled={loading}
+                  >
+                    I Disagree
+                  </button>
+                </div>
+              </div>
+            ) : showBeneficiaryForm ? (
+              <>
+                {roleSelector}
+                <BeneficiaryRegistrationForm
+                  onSubmit={handleBeneficiarySubmit}
+                  submitError={error}
+                  wrapperClassName="w-full space-y-4"
+                />
+              </>
+            ) : (
+              <>
+                {roleSelector}
+
+                <form className="auth-form" onSubmit={proceedToAgreement}>
+                  <div className="auth-input-group">
+                    <label htmlFor="reg-name">Contact Name</label>
+                    <input
+                      id="reg-name"
+                      type="text"
+                      className="auth-input"
+                      placeholder="Full name"
+                      value={form.name}
+                      onChange={(e) => update("name", e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="auth-input-group">
+                    <label htmlFor="reg-email">Email Address</label>
+                    <input
+                      id="reg-email"
+                      type="email"
+                      className="auth-input"
+                      placeholder="name@organization.lk"
+                      value={form.email}
+                      onChange={(e) => update("email", e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="auth-input-group">
+                    <label htmlFor="reg-phone">Phone Number</label>
+                    <input
+                      id="reg-phone"
+                      type="tel"
+                      className="auth-input"
+                      placeholder="077 123 4567"
+                      value={form.phone}
+                      onChange={(e) => update("phone", e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="auth-input-group">
+                    <label htmlFor="reg-org">{roleConfig.orgLabel}</label>
+                    <input
+                      id="reg-org"
+                      type="text"
+                      className="auth-input"
+                      placeholder={roleConfig.orgPlaceholder}
+                      value={form.organizationName}
+                      onChange={(e) => update("organizationName", e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="auth-input-group">
+                    <label htmlFor="reg-loc">Location / City</label>
+                    <input
+                      id="reg-loc"
+                      type="text"
+                      className="auth-input"
+                      placeholder="e.g. Colombo 05"
+                      value={form.location}
+                      onChange={(e) => update("location", e.target.value)}
+                    />
+                  </div>
+
+                  <div className="auth-input-group">
+                    <label htmlFor="reg-pass">Password</label>
+                    <div className="auth-password-wrap">
+                      <input
+                        id="reg-pass"
+                        type={showPassword ? "text" : "password"}
+                        className="auth-input"
+                        placeholder="Create password"
+                        value={form.password}
+                        onChange={(e) => update("password", e.target.value)}
+                        required
+                      />
+                      <button
+                        type="button"
+                        className="auth-password-toggle"
+                        onClick={() => setShowPassword((s) => !s)}
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                      >
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="auth-input-group">
+                    <label htmlFor="reg-confirm-pass">Confirm Password</label>
+                    <div className="auth-password-wrap">
+                      <input
+                        id="reg-confirm-pass"
+                        type={showConfirmPassword ? "text" : "password"}
+                        className="auth-input"
+                        placeholder="Confirm password"
+                        value={form.confirmPassword}
+                        onChange={(e) => update("confirmPassword", e.target.value)}
+                        required
+                      />
+                      <button
+                        type="button"
+                        className="auth-password-toggle"
+                        onClick={() => setShowConfirmPassword((s) => !s)}
+                        aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                      >
+                        {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {error && (
+                    <div style={{ color: "var(--danger)", fontSize: 13, textAlign: "center", background: "var(--status-danger-bg)", padding: "8px 12px", borderRadius: 8, border: "1px solid var(--status-danger-border)" }}>
+                      {error}
+                    </div>
+                  )}
+
+                  <button type="submit" className="auth-submit-btn">
+                    Continue to Agreement →
+                  </button>
+                </form>
+              </>
+            )}
+          </div>
+
+          {!showBeneficiaryForm && (
+            <p className="auth-footer-text">
+              Already have an account?
+              <Link to="/login">Sign In</Link>
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
