@@ -162,8 +162,7 @@ export function CollectionTicketCard({ ticket, isDonor = false, onAction }) {
           <DetailRow icon={MapPin}>{ticket.pickupLocation}</DetailRow>
           <DetailRow icon={Calendar}>{ticket.pickupDate}</DetailRow>
           <DetailRow icon={Clock}>
-            {ticket.pickupTime}
-            {ticket.collectionWindowHours ? ` • ${ticket.collectionWindowHours}h pickup window` : ""}
+            {ticket.collectionWindowHours ? `${ticket.collectionWindowHours}h pickup window` : "Pickup window"}
             {validUntilText && <span className="text-slate-400"> ({validUntilText})</span>}
           </DetailRow>
         </div>
