@@ -179,7 +179,8 @@ public class DashboardService {
         // Request approval funnel: pending (awaiting approval) / approved / rejected
         Map<String, Long> requestStatusBreakdown = new LinkedHashMap<>();
         requestStatusBreakdown.put("pending", requests.stream().filter(r -> "pending".equals(r.getStatus())).count());
-        requestStatusBreakdown.put("approved", requests.stream().filter(r -> "approved".equals(r.getStatus())).count());
+        // Collected requests were approved first, so they still count toward "approved".
+        requestStatusBreakdown.put("approved", requests.stream().filter(r -> "approved".equals(r.getStatus()) || "collected".equals(r.getStatus())).count());
         requestStatusBreakdown.put("rejected", requests.stream().filter(r -> "rejected".equals(r.getStatus())).count());
         result.put("requestStatusBreakdown", requestStatusBreakdown);
 

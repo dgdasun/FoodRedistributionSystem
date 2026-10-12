@@ -42,6 +42,16 @@ function StatusBadge({ status }) {
       </span>
     );
   }
+  if (status === "collected") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11.5px] font-semibold bg-emerald-100 text-emerald-700">
+        <svg width="12" height="12" viewBox="0 0 20 20" fill="none">
+          <path d="M4 10.5L8 14.5L16 5.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        Collected
+      </span>
+    );
+  }
   if (status === "counter_offer") {
     return (
       <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11.5px] font-semibold bg-violet-100 text-violet-700">

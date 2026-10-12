@@ -52,15 +52,15 @@ const CHART_TOKENS = {
 /* Used if a token is missing (e.g. a chart rendered in a test harness with
    index.css not loaded) so charts degrade to the light palette, not to "". */
 const FALLBACK = {
-  brand: "#1F6F3F",
+  brand: "#387E01",
   surface: "#FFFFFF",
-  ink: "#4A443A",
-  inkMuted: "#9A9383",
-  grid: "#EFEBE0",
+  ink: "#3E4836",
+  inkMuted: "#8A9482",
+  grid: "#E9EFE1",
   good: "#15803D",
   warning: "#D97706",
   critical: "#9F1239",
-  neutral: "#6B6355",
+  neutral: "#5C6654",
 };
 
 function readTokens() {
@@ -218,7 +218,7 @@ export function CategoryBarChart({ data, height = 360, xLabel = "Item", unit = "
             label={{ value: `Amount (${unit})`, angle: -90, position: "insideLeft", style: { fontSize: 11, fill: palette.ink } }}
           />
           <Tooltip
-            cursor={{ fill: "rgba(31, 111, 63, 0.07)" }}
+            cursor={{ fill: "rgba(56, 126, 1, 0.07)" }}
             content={<ChartTooltip unit={unit} />}
           />
           <Bar
@@ -265,7 +265,7 @@ export function HorizontalBarChart({ data, height = 300, unit = "kg", labelWidth
             axisLine={false}
             width={labelWidth}
           />
-          <Tooltip cursor={{ fill: "rgba(31, 111, 63, 0.07)" }} content={<ChartTooltip unit={unit} />} />
+          <Tooltip cursor={{ fill: "rgba(56, 126, 1, 0.07)" }} content={<ChartTooltip unit={unit} />} />
           <Bar
             dataKey="value"
             name="Forecast"

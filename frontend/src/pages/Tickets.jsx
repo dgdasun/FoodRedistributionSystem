@@ -12,7 +12,7 @@ const STATUS_STYLES = {
 
 const STATUS_LABELS = {
   pending: "Pending",
-  collected: "Confirmed",
+  collected: "Collected",
   expired: "Expired",
 };
 

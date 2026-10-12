@@ -54,6 +54,7 @@ public class DataSeeder implements CommandLineRunner {
     public void run(String... args) {
         backfillMissingPasswords();
         backfillMissingCreatedAt();
+        backfillCollectedStatuses();
         if (userRepository.count() > 0) return; // already seeded
 
         if (settingsRepository.count() == 0) settingsRepository.save(new Settings());
@@ -184,6 +185,39 @@ public class DataSeeder implements CommandLineRunner {
         String hash = passwordEncoder.encode(DEMO_PASSWORD);
         missing.forEach(u -> u.setPasswordHash(hash));
         userRepository.saveAll(missing);
+    }
+
+    /**
+     * Tickets scanned before the scan step updated requests and items left
+     * those still "approved" / "reserved". Bring them in line with the ticket.
+     */
+    private void backfillCollectedStatuses() {
+        List<Ticket> tickets = ticketRepository.findAll();
+
+        List<FoodRequest> requests = new ArrayList<>();
+        tickets.stream()
+                .filter(t -> "collected".equals(t.getStatus()) && t.getRequestId() != null)
+                .forEach(t -> requestRepository.findById(t.getRequestId())
+                        .filter(r -> "approved".equals(r.getStatus()))
+                        .ifPresent(r -> {
+                            r.setStatus("collected");
+                            requests.add(r);
+                        }));
+        if (!requests.isEmpty()) requestRepository.saveAll(requests);
+
+        List<Donation> items = new ArrayList<>();
+        for (Donation d : donationRepository.findAll()) {
+            if ("collected".equals(d.getStatus())) continue;
+            if (d.getQuantityKg() != null && d.getQuantityKg() > 0) continue;
+            List<Ticket> forItem = tickets.stream().filter(t -> d.getId().equals(t.getItemId())).toList();
+            boolean anyCollected = forItem.stream().anyMatch(t -> "collected".equals(t.getStatus()));
+            boolean anyPending = forItem.stream().anyMatch(t -> "pending".equals(t.getStatus()));
+            if (anyCollected && !anyPending) {
+                d.setStatus("collected");
+                items.add(d);
+            }
+        }
+        if (!items.isEmpty()) donationRepository.saveAll(items);
     }
 
     /** 20 days x 6 categories of dummy historical inventory data for the AI prediction model. */

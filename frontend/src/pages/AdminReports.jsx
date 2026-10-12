@@ -307,7 +307,7 @@ export default function AdminReports() {
                     <div
                       style={{
                         width: `${Math.max(2, (kg / maxCategoryKg) * 100)}%`,
-                        background: "linear-gradient(90deg, #7FA650, #1F6F3F)",
+                        background: "linear-gradient(90deg, #559805, #387E01)",
                         height: 9,
                         borderRadius: 8,
                         transition: "width .5s",

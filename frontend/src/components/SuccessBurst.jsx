@@ -25,7 +25,7 @@ export default function SuccessBurst({ title, message, children, fire = true }) 
       scalar: 0.85,
       ticks: 160,
       origin: { y: 0.42 },
-      colors: ["var(--primary)", "#7FA650", "#B4643A", "#E8DCC8"],
+      colors: ["var(--primary)", "#559805", "#0C4002", "#D8EABF"],
     });
 
     return () => burst.reset();

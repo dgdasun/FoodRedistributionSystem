@@ -20,6 +20,7 @@ const STATUS_BADGE = {
   counter_offer: "bg-violet-100 text-violet-700",
   rejected: "bg-rose-100 text-rose-700",
   cancelled: "bg-slate-100 text-slate-600",
+  collected: "bg-emerald-100 text-emerald-700",
 };
 
 const STATUS_LABEL = {
