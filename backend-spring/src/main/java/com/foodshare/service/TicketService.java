@@ -3,6 +3,7 @@ package com.foodshare.service;
 import com.foodshare.model.Donation;
 import com.foodshare.model.Ticket;
 import com.foodshare.repository.DonationRepository;
+import com.foodshare.repository.FoodRequestRepository;
 import com.foodshare.repository.TicketRepository;
 import org.springframework.stereotype.Service;
 
@@ -14,11 +15,14 @@ public class TicketService {
 
     private final TicketRepository ticketRepository;
     private final DonationRepository donationRepository;
+    private final FoodRequestRepository requestRepository;
     private final NotificationService notificationService;
 
-    public TicketService(TicketRepository ticketRepository, DonationRepository donationRepository, NotificationService notificationService) {
+    public TicketService(TicketRepository ticketRepository, DonationRepository donationRepository,
+                         FoodRequestRepository requestRepository, NotificationService notificationService) {
         this.ticketRepository = ticketRepository;
         this.donationRepository = donationRepository;
+        this.requestRepository = requestRepository;
         this.notificationService = notificationService;
     }
 
@@ -64,6 +68,24 @@ public class TicketService {
         ticket.setStatus("collected");
         ticket.setUpdatedAt(Instant.now());
         Ticket saved = ticketRepository.save(ticket);
+
+        // Carry the completed handoff through to the request and the item so
+        // "collected" shows everywhere, not only on the ticket.
+        if (ticket.getRequestId() != null) {
+            requestRepository.findById(ticket.getRequestId()).ifPresent(r -> {
+                r.setStatus("collected");
+                requestRepository.save(r);
+            });
+        }
+        // The item is only fully collected once no stock is left to give away
+        // and every other ticket for it has been handed over too.
+        boolean stockLeft = item.getQuantityKg() != null && item.getQuantityKg() > 0;
+        boolean otherPending = ticketRepository.findByItemIdInOrderByCreatedAtDesc(List.of(item.getId())).stream()
+                .anyMatch(t -> !t.getId().equals(ticket.getId()) && "pending".equals(t.getStatus()));
+        if (!stockLeft && !otherPending) {
+            item.setStatus("collected");
+            donationRepository.save(item);
+        }
 
         notificationService.notify(ticket.getBeneficiaryId(), "ticket",
                 "Your pickup for \"" + item.getName() + "\" was confirmed by the donor. Donation complete!");

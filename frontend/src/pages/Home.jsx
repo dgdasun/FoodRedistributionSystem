@@ -104,7 +104,7 @@ export default function Home() {
         <div className="home-hero-inner">
           <div className="home-hero-copy">
             <span className="home-eyebrow reveal-fade" style={{ animationDelay: "0ms" }}>
-              <IconFloatingLeaf size={16} color="#A7F3D0" /> AI-Powered Redistribution
+              <IconFloatingLeaf size={16} color="#C9E6A0" /> AI-Powered Redistribution
             </span>
             <h1 className="home-hero-title reveal-fade" style={{ animationDelay: "80ms" }}>
               Turn surplus food into someone's next meal.
@@ -135,7 +135,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="features" className="relative bg-gradient-to-b from-[#F5F9EF] via-[#E4EFD8]/40 to-[#F5F9EF] border-y border-emerald-200/50 py-24 px-6 sm:px-12">
+      <section id="features" className="relative bg-gradient-to-b from-[#F7FBF0] via-[#E8F2D8]/40 to-[#F7FBF0] border-y border-emerald-200/50 py-24 px-6 sm:px-12">
         <div className="max-w-[1160px] mx-auto">
           <Reveal className="text-center max-w-2xl mx-auto mb-14" as="div">
             <h2 className="text-slate-900 font-extrabold text-3xl sm:text-4xl tracking-tight">
@@ -156,7 +156,7 @@ export default function Home() {
                 delay={(i % 3) * 90}
                 className="bg-white rounded-2xl p-7 border border-slate-100 shadow-sm transition-all duration-300 hover:shadow-md hover:border-emerald-300"
               >
-                <div className="bg-[#E4EFD8] text-[#16A34A] w-12 h-12 rounded-xl flex items-center justify-center mb-5">
+                <div className="bg-[#E8F2D8] text-[#387E01] w-12 h-12 rounded-xl flex items-center justify-center mb-5">
                   <f.Icon size={24} />
                 </div>
                 <h3 className="text-slate-900 font-bold text-lg mb-2.5">{f.title}</h3>

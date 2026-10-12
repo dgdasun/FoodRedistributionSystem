@@ -8,7 +8,7 @@ export default function ScanQRPage() {
   const [done, setDone] = useState(null);
 
   const handleCompleted = (ticket, item) => {
-    setDone(item);
+    setDone({ ...item, ticketStatus: ticket?.status });
     if (window.opener && !window.opener.closed) {
       window.opener.postMessage({ type: "zerowaste-scan-completed", ticket, item }, window.location.origin);
       setTimeout(() => window.close(), 1200);
@@ -25,6 +25,9 @@ export default function ScanQRPage() {
       {done ? (
         <div className="card" style={{ fontSize: 13, color: "var(--status-ok-fg)", fontWeight: 600 }}>
           ✅ Pickup confirmed for "{done.name || "item"}" — donation complete!
+          <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8, fontWeight: 500, color: "var(--text-mid)" }}>
+            Status: <span className={`badge-status ${done.ticketStatus || "collected"}`}>{done.ticketStatus || "collected"}</span>
+          </div>
           {!window.opener && (
             <button type="button" className="btn btn-outline" style={{ width: "100%", marginTop: 14 }} onClick={() => window.close()}>
               Close

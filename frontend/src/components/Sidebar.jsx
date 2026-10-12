@@ -20,7 +20,7 @@ export default function Sidebar() {
   useEffect(() => {
     const handler = (e) => {
       if (e.origin !== window.location.origin || e.data?.type !== "zerowaste-scan-completed") return;
-      setToastMsg(`Pickup confirmed for "${e.data.item?.name || "item"}" — donation complete!`);
+      setToastMsg(`Pickup confirmed for "${e.data.item?.name || "item"}" — status: Collected.`);
       setTimeout(() => window.location.reload(), 1200);
     };
     window.addEventListener("message", handler);
@@ -100,7 +100,7 @@ export default function Sidebar() {
             position: "fixed", top: 18, right: 18, zIndex: 70,
             background: "var(--surface)", border: "1px solid var(--primary-light)", borderRadius: 10,
             padding: "10px 16px", fontSize: 13, fontWeight: 600, color: "var(--status-ok-fg)",
-            boxShadow: "0 8px 24px rgba(20,40,25,0.12)",
+            boxShadow: "0 8px 24px rgba(12,40,4,0.12)",
           }}
         >
           ✅ {toastMsg}

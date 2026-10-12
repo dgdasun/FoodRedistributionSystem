@@ -14,6 +14,7 @@ const TABS = [
   { key: "all", label: "All" },
   { key: "surplus", label: "Surplus" },
   { key: "expired", label: "Expired" },
+  { key: "collected", label: "Collected" },
 ];
 
 // Matches the other table pages (Requests, My Requests, Admin Users).
@@ -310,7 +311,7 @@ export default function MyDonations() {
                   </div>
                 </td>
                 <td>
-                  <span className={`badge ${d.status}`}>{d.status}</span>
+                  <span className={`badge-status ${d.status}`}>{d.status}</span>
                 </td>
                 <td>
                   <button className="btn btn-sm btn-outline" onClick={() => togglePublish(d)}>

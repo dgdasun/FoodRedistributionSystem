@@ -72,7 +72,7 @@ function DonorDashboard({ user }) {
       <div className="dashboard-top-row">
         <div className="page-header">
           <h1 className="welcome-title">
-            Welcome back, {user.name}! <IconFloatingLeaf size={26} color="#8FBE63" />
+            Welcome back, {user.name}! <IconFloatingLeaf size={26} color="#85B840" />
           </h1>
           <p className="welcome-sub">Thank you for making a difference.</p>
           <div style={{ marginTop: 10 }}>
@@ -307,7 +307,7 @@ function BeneficiaryDashboard({ user }) {
     <div className="dashboard-container">
       <div className="page-header">
         <h1 className="welcome-title">
-          Welcome back, {user.name.split(" ")[0]}! <IconFloatingLeaf size={26} color="#8FBE63" />
+          Welcome back, {user.name.split(" ")[0]}! <IconFloatingLeaf size={26} color="#85B840" />
         </h1>
         <p className="welcome-sub">{user.organizationName}</p>
         <div style={{ marginTop: 10 }}>
@@ -512,7 +512,7 @@ function AdminDashboard({ user }) {
       >
         <div>
           <h1 className="welcome-title">
-            System Overview <IconFloatingLeaf size={26} color="#8FBE63" />
+            System Overview <IconFloatingLeaf size={26} color="#85B840" />
           </h1>
           <p className="welcome-sub">Welcome back, {user.name}.</p>
         </div>

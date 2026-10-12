@@ -7,7 +7,7 @@ import Pagination from "../components/Pagination.jsx";
 const PAGE_SIZE = 6;
 
 const STATUS_META = {
-  collected: { label: "Completed", cls: "bg-emerald-100 text-emerald-700" },
+  collected: { label: "Collected", cls: "bg-emerald-100 text-emerald-700" },
   pending: { label: "Pending", cls: "bg-amber-100 text-amber-700" },
   expired: { label: "Expired", cls: "bg-rose-100 text-rose-600" },
 };

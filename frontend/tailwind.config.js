@@ -2,12 +2,12 @@
 
 /**
  * The pages use Tailwind's `slate-*` and `emerald-*` utilities in ~150 places,
- * but those scales are cool blue-grey and blue-green - they fought the earthy
+ * but those scales are cool blue-grey and blue-green - they fought the logo
  * palette in index.css once it was retuned.
  *
  * Rather than rewrite every class name, the two scales are redefined here to
- * the warm equivalents, so existing markup inherits the identity for free.
- * `slate` becomes a warm taupe and `emerald` centres on the brand forest green
+ * logo-tinted equivalents, so existing markup inherits the identity for free.
+ * `slate` becomes a green-tinted grey and `emerald` centres on the logo green
  * (in light mode `emerald-600` is exactly `--primary`).
  *
  * Semantic scales (rose, amber) are deliberately left alone: they mean
@@ -15,12 +15,12 @@
  */
 
 /* The two scales now resolve through CSS custom properties declared in
- * index.css (`--tw-w-*` warm grey, `--tw-f-*` forest), instead of literal hex.
+ * index.css (`--tw-w-*` neutral grey, `--tw-f-*` logo green), instead of literal hex.
  *
  * That is what lets dark mode reach the ~150 `slate-*`/`emerald-*` utility
  * classes already in the markup: index.css reverses each ramp under
  * `[data-theme="dark"]` and every one of those classes follows, with no class
- * name rewritten - the same trick this file already used to warm up Tailwind's
+ * name rewritten - the same trick this file already used to retint Tailwind's
  * stock scales.
  *
  * The `<alpha-value>` placeholder is required: it keeps Tailwind's opacity
