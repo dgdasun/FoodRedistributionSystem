@@ -1,14 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext.jsx";
 import { useFoodAlerts } from "../FoodAlertContext.jsx";
 import { api } from "../api.js";
 import { timeAgo } from "../timeAgo.js";
 import { IconBell } from "./Icons.jsx";
 import ThemeToggle from "./ThemeToggle.jsx";
-import { navItemsFor } from "../nav.js";
-
-const EXTRA_TITLES = { "/help": "Help & Support", "/profile": "Profile" };
 
 // Accent dot color per notification type. Urgent gets the alarm red, warning
 // gets amber, and the composting reroute ("info") gets a calm green — it's a
@@ -24,7 +21,6 @@ export default function Topbar() {
   const { user } = useAuth();
   const foodAlerts = useFoodAlerts();
   const navigate = useNavigate();
-  const { pathname } = useLocation();
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -105,124 +101,112 @@ export default function Topbar() {
     admin: "Administrator",
   }[user?.role] || "Donor";
 
-  // The header names the current page, taken from the same nav definition the
-  // sidebar renders, so the two can never disagree.
-  const pageTitle =
-    navItemsFor(user).find((i) => i.to === pathname)?.label || EXTRA_TITLES[pathname] || "Dashboard";
-  const today = new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
-
   return (
     <div className="topbar">
-      <div className="topbar-title">
-        <span className="topbar-date">{today}</span>
-        <strong>{pageTitle}</strong>
-      </div>
-      <div className="topbar-actions">
-        <ThemeToggle />
-        <div className="bell-wrap" onClick={toggleOpen}>
-          <div className="bell-circle">
-            <IconBell size={20} color="var(--primary)" />
-            {totalUnread > 0 && <span className="bell-badge">{totalUnread}</span>}
-          </div>
-          {open && (
+      <ThemeToggle />
+      <div className="bell-wrap" onClick={toggleOpen}>
+        <div className="bell-circle">
+          <IconBell size={20} color="var(--primary)" />
+          {totalUnread > 0 && <span className="bell-badge">{totalUnread}</span>}
+        </div>
+        {open && (
+          <div
+            style={{
+              position: "absolute",
+              right: 0,
+              top: 40,
+              width: 320,
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderRadius: 14,
+              boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
+              zIndex: 50,
+              maxHeight: 360,
+              overflowY: "auto",
+            }}
+          >
             <div
               style={{
-                position: "absolute",
-                right: 0,
-                top: 40,
-                width: 320,
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-                borderRadius: 14,
-                boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
-                zIndex: 50,
-                maxHeight: 360,
-                overflowY: "auto",
+                padding: "12px 16px",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                borderBottom: "1px solid var(--border)",
               }}
             >
+              <strong style={{ fontSize: 13.5, color: "var(--text-dark)" }}>Notifications</strong>
+              <span
+                style={{ fontSize: 12, color: "var(--primary)", cursor: "pointer", fontWeight: 600 }}
+                onClick={markAllRead}
+              >
+                Mark all read
+              </span>
+            </div>
+            {combined.length === 0 && (
+              <div style={{ padding: 24, fontSize: 13, color: "var(--text-light)", textAlign: "center" }}>
+                No notifications yet — all caught up! 🌱
+              </div>
+            )}
+            {combined.slice(0, 8).map((n) => (
               <div
+                key={n.id}
+                onClick={() => markOneRead(n)}
                 style={{
-                  padding: "12px 16px",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
+                  padding: "11px 16px",
+                  fontSize: 12.5,
                   borderBottom: "1px solid var(--border)",
+                  background: n.read ? "var(--surface)" : "var(--primary-lighter)",
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 8,
+                  cursor: n.read ? "default" : "pointer",
                 }}
               >
-                <strong style={{ fontSize: 13.5, color: "var(--text-dark)" }}>Notifications</strong>
                 <span
-                  style={{ fontSize: 12, color: "var(--primary)", cursor: "pointer", fontWeight: 600 }}
-                  onClick={markAllRead}
-                >
-                  Mark all read
-                </span>
-              </div>
-              {combined.length === 0 && (
-                <div style={{ padding: 24, fontSize: 13, color: "var(--text-light)", textAlign: "center" }}>
-                  No notifications yet — all caught up! 🌱
-                </div>
-              )}
-              {combined.slice(0, 8).map((n) => (
-                <div
-                  key={n.id}
-                  onClick={() => markOneRead(n)}
                   style={{
-                    padding: "11px 16px",
-                    fontSize: 12.5,
-                    borderBottom: "1px solid var(--border)",
-                    background: n.read ? "var(--surface)" : "var(--primary-lighter)",
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: 8,
-                    cursor: n.read ? "default" : "pointer",
+                    width: 7,
+                    height: 7,
+                    marginTop: 4,
+                    borderRadius: "50%",
+                    background: dotColor(n.type),
+                    flexShrink: 0,
                   }}
-                >
-                  <span
-                    style={{
-                      width: 7,
-                      height: 7,
-                      marginTop: 4,
-                      borderRadius: "50%",
-                      background: dotColor(n.type),
-                      flexShrink: 0,
-                    }}
-                  />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    {n.title && (
-                      <div style={{ fontWeight: 600, color: "var(--text-dark)", marginBottom: 2 }}>{n.title}</div>
-                    )}
-                    <div style={{ color: "var(--text-mid)" }}>{n.message}</div>
-                    <div style={{ fontSize: 11, color: "var(--text-light)", marginTop: 3 }}>{timeAgo(n.createdAt)}</div>
-                  </div>
+                />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {n.title && (
+                    <div style={{ fontWeight: 600, color: "var(--text-dark)", marginBottom: 2 }}>{n.title}</div>
+                  )}
+                  <div style={{ color: "var(--text-mid)" }}>{n.message}</div>
+                  <div style={{ fontSize: 11, color: "var(--text-light)", marginTop: 3 }}>{timeAgo(n.createdAt)}</div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
-        <div className="user-chip" onClick={() => navigate("/profile")}>
-          <div className="user-avatar-wrap">
-            <img
-              src={user?.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"}
-              alt={user?.name || "User"}
-              className="user-avatar-img"
-              onError={(e) => {
-                e.target.style.display = "none";
-                e.target.nextSibling.style.display = "flex";
-              }}
-            />
-            <div className="user-avatar-fallback" style={{ display: "none" }}>
-              {user?.name?.[0] || "U"}
-            </div>
+      <div className="user-chip" onClick={() => navigate("/profile")}>
+        <div className="user-avatar-wrap">
+          <img
+            src={user?.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"}
+            alt={user?.name || "User"}
+            className="user-avatar-img"
+            onError={(e) => {
+              e.target.style.display = "none";
+              e.target.nextSibling.style.display = "flex";
+            }}
+          />
+          <div className="user-avatar-fallback" style={{ display: "none" }}>
+            {user?.name?.[0] || "U"}
           </div>
-          <div className="user-meta">
-            <strong>{user?.name || "R. Perera"}</strong>
-            <span>{roleLabel}</span>
-          </div>
-          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" style={{ color: "var(--stone)", marginLeft: 4 }}>
-            <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
         </div>
+        <div className="user-meta">
+          <strong>{user?.name || "R. Perera"}</strong>
+          <span>{roleLabel}</span>
+        </div>
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="none" style={{ color: "var(--stone)", marginLeft: 4 }}>
+          <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
       </div>
     </div>
   );

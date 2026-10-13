@@ -1,12 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, ArrowUpRight } from "lucide-react";
 import Reveal from "../components/Reveal.jsx";
 import Chatbot from "../components/Chatbot.jsx";
 import Footer from "../components/Footer.jsx";
-import { freshnessOf } from "../components/FreshnessMeter.jsx";
-import { api } from "../api.js";
-import { CATEGORY_IMAGE, imageFor } from "../foodImages.js";
 import {
   BrandWordmark,
   IconImpact,
@@ -23,8 +19,6 @@ import {
   IconStepDistribute,
   IconStepHeart,
   IconFloatingLeaf,
-  IconMapPin,
-  IconPackageBox,
 } from "../components/Icons.jsx";
 
 const FEATURES = [
@@ -81,72 +75,7 @@ const STATS = [
   { Icon: IconStatPeople, value: "5+", label: "communities helped" },
 ];
 
-const CATEGORIES = Object.keys(CATEGORY_IMAGE).filter((c) => c !== "Other");
-
-/**
- * A short live strip of what is on offer right now, read from the same public
- * listing the Browse page uses. It renders nothing until there is something
- * real to show, so the landing page never displays placeholder food.
- */
-function FreshListings() {
-  const [items, setItems] = useState(null);
-
-  useEffect(() => {
-    api
-      .get("/donations?published=true")
-      .then((d) => setItems((d.donations || []).filter((i) => i.status !== "expired").slice(0, 4)))
-      .catch(() => setItems([]));
-  }, []);
-
-  if (!items || items.length === 0) return null;
-
-  return (
-    <section className="home-section home-fresh">
-      <Reveal className="home-section-head home-section-head-row">
-        <div>
-          <span className="home-kicker">Live right now</span>
-          <h2 className="home-section-title">Fresh surplus, ready for pickup</h2>
-        </div>
-        <Link to="/browse" className="home-link-arrow">
-          View all food <ArrowRight size={16} />
-        </Link>
-      </Reveal>
-      <div className="home-fresh-grid">
-        {items.map((item, i) => {
-          const f = freshnessOf(item);
-          return (
-            <Reveal key={item.id} delay={i * 80} className="home-fresh-card">
-              <Link to="/browse">
-                <div className="home-fresh-media">
-                  <img src={imageFor(item.category)} alt={item.category} loading="lazy" />
-                  <span className="food-card-chip" style={{ background: f.tint, color: f.color }}>
-                    {f.label}
-                  </span>
-                </div>
-                <div className="home-fresh-body">
-                  <span className="food-card-category">{item.category}</span>
-                  <strong>{item.name}</strong>
-                  <div className="home-fresh-meta">
-                    <span>
-                      <IconPackageBox size={13} color="currentColor" /> {item.quantityKg} kg
-                    </span>
-                    <span>
-                      <IconMapPin size={13} color="currentColor" /> {item.pickupLocation}
-                    </span>
-                  </div>
-                </div>
-              </Link>
-            </Reveal>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
 export default function Home() {
-  const [featured, ...restFeatures] = FEATURES;
-
   return (
     <div className="home">
       <nav className="home-nav">
@@ -168,185 +97,122 @@ export default function Home() {
       </nav>
 
       <main className="home-main">
-        <header className="home-hero">
-          <div className="home-hero-inner">
-            <div className="home-hero-copy">
-              <span className="home-eyebrow reveal-fade" style={{ animationDelay: "0ms" }}>
-                <IconFloatingLeaf size={16} color="var(--primary)" /> AI-Powered Redistribution
-              </span>
-              <h1 className="home-hero-title reveal-fade" style={{ animationDelay: "80ms" }}>
-                Turn surplus food into someone's <span className="home-hero-highlight">next meal.</span>
-              </h1>
-              <p className="home-hero-subtitle reveal-fade" style={{ animationDelay: "160ms" }}>
-                Zero Waste connects donors, beneficiaries and farm partners in real time —
-                matched by AI, confirmed by QR, and measured in kilograms diverted from landfill.
-              </p>
-              <div className="home-hero-actions reveal-fade" style={{ animationDelay: "240ms" }}>
-                <Link to="/register" className="home-btn home-btn-primary home-btn-lg">
-                  Get Started Free <ArrowRight size={17} />
-                </Link>
-                <Link to="/browse" className="home-btn home-btn-outline home-btn-lg">
-                  Browse Available Food
-                </Link>
-              </div>
-              <div className="home-hero-roles reveal-fade" style={{ animationDelay: "320ms" }}>
-                <div className="home-hero-role-stack">
-                  {ROLES.slice(0, 3).map((r) => (
-                    <span key={r.title}>
-                      <r.Icon size={18} />
-                    </span>
-                  ))}
-                </div>
-                <p>
-                  Built for <strong>donors</strong>, <strong>NGOs</strong> and <strong>farm partners</strong>
-                </p>
-              </div>
-            </div>
-
-            <div className="home-hero-visual reveal-fade" style={{ animationDelay: "160ms" }}>
-              <div className="home-hero-photo" style={{ backgroundImage: "url('/auth-hero.jpg')" }} />
-              <div className="home-float home-float-top">
-                <span className="home-float-icon">
-                  <IconImpact size={20} />
-                </span>
-                <div>
-                  <strong>AI priority matching</strong>
-                  <span>Urgency · distance · capacity</span>
-                </div>
-              </div>
-              <div className="home-float home-float-bottom">
-                <span className="home-float-icon">
-                  <IconScan size={20} />
-                </span>
-                <div>
-                  <strong>Pickup confirmed</strong>
-                  <span>Verified by QR ticket</span>
-                </div>
-              </div>
-              <div className="home-float home-float-stat">
-                <strong>{STATS[0].value}</strong>
-                <span>{STATS[0].label}</span>
-              </div>
+      <header className="home-hero">
+        <div className="home-hero-bg" style={{ backgroundImage: "url('/auth-hero.jpg')" }} />
+        <div className="home-hero-overlay home-hero-overlay-side" />
+        <div className="home-hero-overlay home-hero-overlay-bottom" />
+        <div className="home-hero-inner">
+          <div className="home-hero-copy">
+            <span className="home-eyebrow reveal-fade" style={{ animationDelay: "0ms" }}>
+              <IconFloatingLeaf size={16} color="#C9E6A0" /> AI-Powered Redistribution
+            </span>
+            <h1 className="home-hero-title reveal-fade" style={{ animationDelay: "80ms" }}>
+              Turn surplus food into someone's next meal.
+            </h1>
+            <p className="home-hero-subtitle reveal-fade" style={{ animationDelay: "160ms" }}>
+              Zero Waste connects donors, beneficiaries and farm partners in real time —
+              matched by AI, confirmed by QR, and measured in kilograms diverted from landfill.
+            </p>
+            <div className="home-hero-actions reveal-fade" style={{ animationDelay: "240ms" }}>
+              <Link to="/register" className="home-btn home-btn-primary home-btn-lg">Get Started Free</Link>
+              <Link to="/browse" className="home-btn home-btn-glass home-btn-lg">Browse Available Food</Link>
             </div>
           </div>
-        </header>
+        </div>
+      </header>
 
-        <section className="home-categories" aria-label="Food categories">
-          {CATEGORIES.map((c) => (
-            <Link key={c} to="/browse" className="home-category">
-              <img src={CATEGORY_IMAGE[c]} alt="" loading="lazy" />
-              <span>{c}</span>
-            </Link>
+      <section id="impact" className="home-section">
+        <div className="home-stats-row">
+          {STATS.map((s, i) => (
+            <Reveal key={s.label} delay={i * 80} className="home-stat-card">
+              <div className="home-stat-icon">
+                <s.Icon size={28} />
+              </div>
+              <strong>{s.value}</strong>
+              <span>{s.label}</span>
+            </Reveal>
           ))}
-        </section>
+        </div>
+      </section>
 
-        <section id="impact" className="home-section">
-          <div className="home-stats-row">
-            {STATS.map((s, i) => (
-              <Reveal key={s.label} delay={i * 80} className="home-stat-card">
-                <div className="home-stat-icon">
-                  <s.Icon size={26} />
-                </div>
-                <div>
-                  <strong>{s.value}</strong>
-                  <span>{s.label}</span>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </section>
-
-        <FreshListings />
-
-        <section id="features" className="home-section">
-          <Reveal className="home-section-head">
-            <span className="home-kicker">Features</span>
-            <h2 className="home-section-title">
-              Everything the <span className="home-hero-highlight">redistribution loop</span> needs
+      <section id="features" className="relative bg-gradient-to-b from-[#F7FBF0] via-[#E8F2D8]/40 to-[#F7FBF0] border-y border-emerald-200/50 py-24 px-6 sm:px-12">
+        <div className="max-w-[1160px] mx-auto">
+          <Reveal className="text-center max-w-2xl mx-auto mb-14" as="div">
+            <h2 className="text-slate-900 font-extrabold text-3xl sm:text-4xl tracking-tight">
+              Everything the{" "}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-700 to-emerald-500">
+                redistribution loop
+              </span>{" "}
+              needs
             </h2>
-            <p className="home-section-sub">
+            <p className="text-slate-600 text-base max-w-2xl mx-auto mt-3 text-center">
               One transparent system — from the moment surplus is listed to the moment it's collected.
             </p>
           </Reveal>
-          <div className="home-bento">
-            <Reveal className="home-bento-card home-bento-feature">
-              <div className="home-bento-icon">
-                <featured.Icon size={26} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {FEATURES.map((f, i) => (
+              <Reveal
+                key={f.title}
+                delay={(i % 3) * 90}
+                className="bg-white rounded-2xl p-7 border border-slate-100 shadow-sm transition-all duration-300 hover:shadow-md hover:border-emerald-300"
+              >
+                <div className="bg-[#E8F2D8] text-[#387E01] w-12 h-12 rounded-xl flex items-center justify-center mb-5">
+                  <f.Icon size={24} />
+                </div>
+                <h3 className="text-slate-900 font-bold text-lg mb-2.5">{f.title}</h3>
+                <p className="text-slate-600 text-sm leading-relaxed">{f.text}</p>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="how-it-works" className="home-section home-section-alt">
+        <Reveal className="home-section-head">
+          <h2 className="home-section-title">How it works</h2>
+          <p className="home-section-sub">Four steps from surplus shelf to someone's plate.</p>
+        </Reveal>
+        <div className="home-steps-row">
+          {STEPS.map((s, i) => (
+            <Reveal key={s.label} delay={i * 100} className="home-step">
+              <div className="home-step-num">{i + 1}</div>
+              <div className="home-step-icon">
+                <s.Icon size={28} />
               </div>
-              <h3>{featured.title}</h3>
-              <p>{featured.text}</p>
-              <Link to="/register" className="home-link-arrow home-link-arrow-light">
-                Start matching <ArrowUpRight size={16} />
-              </Link>
+              <p>{s.label}</p>
+              {i < STEPS.length - 1 && <div className="home-step-connector" />}
             </Reveal>
-            {restFeatures.map((f, i) => (
-              <Reveal key={f.title} delay={(i % 3) * 90} className="home-bento-card">
-                <div className="home-bento-icon">
-                  <f.Icon size={22} />
-                </div>
-                <h3>{f.title}</h3>
-                <p>{f.text}</p>
-              </Reveal>
-            ))}
-          </div>
-        </section>
+          ))}
+        </div>
+      </section>
 
-        <section id="how-it-works" className="home-section home-section-alt">
-          <Reveal className="home-section-head">
-            <span className="home-kicker">How it works</span>
-            <h2 className="home-section-title">From surplus shelf to someone's plate</h2>
-            <p className="home-section-sub">Four steps, fully tracked from listing to collection.</p>
-          </Reveal>
-          <div className="home-steps-row">
-            {STEPS.map((s, i) => (
-              <Reveal key={s.label} delay={i * 100} className="home-step">
-                <div className="home-step-top">
-                  <div className="home-step-icon">
-                    <s.Icon size={26} />
-                  </div>
-                  <span className="home-step-num">0{i + 1}</span>
-                </div>
-                <p>{s.label}</p>
-              </Reveal>
-            ))}
-          </div>
-        </section>
+      <section className="home-section">
+        <Reveal className="home-section-head">
+          <h2 className="home-section-title">Built for every role in the loop</h2>
+          <p className="home-section-sub">Each account type gets exactly the tools it needs — nothing more.</p>
+        </Reveal>
+        <div className="home-role-grid">
+          {ROLES.map((r, i) => (
+            <Reveal key={r.title} delay={i * 90} className="home-role-card">
+              <div className="home-role-icon">
+                <r.Icon size={30} />
+              </div>
+              <h3>{r.title}</h3>
+              <p>{r.text}</p>
+            </Reveal>
+          ))}
+        </div>
+      </section>
 
-        <section className="home-section">
-          <Reveal className="home-section-head">
-            <span className="home-kicker">Who it's for</span>
-            <h2 className="home-section-title">Built for every role in the loop</h2>
-            <p className="home-section-sub">Each account type gets exactly the tools it needs — nothing more.</p>
-          </Reveal>
-          <div className="home-role-grid">
-            {ROLES.map((r, i) => (
-              <Reveal key={r.title} delay={i * 90} className="home-role-card">
-                <div className="home-role-icon">
-                  <r.Icon size={28} />
-                </div>
-                <h3>{r.title}</h3>
-                <p>{r.text}</p>
-              </Reveal>
-            ))}
+      <section className="home-section">
+        <Reveal className="home-cta-banner">
+          <div>
+            <h2>Ready to reduce food waste?</h2>
+            <p>Join as a donor, beneficiary, or farm partner — it takes less than a minute.</p>
           </div>
-        </section>
-
-        <section className="home-section">
-          <Reveal className="home-cta-banner">
-            <div>
-              <h2>Ready to reduce food waste?</h2>
-              <p>Join as a donor, beneficiary, or farm partner — it takes less than a minute.</p>
-            </div>
-            <div className="home-cta-actions">
-              <Link to="/register" className="home-btn home-btn-light home-btn-lg">
-                Create your account <ArrowRight size={17} />
-              </Link>
-              <Link to="/browse" className="home-btn home-btn-glass home-btn-lg">
-                Browse food
-              </Link>
-            </div>
-          </Reveal>
-        </section>
+          <Link to="/register" className="home-btn home-btn-primary home-btn-lg">Create your account</Link>
+        </Reveal>
+      </section>
       </main>
 
       <Footer />

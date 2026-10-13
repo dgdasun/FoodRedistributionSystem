@@ -11,7 +11,16 @@ import { FadeIn, HoverLift } from "../components/motion/Motion.jsx";
 import { useToast } from "../components/Toast.jsx";
 import SuccessBurst from "../components/SuccessBurst.jsx";
 import FoodMap from "../components/FoodMap.jsx";
-import { imageFor } from "../foodImages.js";
+
+const CATEGORY_IMAGE = {
+  "Cooked Meals": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&auto=format&fit=crop&q=80",
+  Bakery: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&auto=format&fit=crop&q=80",
+  Vegetables: "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=400&auto=format&fit=crop&q=80",
+  Dairy: "https://images.unsplash.com/photo-1628088062854-d1870b4553da?w=400&auto=format&fit=crop&q=80",
+  Fruits: "https://images.unsplash.com/photo-1619566636858-adf3ef46400b?w=400&auto=format&fit=crop&q=80",
+  "Packaged Goods": "https://images.unsplash.com/photo-1584473457406-6240486418e9?w=400&auto=format&fit=crop&q=80",
+  Other: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&auto=format&fit=crop&q=80",
+};
 
 function RequestModal({ item, user, onClose }) {
   const [quantityKg, setQuantityKg] = useState(Math.min(item.quantityKg, 10));
@@ -349,31 +358,6 @@ export default function BrowseFood() {
         </button>
       </div>
 
-      {categories.length > 0 && (
-        <div className="category-chips" role="group" aria-label="Filter by food type">
-          <button
-            type="button"
-            className={cats.length === 0 ? "category-chip active" : "category-chip"}
-            onClick={() => setCats([])}
-            aria-pressed={cats.length === 0}
-          >
-            All food
-          </button>
-          {categories.map((c) => (
-            <button
-              key={c}
-              type="button"
-              className={cats.includes(c) ? "category-chip active" : "category-chip"}
-              onClick={() => toggleCat(c)}
-              aria-pressed={cats.includes(c)}
-            >
-              <img src={imageFor(c)} alt="" />
-              {c}
-            </button>
-          ))}
-        </div>
-      )}
-
       <div className={showFilters ? "browse-layout filters-open" : "browse-layout"}>
         <FilterPanel
           categories={categories}
@@ -405,36 +389,34 @@ export default function BrowseFood() {
                 const f = freshnessOf(item);
                 return (
                   <HoverLift className="card food-card" key={item.id}>
-                    <div className="food-card-media">
+                    <div style={{ position: "relative" }}>
                       <img
-                        src={imageFor(item.category)}
+                        src={CATEGORY_IMAGE[item.category] || CATEGORY_IMAGE.Other}
                         alt={item.category}
-                        loading="lazy"
+                        style={{ width: "100%", height: 120, objectFit: "cover", borderRadius: 10, marginBottom: 10 }}
                       />
                       <span className="food-card-chip" style={{ background: f.tint, color: f.color }}>
                         {f.label}
                       </span>
-                      <span className="food-card-qty">
-                        <IconPackageBox size={13} color="currentColor" /> {item.quantityKg} kg
-                      </span>
                     </div>
 
-                    <div className="food-card-body">
-                      <span className="food-card-category">{item.category}</span>
-                      <strong className="food-card-title">{item.name}</strong>
-                      <p className="food-card-location">
-                        <IconMapPin size={14} color="var(--text-light)" /> {item.pickupLocation}
-                      </p>
+                    <strong style={{ fontSize: 15 }}>{item.name}</strong>
+                    <p style={{ fontSize: 12.5, color: "var(--text-light)", margin: "3px 0 10px" }}>{item.category}</p>
 
-                      <FreshnessMeter item={item} />
+                    <FreshnessMeter item={item} />
 
-                      <button
-                        className="btn btn-primary btn-sm food-card-action"
-                        onClick={() => handleAction(item)}
-                      >
-                        {!user ? "Request Food" : canRequest ? "Request This Item" : "Verification required"}
-                      </button>
-                    </div>
+                    <p style={{ fontSize: 13, margin: "10px 0 0", lineHeight: 1.9 }}>
+                      <IconPackageBox size={14} color="var(--text-mid)" /> {item.quantityKg} kg available <br />
+                      <IconMapPin size={14} color="var(--text-mid)" /> {item.pickupLocation}
+                    </p>
+
+                    <button
+                      className="btn btn-primary btn-sm"
+                      style={{ width: "100%", justifyContent: "center", marginTop: 12 }}
+                      onClick={() => handleAction(item)}
+                    >
+                      {!user ? "Request Food" : canRequest ? "Request This Item" : "Verification required"}
+                    </button>
                   </HoverLift>
                 );
               })}

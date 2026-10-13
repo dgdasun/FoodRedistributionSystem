@@ -52,7 +52,7 @@ export default function Sidebar() {
                 className={({ isActive }) => "nav-item" + (isActive ? " active" : "")}
               >
                 <span className="ico">
-                  <ItemIcon size={19} color="currentColor" />
+                  <ItemIcon size={19} />
                 </span>
                 <span className="nav-label">{item.label}</span>
               </NavLink>

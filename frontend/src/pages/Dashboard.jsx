@@ -305,7 +305,7 @@ function BeneficiaryDashboard({ user }) {
 
   return (
     <div className="dashboard-container">
-      <div className="page-header dashboard-hero">
+      <div className="page-header">
         <h1 className="welcome-title">
           Welcome back, {user.name.split(" ")[0]}! <IconFloatingLeaf size={26} color="#85B840" />
         </h1>
@@ -507,7 +507,7 @@ function AdminDashboard({ user }) {
       {/* Toolbar: identity on the left, system state on the right. One live
           badge for the whole page - the panels below no longer each carry one. */}
       <div
-        className="page-header dashboard-hero"
+        className="page-header"
         style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}
       >
         <div>
