@@ -5,6 +5,7 @@ import LiveBadge from "../components/LiveBadge.jsx";
 import LottieState from "../components/LottieState.jsx";
 import Pagination from "../components/Pagination.jsx";
 import { FadeIn, Stagger, StaggerItem } from "../components/motion/Motion.jsx";
+import { avatarUrl } from "../avatar.js";
 
 const PAGE_SIZE = 8;
 
@@ -275,9 +276,14 @@ export default function AdminUsers() {
                                 fontWeight: 700,
                                 fontSize: 12.5,
                                 flexShrink: 0,
+                                overflow: "hidden",
                               }}
                             >
-                              {(u.avatar || u.name?.[0] || "?").toString().slice(0, 1)}
+                              {avatarUrl(u) ? (
+                                <img src={avatarUrl(u)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                              ) : (
+                                (u.avatar || u.name?.[0] || "?").toString().slice(0, 1)
+                              )}
                             </span>
                             <strong style={{ fontWeight: 600 }}>{u.name}</strong>
                           </div>

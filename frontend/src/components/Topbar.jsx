@@ -7,6 +7,7 @@ import { timeAgo } from "../timeAgo.js";
 import { IconBell } from "./Icons.jsx";
 import ThemeToggle from "./ThemeToggle.jsx";
 import { navItemsFor } from "../nav.js";
+import { avatarUrl } from "../avatar.js";
 
 const EXTRA_TITLES = { "/help": "Help & Support", "/profile": "Profile" };
 
@@ -202,16 +203,18 @@ export default function Topbar() {
 
         <div className="user-chip" onClick={() => navigate("/profile")}>
           <div className="user-avatar-wrap">
-            <img
-              src={user?.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"}
-              alt={user?.name || "User"}
-              className="user-avatar-img"
-              onError={(e) => {
-                e.target.style.display = "none";
-                e.target.nextSibling.style.display = "flex";
-              }}
-            />
-            <div className="user-avatar-fallback" style={{ display: "none" }}>
+            {avatarUrl(user) && (
+              <img
+                src={avatarUrl(user)}
+                alt={user?.name || "User"}
+                className="user-avatar-img"
+                onError={(e) => {
+                  e.target.style.display = "none";
+                  e.target.nextSibling.style.display = "flex";
+                }}
+              />
+            )}
+            <div className="user-avatar-fallback" style={{ display: avatarUrl(user) ? "none" : "flex" }}>
               {user?.name?.[0] || "U"}
             </div>
           </div>

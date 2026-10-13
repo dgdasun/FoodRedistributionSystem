@@ -741,6 +741,26 @@ export function IconUpload({ size = 16, color = "currentColor", className = "" }
   );
 }
 
+// Camera Outline (Profile photo)
+export function IconCamera({ size = 16, color = "currentColor", className = "" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 20 20" fill="none" className={className} style={{ display: "inline-block", verticalAlign: "middle" }}>
+      <path d="M3 7C3 6.17 3.67 5.5 4.5 5.5H6.25L7.5 3.5H12.5L13.75 5.5H15.5C16.33 5.5 17 6.17 17 7V15C17 15.83 16.33 16.5 15.5 16.5H4.5C3.67 16.5 3 15.83 3 15V7Z" stroke={color} strokeWidth="1.6" strokeLinejoin="round" />
+      <circle cx="10" cy="10.75" r="3" stroke={color} strokeWidth="1.6" />
+    </svg>
+  );
+}
+
+// Trash Outline (Remove)
+export function IconTrash({ size = 16, color = "currentColor", className = "" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 20 20" fill="none" className={className} style={{ display: "inline-block", verticalAlign: "middle" }}>
+      <path d="M3.5 5.5H16.5M8 5.5V4C8 3.45 8.45 3 9 3H11C11.55 3 12 3.45 12 4V5.5M5 5.5L5.75 16C5.79 16.56 6.26 17 6.82 17H13.18C13.74 17 14.21 16.56 14.25 16L15 5.5" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M8.5 9V13.5M11.5 9V13.5" stroke={color} strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 // Plus Outline (Add Item)
 export function IconPlus({ size = 16, color = "currentColor", className = "" }) {
   return (
