@@ -32,7 +32,7 @@ export default function BottomNav() {
           className={({ isActive }) => (isActive ? "bottom-nav-item active" : "bottom-nav-item")}
           aria-label={label}
         >
-          <Icon size={21} />
+          <Icon size={21} color="currentColor" />
           <span>{short || label}</span>
         </NavLink>
       ))}
