@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -62,12 +63,45 @@ public class VerificationDocumentService {
         else docs = new ArrayList<>(docs);
         docs.add(storedName);
         user.setVerificationDocuments(docs);
+        user.setVerificationSubmittedAt(Instant.now());
 
         if ("rejected".equals(user.getVerificationStatus())) {
             user.setVerificationStatus("pending");
             user.setRejectionReason(null);
+            user.setVerificationReviewedAt(null);
         }
 
+        return userRepository.save(user);
+    }
+
+    /**
+     * Lets the account owner withdraw a wrong upload. Only allowed while the account
+     * is still awaiting review - once approved, the documents back that decision.
+     */
+    public User removeDocument(String userId, String filename) throws IOException {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        if ("approved".equals(user.getVerificationStatus())) {
+            throw new IllegalStateException("Documents cannot be removed after the account has been approved");
+        }
+
+        List<String> docs = user.getVerificationDocuments() == null
+                ? new ArrayList<>() : new ArrayList<>(user.getVerificationDocuments());
+        if (!docs.remove(filename)) {
+            throw new IllegalArgumentException("Document not found");
+        }
+
+        Path userDir = baseDir.resolve(userId).normalize();
+        Path file = userDir.resolve(filename).normalize();
+        if (!file.startsWith(userDir)) {
+            throw new IllegalArgumentException("Invalid document path");
+        }
+        Files.deleteIfExists(file);
+
+        user.setVerificationDocuments(docs);
+        if (docs.isEmpty()) {
+            user.setVerificationSubmittedAt(null);
+        }
         return userRepository.save(user);
     }
 

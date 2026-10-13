@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
+import { Trash2 } from "lucide-react";
 import { useAuth } from "../AuthContext.jsx";
 import { api } from "../api.js";
 import { IconUpload } from "./Icons.jsx";
@@ -8,7 +9,9 @@ export default function VerificationUpload({ user }) {
   const { login } = useAuth();
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [removing, setRemoving] = useState(null);
   const [error, setError] = useState("");
+  const inputRef = useRef(null);
   const documents = user.verificationDocuments || [];
 
   const upload = async () => {
@@ -20,11 +23,30 @@ export default function VerificationUpload({ user }) {
       formData.append("file", file);
       const { user: updated } = await api.upload(`/beneficiaries/${user.id}/documents`, formData);
       login(updated);
-      setFile(null);
+      clearFile();
     } catch (e) {
       setError(e.message || "Failed to upload document.");
     } finally {
       setUploading(false);
+    }
+  };
+
+  // Also resets the native input, so re-picking the same file still fires onChange.
+  const clearFile = () => {
+    setFile(null);
+    if (inputRef.current) inputRef.current.value = "";
+  };
+
+  const removeDocument = async (doc) => {
+    setRemoving(doc);
+    setError("");
+    try {
+      const { user: updated } = await api.del(`/beneficiaries/${user.id}/documents/${encodeURIComponent(doc)}`);
+      login(updated);
+    } catch (e) {
+      setError(e.message || "Failed to remove document.");
+    } finally {
+      setRemoving(null);
     }
   };
 
@@ -50,6 +72,17 @@ export default function VerificationUpload({ user }) {
               >
                 {doc.replace(/^\d+-/, "")}
               </a>
+              <button
+                type="button"
+                className="btn btn-danger-outline btn-sm"
+                onClick={() => removeDocument(doc)}
+                disabled={removing !== null}
+                title="Remove this document so you can upload the correct one"
+                style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", fontSize: 11.5 }}
+              >
+                <Trash2 size={12} aria-hidden="true" />
+                {removing === doc ? "Removing..." : "Delete"}
+              </button>
             </li>
           ))}
         </ul>
@@ -65,11 +98,25 @@ export default function VerificationUpload({ user }) {
             {file ? file.name : "Choose file..."}
           </span>
           <input
+            ref={inputRef}
             type="file"
             onChange={(e) => setFile(e.target.files?.[0] || null)}
             style={{ position: "absolute", width: 1, height: 1, opacity: 0, pointerEvents: "none" }}
           />
         </label>
+        {file && (
+          <button
+            type="button"
+            className="btn btn-outline btn-sm"
+            onClick={clearFile}
+            disabled={uploading}
+            title="Clear the selected file"
+            style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+          >
+            <Trash2 size={14} aria-hidden="true" />
+            Remove
+          </button>
+        )}
         <button type="button" className="btn btn-primary btn-sm" onClick={upload} disabled={!file || uploading}>
           {uploading ? "Uploading..." : "Upload Document"}
         </button>

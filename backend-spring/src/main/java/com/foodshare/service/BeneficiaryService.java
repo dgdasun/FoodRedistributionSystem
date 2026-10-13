@@ -4,6 +4,7 @@ import com.foodshare.model.User;
 import com.foodshare.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.List;
 
 @Service
@@ -39,6 +40,7 @@ public class BeneficiaryService {
         }
         u.setRejectionReason(null);
         u.setVerified(verified);
+        u.setVerificationReviewedAt(verified ? Instant.now() : null);
         return userRepository.save(u);
     }
 
@@ -50,6 +52,7 @@ public class BeneficiaryService {
         u.setVerified(false);
         u.setVerificationStatus("rejected");
         u.setRejectionReason(reason.trim());
+        u.setVerificationReviewedAt(Instant.now());
         return userRepository.save(u);
     }
 

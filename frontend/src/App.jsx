@@ -95,13 +95,14 @@ function AppRoutes() {
 export default function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <ToastProvider>
+      {/* Toasts wrap auth so AuthProvider can announce sign-ins. */}
+      <ToastProvider>
+        <AuthProvider>
           <FoodAlertProvider>
             <AppRoutes />
           </FoodAlertProvider>
-        </ToastProvider>
-      </AuthProvider>
+        </AuthProvider>
+      </ToastProvider>
     </ThemeProvider>
   );
 }

@@ -21,7 +21,7 @@ export default function Login() {
     setLoading(true);
     try {
       const { user } = await api.post("/auth/login", { email, password });
-      login(user);
+      login(user, { announce: true });
       navigate("/dashboard");
     } catch (e2) {
       setError(e2.message || "Failed to sign in. Please check your credentials.");

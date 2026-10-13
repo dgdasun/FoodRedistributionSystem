@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { useToast } from "./components/Toast.jsx";
 
 const AuthContext = createContext(null);
 
@@ -12,14 +13,23 @@ export function AuthProvider({ children }) {
     }
   });
   const [loading, setLoading] = useState(true);
+  const toast = useToast();
 
   useEffect(() => {
     setLoading(false);
   }, []);
 
-  const login = (u) => {
+  /**
+   * Stores the signed-in user. Also used to swap in a refreshed user object
+   * (document uploads, verification polling), so the welcome toast is opt-in:
+   * pass { announce: true } only from an actual sign-in.
+   */
+  const login = (u, { announce = false } = {}) => {
     setUser(u);
     localStorage.setItem("zerowaste_user", JSON.stringify(u));
+    if (announce) {
+      toast.success(`Welcome back, ${u.name}! You have successfully logged in.`, { duration: 3500 });
+    }
   };
 
   const logout = () => {

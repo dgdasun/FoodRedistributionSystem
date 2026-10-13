@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
+import { Clock } from "lucide-react";
 import { api } from "../api.js";
+import { getRelativeTime, formatExactTime } from "../timeAgo.js";
 import { IconMapPin, IconUser, IconDocument, IconEye, IconDownload, IconShieldCheck } from "../components/Icons.jsx";
 
 const ROLE_LABEL = {
@@ -47,6 +49,53 @@ function roleLabel(b) {
 
 function cleanDocName(doc) {
   return doc.replace(/^\d+-/, "");
+}
+
+/**
+ * When the account last submitted documents for review. verificationSubmittedAt
+ * is stamped on every upload; accounts that uploaded before that field existed
+ * fall back to the millisecond prefix VerificationDocumentService puts on each
+ * stored filename, then to account creation.
+ */
+function submittedAtOf(b) {
+  if (b.verificationSubmittedAt) return b.verificationSubmittedAt;
+  const docs = b.verificationDocuments || [];
+  const stamp = docs.length ? Number(docs[docs.length - 1].split("-")[0]) : NaN;
+  if (stamp > 0) return new Date(stamp);
+  return b.createdAt || null;
+}
+
+const TIME_BADGE_TONE = {
+  neutral: "bg-gray-100 text-gray-600",
+  approved: "bg-emerald-50 text-emerald-700",
+  rejected: "bg-[var(--status-danger-bg)] text-[var(--status-danger-fg)]",
+};
+
+function TimeBadge({ label, at, tone = "neutral" }) {
+  const relative = getRelativeTime(at);
+  if (!relative) return null;
+
+  return (
+    <span
+      className={`ml-auto inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${TIME_BADGE_TONE[tone]}`}
+      title={formatExactTime(at)}
+    >
+      <Clock size={12} strokeWidth={2.25} className="shrink-0" aria-hidden="true" />
+      {label} {relative}
+    </span>
+  );
+}
+
+/**
+ * Approved/rejected cards show when the admin decided. Accounts reviewed before
+ * verificationReviewedAt existed have no decision time on record, so they show
+ * the submission time instead of a made-up review time.
+ */
+function ReviewedBadge({ b, label, tone }) {
+  if (b.verificationReviewedAt) {
+    return <TimeBadge label={label} at={b.verificationReviewedAt} tone={tone} />;
+  }
+  return <TimeBadge label="Submitted" at={submittedAtOf(b)} />;
 }
 
 function DocumentSection({ userId, documents }) {
@@ -105,6 +154,7 @@ function PendingCard({ b, onApprove, onReject }) {
         <div className="verify-top-row">
           <span className="verify-org-name">{b.organizationName || b.name}</span>
           <span className={`role-badge ${ROLE_CLASS[b.role] || ""}`}>{roleLabel(b)}</span>
+          <TimeBadge label="Submitted" at={submittedAtOf(b)} />
         </div>
         <div className="verify-meta-row">
           {b.location && (
@@ -151,6 +201,7 @@ function VerifiedCard({ b }) {
             <IconShieldCheck size={12} />
             Verified
           </span>
+          <ReviewedBadge b={b} label="Approved" tone="approved" />
         </div>
         <div className="verify-meta-row">
           {b.location && (
@@ -175,6 +226,7 @@ function RejectedCard({ b }) {
           <span className="verify-org-name">{b.organizationName || b.name}</span>
           <span className={`role-badge ${ROLE_CLASS[b.role] || ""}`}>{roleLabel(b)}</span>
           <span className="rejected-pill">Rejected</span>
+          <ReviewedBadge b={b} label="Rejected" tone="rejected" />
         </div>
         <div className="verify-meta-row">
           {b.location && (

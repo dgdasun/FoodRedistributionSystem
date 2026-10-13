@@ -52,6 +52,12 @@ public class BeneficiaryController {
         return Map.of("user", user);
     }
 
+    @DeleteMapping("/{id}/documents/{filename}")
+    public Map<String, Object> deleteDocument(@PathVariable String id, @PathVariable String filename) throws IOException {
+        User user = verificationDocumentService.removeDocument(id, filename);
+        return Map.of("user", user);
+    }
+
     @GetMapping("/{id}/documents/{filename}")
     public ResponseEntity<Resource> getDocument(@PathVariable String id, @PathVariable String filename) {
         Resource resource = verificationDocumentService.loadDocument(id, filename);

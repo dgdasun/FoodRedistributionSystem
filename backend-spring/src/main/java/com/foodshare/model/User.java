@@ -74,7 +74,29 @@ public class User {
      */
     private Instant createdAt;
 
+    /** When the most recent verification document was uploaded - shown as "Submitted X ago" in AdminVerifications. */
+    private Instant verificationSubmittedAt;
+
+    /** When an admin last approved or rejected this account - shown as "Approved/Rejected X ago". */
+    private Instant verificationReviewedAt;
+
     public User() {
+    }
+
+    public Instant getVerificationSubmittedAt() {
+        return verificationSubmittedAt;
+    }
+
+    public void setVerificationSubmittedAt(Instant verificationSubmittedAt) {
+        this.verificationSubmittedAt = verificationSubmittedAt;
+    }
+
+    public Instant getVerificationReviewedAt() {
+        return verificationReviewedAt;
+    }
+
+    public void setVerificationReviewedAt(Instant verificationReviewedAt) {
+        this.verificationReviewedAt = verificationReviewedAt;
     }
 
     public Instant getCreatedAt() {

@@ -4,6 +4,7 @@ import { api } from "../api.js";
 import StatCard from "../components/StatCard.jsx";
 import ProgressRing from "../components/ProgressRing.jsx";
 import VerificationUpload from "../components/VerificationUpload.jsx";
+import VerificationApprovedBanner from "../components/VerificationApprovedBanner.jsx";
 import LottieState from "../components/LottieState.jsx";
 import { HorizontalBarChart, ProportionBar, StatusDonut, useChartPalette } from "../components/charts/ChartKit.jsx";
 import { CountUp, FadeIn, GrowBar, Stagger, StaggerItem } from "../components/motion/Motion.jsx";
@@ -95,6 +96,8 @@ function DonorDashboard({ user }) {
           </div>
         </div>
       </div>
+
+      <VerificationApprovedBanner user={user} />
 
       {!user.verified && user.verificationStatus === "rejected" ? (
         <div className="banner" style={{ background: "var(--status-danger-bg)", border: "1px solid var(--status-danger-border)", borderRadius: 14, padding: "14px 20px", marginBottom: 20 }}>
@@ -323,6 +326,8 @@ function BeneficiaryDashboard({ user }) {
           />
         </div>
       </div>
+
+      <VerificationApprovedBanner user={user} />
 
       {!user.verified && user.verificationStatus === "rejected" ? (
         <div className="banner" style={{ background: "var(--status-danger-bg)", border: "1px solid var(--status-danger-border)", borderRadius: 14, padding: "14px 20px", marginBottom: 20 }}>
@@ -640,8 +645,27 @@ function AdminDashboard({ user }) {
   );
 }
 
+/**
+ * The stored user is a snapshot from sign-in, so an admin's approval wouldn't
+ * show until the next login. While an account awaits review, re-read it from
+ * the server so the dashboard (and the approval banner) flips over on its own.
+ */
+function useVerificationRefresh(user, login) {
+  const pending = !!user && user.role !== "admin" && !user.verified;
+  const { data } = useLiveData(user ? `/auth/me/${user.id}` : "", { intervalMs: 30000, enabled: pending });
+  const fresh = data?.user;
+
+  useEffect(() => {
+    if (!pending || !fresh) return;
+    if (fresh.verified !== user.verified || fresh.verificationStatus !== user.verificationStatus) {
+      login(fresh);
+    }
+  }, [fresh, pending, user, login]);
+}
+
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, login } = useAuth();
+  useVerificationRefresh(user, login);
   if (!user) return null;
   if (user.role === "donor") return <DonorDashboard user={user} />;
   if (user.role === "admin") return <AdminDashboard user={user} />;
