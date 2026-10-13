@@ -1,6 +1,8 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext.jsx";
+import { api } from "../api.js";
+import { avatarUrl } from "../avatar.js";
 import {
   IconUser,
   IconInbox,
@@ -9,7 +11,13 @@ import {
   IconTruck,
   IconGlobe,
   IconMapPin,
+  IconCamera,
+  IconTrash,
+  IconSpinner,
 } from "../components/Icons.jsx";
+
+const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 
 function initials(name = "") {
   return name
@@ -33,6 +41,173 @@ function VerificationBadge({ user }) {
       <IconShieldCheck size={14} />
       {status.label}
     </span>
+  );
+}
+
+/** Circular profile photo with upload / replace / remove controls. */
+function AvatarEditor({ user }) {
+  const { login } = useAuth();
+  const inputRef = useRef(null);
+  const [preview, setPreview] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+
+  const photo = preview || avatarUrl(user);
+
+  useEffect(() => () => preview && URL.revokeObjectURL(preview), [preview]);
+
+  useEffect(() => {
+    if (!notice) return undefined;
+    const timer = setTimeout(() => setNotice(""), 2500);
+    return () => clearTimeout(timer);
+  }, [notice]);
+
+  const pickFile = () => {
+    if (!busy) inputRef.current?.click();
+  };
+
+  const upload = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file later
+    if (!file) return;
+
+    setError("");
+    if (!ACCEPTED_TYPES.includes(file.type)) {
+      setError("Please choose a JPG, PNG, WEBP or GIF image.");
+      return;
+    }
+    if (file.size > MAX_PHOTO_BYTES) {
+      setError("That image is larger than 5MB.");
+      return;
+    }
+
+    setPreview(URL.createObjectURL(file));
+    setBusy(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const { user: updated } = await api.upload(`/users/${user.id}/avatar`, formData);
+      login(updated);
+      setNotice("Profile photo updated");
+    } catch (err) {
+      setError(err.message || "Failed to upload photo.");
+    } finally {
+      setPreview(null);
+      setBusy(false);
+    }
+  };
+
+  const remove = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const { user: updated } = await api.del(`/users/${user.id}/avatar`);
+      login(updated);
+      setNotice("Profile photo removed");
+    } catch (err) {
+      setError(err.message || "Failed to remove photo.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center">
+      <div className="relative -mt-14">
+        {/* Gradient ring */}
+        <div className="rounded-full bg-gradient-to-br from-emerald-400 via-teal-300 to-emerald-500 p-1 shadow-[0_12px_28px_-8px_rgba(16,185,129,0.55)]">
+          <button
+            type="button"
+            onClick={pickFile}
+            disabled={busy}
+            aria-label={photo ? "Change profile photo" : "Upload profile photo"}
+            className="group relative flex h-28 w-28 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-emerald-50 text-2xl font-bold text-emerald-700 focus:outline-none focus-visible:ring-4 focus-visible:ring-emerald-300 disabled:cursor-wait"
+          >
+            {photo ? (
+              <img
+                src={photo}
+                alt={user.name || "Profile photo"}
+                className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+              />
+            ) : user.name ? (
+              initials(user.name)
+            ) : (
+              <IconUser size={36} />
+            )}
+
+            {/* Hover overlay */}
+            {!busy && (
+              <span className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-slate-900/55 text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100">
+                <IconCamera size={22} />
+                <span className="text-[11px] font-semibold tracking-wide">{photo ? "Change photo" : "Add photo"}</span>
+              </span>
+            )}
+
+            {busy && (
+              <span className="absolute inset-0 flex items-center justify-center bg-white/70 text-emerald-600">
+                <IconSpinner size={26} className="animate-spin" />
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Camera badge — always visible so touch users can find it */}
+        <button
+          type="button"
+          onClick={pickFile}
+          disabled={busy}
+          aria-hidden="true"
+          tabIndex={-1}
+          className="absolute bottom-1 right-1 flex h-9 w-9 items-center justify-center rounded-full border-[3px] border-white bg-gradient-to-br from-emerald-500 to-teal-400 text-white shadow-md transition hover:scale-110 disabled:opacity-60"
+        >
+          <IconCamera size={16} />
+        </button>
+
+        <input
+          ref={inputRef}
+          type="file"
+          accept={ACCEPTED_TYPES.join(",")}
+          onChange={upload}
+          className="hidden"
+        />
+      </div>
+
+      <div className="mt-3 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={pickFile}
+          disabled={busy}
+          className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3.5 py-1.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100 transition hover:bg-emerald-100 disabled:opacity-60"
+        >
+          <IconCamera size={14} />
+          {avatarUrl(user) ? "Change photo" : "Upload photo"}
+        </button>
+        {avatarUrl(user) && (
+          <button
+            type="button"
+            onClick={remove}
+            disabled={busy}
+            className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold text-slate-500 ring-1 ring-slate-200 transition hover:bg-red-50 hover:text-red-600 hover:ring-red-100 disabled:opacity-60"
+          >
+            <IconTrash size={14} />
+            Remove
+          </button>
+        )}
+      </div>
+      <p className="mt-1.5 text-[11px] text-slate-400">JPG, PNG, WEBP or GIF · up to 5MB</p>
+
+      {error && (
+        <p role="alert" className="mt-2 rounded-full bg-red-50 px-3 py-1 text-xs font-medium text-red-600">
+          {error}
+        </p>
+      )}
+      {notice && !error && (
+        <p role="status" className="mt-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+          {notice}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -110,10 +285,8 @@ export default function Profile() {
         </div>
 
         {/* Overlapping avatar */}
-        <div className="relative z-10 flex justify-center">
-          <div className="-mt-12 flex h-28 w-28 flex-none items-center justify-center rounded-full border-4 border-white bg-emerald-50 text-xl font-bold text-emerald-700 shadow-md">
-            {user.name ? initials(user.name) : <IconUser size={36} />}
-          </div>
+        <div className="relative z-10">
+          <AvatarEditor user={user} />
         </div>
 
         <div className="rounded-b-3xl px-6 pb-8 pt-4 sm:px-10">
