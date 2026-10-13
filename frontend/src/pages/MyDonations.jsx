@@ -36,6 +36,10 @@ function AddItemForm({ user, onCreated, onClose }) {
   const [busy, setBusy] = useState(false);
   const toast = useToast();
   const update = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  // Cooked meals are handed out as individually packed meals, not weighed, so
+  // the donor counts portions instead of kilograms.
+  const isPortioned = form.category === "Cooked Meals";
+  const unit = isPortioned ? "portions" : "kg";
 
   const submit = async (e) => {
     e.preventDefault();
@@ -43,7 +47,7 @@ function AddItemForm({ user, onCreated, onClose }) {
     setBusy(true);
     try {
       await api.post("/donations", { ...form, donorId: user.id, quantityKg: Number(form.quantityKg) });
-      toast.success(`${form.name || "Item"} listed - ${form.quantityKg} kg added to your inventory.`);
+      toast.success(`${form.name || "Item"} listed - ${form.quantityKg} ${unit} added to your inventory.`);
       onCreated();
       onClose();
     } catch (e2) {
@@ -87,8 +91,16 @@ function AddItemForm({ user, onCreated, onClose }) {
             <input value={form.batchNumber} onChange={(e) => update("batchNumber", e.target.value)} placeholder="e.g. B-3001" />
           </div>
           <div className="form-row">
-            <label>Quantity (kg)</label>
-            <input type="number" value={form.quantityKg} onChange={(e) => update("quantityKg", e.target.value)} required />
+            <label>{isPortioned ? "Quantity (portions)" : "Quantity (kg)"}</label>
+            <input
+              type="number"
+              min={isPortioned ? 1 : undefined}
+              step={isPortioned ? 1 : "any"}
+              value={form.quantityKg}
+              onChange={(e) => update("quantityKg", e.target.value)}
+              placeholder={isPortioned ? "e.g. 25 meal packs" : undefined}
+              required
+            />
           </div>
         </div>
         <div className="form-grid-2">
@@ -288,7 +300,7 @@ export default function MyDonations() {
               <th>Product</th>
               <th>Category</th>
               <th>Batch</th>
-              <th>Qty (kg)</th>
+              <th>Qty</th>
               <th>Expiry</th>
               <th>Status</th>
               <th>Published</th>
@@ -303,7 +315,7 @@ export default function MyDonations() {
                 <td>{d.name}</td>
                 <td>{d.category}</td>
                 <td>{d.batchNumber}</td>
-                <td>{d.quantityKg}</td>
+                <td>{d.quantityKg} {d.category === "Cooked Meals" ? "portions" : "kg"}</td>
                 <td>
                   {d.expiryDate}
                   <div style={{ fontSize: 11, color: "var(--text-light)" }}>
