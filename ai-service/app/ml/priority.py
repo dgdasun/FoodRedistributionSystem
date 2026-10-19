@@ -19,7 +19,7 @@ ranking/LTR model fit on historical approval outcomes) only requires
 changing the `score_request` function - the FastAPI route and Spring Boot
 contract stay identical.
 """
-from typing import List
+from typing import Dict, List
 from app.schemas import PriorityRequest, RankedRequest, BeneficiaryProfile, RequestItem
 
 URGENCY_WEIGHTS = {"critical": 1.0, "high": 0.75, "medium": 0.5, "low": 0.25}
@@ -37,21 +37,29 @@ def _normalize(value: float, max_value: float) -> float:
     return min(value / max_value, 1.0)
 
 
-def score_request(request: RequestItem, beneficiary: BeneficiaryProfile) -> float:
-    urgency_score = URGENCY_WEIGHTS.get(request.urgency, 0.5)
-    distance_score = 1 - _normalize(request.distanceKm, 50)
-    size_score = _normalize(beneficiary.organizationSize or 1, 500)
-    capacity_score = _normalize(beneficiary.handlingCapacityKg or 50, 500)
-    history_penalty = _normalize(beneficiary.allocationsLast30Days or 0, 10)
+WEIGHTS = {
+    "urgency": W_URGENCY,
+    "distance": W_DISTANCE,
+    "orgSize": W_ORG_SIZE,
+    "capacity": W_CAPACITY,
+    "fairness": W_HISTORY,
+}
 
-    score = (
-        urgency_score * W_URGENCY
-        + distance_score * W_DISTANCE
-        + size_score * W_ORG_SIZE
-        + capacity_score * W_CAPACITY
-        + (1 - history_penalty) * W_HISTORY
-    )
-    return round(score, 3)
+
+def factor_scores(request: RequestItem, beneficiary: BeneficiaryProfile) -> Dict[str, float]:
+    """Each factor on a 0-1 scale, higher = stronger claim to the item."""
+    return {
+        "urgency": URGENCY_WEIGHTS.get(request.urgency, 0.5),
+        "distance": 1 - _normalize(request.distanceKm, 50),
+        "orgSize": _normalize(beneficiary.organizationSize or 1, 500),
+        "capacity": _normalize(beneficiary.handlingCapacityKg or 50, 500),
+        "fairness": 1 - _normalize(beneficiary.allocationsLast30Days or 0, 10),
+    }
+
+
+def score_request(request: RequestItem, beneficiary: BeneficiaryProfile) -> float:
+    factors = factor_scores(request, beneficiary)
+    return round(sum(factors[k] * WEIGHTS[k] for k in WEIGHTS), 3)
 
 
 def rank_requests(payload: PriorityRequest) -> List[RankedRequest]:
@@ -61,12 +69,14 @@ def rank_requests(payload: PriorityRequest) -> List[RankedRequest]:
     ranked = []
     for r in pending:
         beneficiary = beneficiary_by_id.get(r.beneficiaryId)
-        score = score_request(r, beneficiary) if beneficiary else 0.0
+        factors = {k: round(v, 3) for k, v in factor_scores(r, beneficiary).items()} if beneficiary else {}
         ranked.append(RankedRequest(
             requestId=r.id,
             beneficiaryId=r.beneficiaryId,
             beneficiaryName=beneficiary.organizationName if beneficiary else "Unknown",
-            score=score,
+            score=score_request(r, beneficiary) if beneficiary else 0.0,
+            factors=factors,
+            weights=WEIGHTS if beneficiary else {},
         ))
 
     ranked.sort(key=lambda x: x.score, reverse=True)

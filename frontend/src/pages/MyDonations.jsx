@@ -127,58 +127,11 @@ function AddItemForm({ user, onCreated, onClose }) {
   );
 }
 
-function RecommendationPanel({ itemId, onClose }) {
-  const [ranking, setRanking] = useState(null);
-
-  useEffect(() => {
-    api.get(`/requests/recommendations/${itemId}`).then((d) => setRanking(d.ranking));
-  }, [itemId]);
-
-  const approve = async (requestId) => {
-    await api.patch(`/requests/${requestId}`, { status: "approved" });
-    onClose(true);
-  };
-  const reject = async (requestId) => {
-    await api.patch(`/requests/${requestId}`, { status: "rejected" });
-    onClose(true);
-  };
-
-  return (
-    <div className="card" style={{ marginBottom: 18 }}>
-      <div className="card-title">
-        <h3>🤖 AI Beneficiary Recommendations</h3>
-        <span className="view-all" onClick={() => onClose(false)} style={{ cursor: "pointer" }}>
-          Close
-        </span>
-      </div>
-      {ranking === null && <p style={{ fontSize: 13, color: "var(--text-mid)" }}>Scoring pending requests...</p>}
-      {ranking && ranking.length === 0 && <div className="empty-state">No pending requests for this item.</div>}
-      {ranking &&
-        ranking.map((r, idx) => (
-          <div className="donation-row" key={r.requestId}>
-            <div className="donation-thumb">{idx === 0 ? "🥇" : idx === 1 ? "🥈" : "🥉"}</div>
-            <div className="donation-info">
-              <strong>{r.beneficiaryName}</strong>
-              <span>AI priority score: {r.score}</span>
-            </div>
-            <button className="btn btn-primary btn-sm" onClick={() => approve(r.requestId)}>
-              Approve
-            </button>
-            <button className="btn btn-danger-outline btn-sm" style={{ marginLeft: 6 }} onClick={() => reject(r.requestId)}>
-              Reject
-            </button>
-          </div>
-        ))}
-    </div>
-  );
-}
-
 export default function MyDonations() {
   const { user } = useAuth();
   const [donations, setDonations] = useState([]);
   const [tab, setTab] = useState("all");
   const [showForm, setShowForm] = useState(false);
-  const [recoFor, setRecoFor] = useState(null);
   const [uploadMsg, setUploadMsg] = useState("");
   // Which row has its progress timeline expanded. One at a time - the table is
   // already wide, and two open timelines push the rows too far apart to scan.
@@ -237,7 +190,7 @@ export default function MyDonations() {
     <>
       <div className="page-header">
         <h1>My Donations</h1>
-        <p>Upload inventory, publish surplus food, and review beneficiary requests.</p>
+        <p>Upload inventory, and publish surplus food. Review requests on the Food Requests page.</p>
       </div>
 
       <div className="toolbar">
@@ -283,15 +236,6 @@ export default function MyDonations() {
       )}
 
       {showForm && <AddItemForm user={user} onCreated={load} onClose={() => setShowForm(false)} />}
-      {recoFor && (
-        <RecommendationPanel
-          itemId={recoFor}
-          onClose={(refresh) => {
-            setRecoFor(null);
-            if (refresh) load();
-          }}
-        />
-      )}
 
       <div className="card">
         <table>
@@ -305,7 +249,6 @@ export default function MyDonations() {
               <th>Status</th>
               <th>Published</th>
               <th>Progress</th>
-              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -341,15 +284,10 @@ export default function MyDonations() {
                     Track
                   </button>
                 </td>
-                <td>
-                  <button className="btn btn-sm btn-primary" onClick={() => setRecoFor(d.id)}>
-                    View Requests
-                  </button>
-                </td>
               </tr>
               {trackingId === d.id && (
                 <tr className="timeline-row">
-                  <td colSpan={9}>
+                  <td colSpan={8}>
                     <DonationTimeline item={d} donorId={user.id} />
                   </td>
                 </tr>
