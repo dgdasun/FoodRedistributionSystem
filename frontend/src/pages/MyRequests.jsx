@@ -1,152 +1,174 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { Check, X, Inbox, MessageCircleWarning, Search, ClipboardList } from "lucide-react";
 import { useAuth } from "../AuthContext.jsx";
 import { api } from "../api.js";
 import Pagination from "../components/Pagination.jsx";
+import { imageFor } from "../foodImages.js";
 
 const PAGE_SIZE = 8;
 
-const CATEGORY_IMAGE = {
-  "Cooked Meals": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=100&auto=format&fit=crop&q=80",
-  Bakery: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=100&auto=format&fit=crop&q=80",
-  Vegetables: "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=100&auto=format&fit=crop&q=80",
-  Dairy: "https://images.unsplash.com/photo-1628088062854-d1870b4553da?w=100&auto=format&fit=crop&q=80",
-  Fruits: "https://images.unsplash.com/photo-1619566636858-adf3ef46400b?w=100&auto=format&fit=crop&q=80",
-  "Packaged Goods": "https://images.unsplash.com/photo-1584473457406-6240486418e9?w=100&auto=format&fit=crop&q=80",
-  Other: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=100&auto=format&fit=crop&q=80",
+const STATUS = {
+  pending: { label: "Pending", tone: "warn" },
+  counter_offer: { label: "Partial offer", tone: "violet" },
+  approved: { label: "Approved", tone: "ok", icon: true },
+  collected: { label: "Collected", tone: "ok", icon: true },
+  rejected: { label: "Rejected", tone: "danger" },
+  cancelled: { label: "Declined", tone: "muted" },
 };
 
-function CategoryIcon({ category }) {
-  return (
-    <span
-      className="inline-flex items-center justify-center w-8 h-8 rounded-lg overflow-hidden ring-1 ring-slate-100 flex-shrink-0"
-      title={category}
-    >
-      <img
-        src={CATEGORY_IMAGE[category] || CATEGORY_IMAGE.Other}
-        alt={category}
-        className="w-full h-full object-cover"
-      />
-    </span>
-  );
-}
+const URGENCY_TONE = { critical: "danger", high: "warn", medium: "info", low: "ok" };
+
+const TABS = [
+  { key: "all", label: "All", test: () => true },
+  { key: "action", label: "Needs action", test: (r) => r.status === "counter_offer" },
+  { key: "pending", label: "Pending", test: (r) => r.status === "pending" },
+  { key: "approved", label: "Approved", test: (r) => r.status === "approved" },
+  { key: "collected", label: "Collected", test: (r) => r.status === "collected" },
+  { key: "closed", label: "Closed", test: (r) => r.status === "rejected" || r.status === "cancelled" },
+];
 
 function StatusBadge({ status }) {
-  if (status === "approved") {
-    return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11.5px] font-semibold bg-emerald-100 text-emerald-700">
-        <svg width="12" height="12" viewBox="0 0 20 20" fill="none">
-          <path d="M4 10.5L8 14.5L16 5.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-        Approved
-      </span>
-    );
-  }
-  if (status === "collected") {
-    return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11.5px] font-semibold bg-emerald-100 text-emerald-700">
-        <svg width="12" height="12" viewBox="0 0 20 20" fill="none">
-          <path d="M4 10.5L8 14.5L16 5.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-        Collected
-      </span>
-    );
-  }
-  if (status === "counter_offer") {
-    return (
-      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11.5px] font-semibold bg-violet-100 text-violet-700">
-        Partial Offer
-      </span>
-    );
-  }
-  if (status === "rejected") {
-    return (
-      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11.5px] font-semibold bg-rose-100 text-rose-700">
-        Rejected
-      </span>
-    );
-  }
-  if (status === "cancelled") {
-    return (
-      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11.5px] font-semibold bg-slate-100 text-slate-500">
-        Declined
-      </span>
-    );
-  }
+  const s = STATUS[status] || STATUS.pending;
   return (
-    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11.5px] font-semibold bg-amber-100 text-amber-700">
-      Pending
+    <span className={`bx-badge ${s.tone}`}>
+      {s.icon ? <Check size={12} strokeWidth={3} /> : <span className="bx-dot" />}
+      {s.label}
     </span>
   );
 }
 
 function UrgencyBadge({ urgency }) {
   const u = urgency || "medium";
-  if (u === "critical") {
-    return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11.5px] font-semibold capitalize bg-rose-50 text-rose-700 ring-1 ring-rose-200">
-        <span className="w-1.5 h-1.5 rounded-full bg-rose-600 animate-pulse" />
-        {u}
-      </span>
-    );
-  }
-  if (u === "high") {
-    return (
-      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11.5px] font-semibold capitalize bg-orange-100 text-orange-700">
-        {u}
-      </span>
-    );
-  }
-  if (u === "low") {
-    return (
-      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11.5px] font-semibold capitalize bg-sky-100 text-sky-700">
-        {u}
-      </span>
-    );
-  }
   return (
-    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11.5px] font-semibold capitalize bg-blue-100 text-blue-700">
+    <span className={`bx-badge ${URGENCY_TONE[u] || "info"}${u === "critical" ? " pulse" : ""}`}>
+      <span className="bx-dot" />
       {u}
+    </span>
+  );
+}
+
+/** Three-step track: submitted -> approved -> collected. */
+function Progress({ status }) {
+  const step = { pending: 1, counter_offer: 1, approved: 2, collected: 3 }[status] ?? 1;
+  const stopped = status === "rejected" || status === "cancelled";
+  return (
+    <span className="bx-progress" aria-hidden="true">
+      {[1, 2, 3].map((i) => (
+        <i key={i} className={stopped ? (i === 1 ? "stop" : "") : i <= step ? "on" : ""} />
+      ))}
     </span>
   );
 }
 
 /** Warm, encouraging modal explaining why a request was declined. */
 function RejectionReasonModal({ request, onClose }) {
+  useEffect(() => {
+    const onKey = (e) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   return (
-    <div
-      style={{
-        position: "fixed", inset: 0, background: "var(--overlay)",
-        display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: 16,
-      }}
-      onClick={onClose}
-    >
-      <div className="card" style={{ width: 420, maxWidth: "100%" }} onClick={(e) => e.stopPropagation()}>
-        <h3 style={{ marginTop: 0, marginBottom: 4 }}>Why was this declined?</h3>
-        <p style={{ fontSize: 12.5, color: "var(--text-light)", margin: "0 0 14px" }}>
-          {request.item?.name || "This item"} · {request.quantityKg} kg requested
-        </p>
+    <div className="bx-modal-backdrop" onClick={onClose}>
+      <div className="bx-modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+        <div className="bx-modal-body">
+          <div className="bx-empty-icon" style={{ background: "var(--status-danger-bg)", color: "var(--status-danger-fg)" }}>
+            <MessageCircleWarning size={26} />
+          </div>
+          <h3>Why was this declined?</h3>
+          <p className="bx-req-sub" style={{ margin: "0 0 16px" }}>
+            {request.item?.name || "This item"} · {request.quantityKg} kg requested
+          </p>
 
-        <div className="rounded-xl bg-rose-50 ring-1 ring-rose-200 px-4 py-3 mb-3 text-[13px] text-rose-800">
-          {request.rejectionReason || "The donor was unable to fulfil this request."}
+          <div className="bx-notice danger" style={{ marginBottom: 10 }}>
+            {request.rejectionReason || "The donor was unable to fulfil this request."}
+          </div>
+
+          <div className="bx-notice info">
+            <span>
+              Food supplies fluctuate quickly, but your efforts matter! Check{" "}
+              <Link to="/browse" style={{ fontWeight: 700, color: "var(--primary)" }} onClick={onClose}>
+                Available Food
+              </Link>{" "}
+              for newly posted surplus items nearby.
+            </span>
+          </div>
+
+          <div className="bx-modal-actions">
+            <button className="bx-btn outline" onClick={onClose}>
+              Close
+            </button>
+            <Link to="/browse" className="bx-btn primary" onClick={onClose}>
+              Browse food
+            </Link>
+          </div>
         </div>
+      </div>
+    </div>
+  );
+}
 
-        <div className="rounded-xl bg-emerald-50 ring-1 ring-emerald-200 px-4 py-3 mb-4 text-[13px] text-emerald-800">
-          Food supplies fluctuate quickly, but your efforts matter! Please check the{" "}
-          <Link to="/browse" className="font-semibold underline" onClick={onClose}>
-            Available Food
-          </Link>{" "}
-          page for newly posted surplus items nearby.
-        </div>
+function RequestRow({ r, busy, onAct, onReason }) {
+  const isPartial = r.status === "counter_offer";
+  const approvedQty = r.approvedQuantityKg ?? r.quantityKg;
+  const submitted = r.createdAt
+    ? new Date(r.createdAt).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })
+    : "—";
 
-        <div style={{ display: "flex", gap: 8 }}>
-          <Link to="/browse" className="btn btn-primary" style={{ flex: 1, textAlign: "center" }} onClick={onClose}>
-            Browse Available Food
+  return (
+    <div className={isPartial ? "bx-req needs-action" : "bx-req"}>
+      <img className="bx-req-thumb" src={imageFor(r.item?.category)} alt="" loading="lazy" />
+
+      <div style={{ minWidth: 0 }}>
+        <span className="bx-req-name">{r.item?.name || "—"}</span>
+        <span className="bx-req-sub">
+          {r.item?.category || "Item"} · {submitted}
+        </span>
+      </div>
+
+      <div className="bx-req-qty">
+        <strong>
+          {isPartial ? approvedQty : r.quantityKg}
+          <small>{isPartial ? `kg of ${r.quantityKg}` : "kg"}</small>
+        </strong>
+        <UrgencyBadge urgency={r.urgency} />
+      </div>
+
+      <div className="bx-req-status">
+        <StatusBadge status={r.status} />
+        <Progress status={r.status} />
+        {isPartial && (
+          <span className="bx-req-note violet">
+            Donor can give {approvedQty} kg of the {r.quantityKg} kg requested
+          </span>
+        )}
+        {r.status === "pending" && <span className="bx-req-note">Awaiting donor response</span>}
+        {r.status === "approved" && <span className="bx-req-note">Ticket ready in My Tickets</span>}
+        {r.status === "cancelled" && <span className="bx-req-note">You declined this offer</span>}
+      </div>
+
+      <div className="bx-req-actions">
+        {isPartial && (
+          <>
+            <button type="button" disabled={busy} className="bx-btn primary" onClick={() => onAct(r.id, "approved")}>
+              <Check size={14} /> Accept {approvedQty} kg
+            </button>
+            <button type="button" disabled={busy} className="bx-btn danger" onClick={() => onAct(r.id, "cancelled")}>
+              <X size={14} /> Decline
+            </button>
+          </>
+        )}
+        {r.status === "approved" && (
+          <Link to="/tickets" className="bx-btn ghost">
+            View ticket
           </Link>
-          <button className="btn btn-outline" style={{ flex: 1 }} onClick={onClose}>
-            Close
+        )}
+        {r.status === "rejected" && (
+          <button type="button" className="bx-btn outline" onClick={() => onReason(r)}>
+            View reason
           </button>
-        </div>
+        )}
       </div>
     </div>
   );
@@ -157,6 +179,7 @@ export default function MyRequests() {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [tab, setTab] = useState("all");
   const [reasonRequest, setReasonRequest] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState("");
@@ -172,9 +195,25 @@ export default function MyRequests() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user.id]);
 
-  const totalPages = Math.max(1, Math.ceil(requests.length / PAGE_SIZE));
+  const counts = useMemo(
+    () => Object.fromEntries(TABS.map((t) => [t.key, requests.filter(t.test).length])),
+    [requests]
+  );
+
+  const collectedKg = useMemo(
+    () =>
+      Math.round(
+        requests
+          .filter((r) => r.status === "collected")
+          .reduce((s, r) => s + Number(r.approvedQuantityKg ?? r.quantityKg ?? 0), 0) * 10
+      ) / 10,
+    [requests]
+  );
+
+  const filtered = useMemo(() => requests.filter(TABS.find((t) => t.key === tab).test), [requests, tab]);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageSafe = Math.min(page, totalPages);
-  const paged = requests.slice((pageSafe - 1) * PAGE_SIZE, pageSafe * PAGE_SIZE);
+  const paged = filtered.slice((pageSafe - 1) * PAGE_SIZE, pageSafe * PAGE_SIZE);
 
   const act = async (id, status) => {
     setError("");
@@ -189,125 +228,122 @@ export default function MyRequests() {
     }
   };
 
+  const switchTab = (key) => {
+    setTab(key);
+    setPage(1);
+  };
+
   return (
     <>
-      <div className="page-header">
-        <h1>My Requests</h1>
-        <p>Track the status of the food requests you've submitted.</p>
-      </div>
+      <section className="bx-hero">
+        <div className="bx-hero-text">
+          <span className="bx-eyebrow">
+            <ClipboardList size={13} /> Request tracker
+          </span>
+          <h1>My Requests</h1>
+          <p>Track every request from submission to collection, and respond to partial offers from donors.</p>
+        </div>
+        <div className="bx-stats">
+          <div className="bx-stat">
+            <span className="bx-stat-value">{loading ? "–" : requests.length}</span>
+            <span className="bx-stat-label">
+              <span className="bx-dot" style={{ background: "var(--primary)" }} /> Total
+            </span>
+          </div>
+          <div className="bx-stat">
+            <span className="bx-stat-value">{loading ? "–" : counts.pending + counts.action}</span>
+            <span className="bx-stat-label">
+              <span className="bx-dot" style={{ background: "var(--warning)" }} /> In progress
+            </span>
+          </div>
+          <div className="bx-stat">
+            <span className="bx-stat-value">
+              {loading ? "–" : collectedKg}
+              <small>kg</small>
+            </span>
+            <span className="bx-stat-label">
+              <span className="bx-dot" style={{ background: "var(--status-ok-fg)" }} /> Received
+            </span>
+          </div>
+        </div>
+      </section>
 
-      {error && (
-        <div className="card" style={{ marginBottom: 16, color: "var(--danger)", fontSize: 13 }}>
-          {error}
+      {counts.action > 0 && (
+        <div className="bx-notice warn">
+          <MessageCircleWarning size={18} color="var(--status-warn-fg)" />
+          <div>
+            <strong>
+              {counts.action} partial offer{counts.action === 1 ? "" : "s"} waiting for you
+            </strong>
+            A donor can only cover part of your request. Accept or decline so the food can move on.
+          </div>
         </div>
       )}
 
-      <div className="card">
-        <table>
-          <thead>
-            <tr>
-              <th>Item</th>
-              <th>Qty (kg)</th>
-              <th>Urgency</th>
-              <th>Submitted</th>
-              <th>Status</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {paged.map((r) => {
-              const isPartial = r.status === "counter_offer";
-              const approvedQty = r.approvedQuantityKg ?? r.quantityKg;
-              const busy = busyId === r.id;
-              return (
-                <tr key={r.id} className="hover:bg-slate-50/80 transition">
-                  <td>
-                    <div className="flex items-center gap-2.5">
-                      <CategoryIcon category={r.item?.category} />
-                      <div>
-                        <strong style={{ display: "block", fontSize: 13.5 }}>{r.item?.name || "—"}</strong>
-                        <span style={{ fontSize: 11.5, color: "var(--text-light)" }}>{r.item?.category || ""}</span>
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    {isPartial ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[13px] font-bold text-violet-800 bg-violet-50 ring-1 ring-violet-100">
-                        {approvedQty} kg <span className="font-normal text-violet-500 ml-1">/ {r.quantityKg} kg</span>
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[13px] font-bold text-emerald-800 bg-emerald-50 ring-1 ring-emerald-100">
-                        {r.quantityKg} kg
-                      </span>
-                    )}
-                  </td>
-                  <td>
-                    <UrgencyBadge urgency={r.urgency} />
-                  </td>
-                  <td style={{ fontSize: 12.5, color: "var(--text-mid)" }}>
-                    {r.createdAt ? new Date(r.createdAt).toLocaleDateString() : "—"}
-                  </td>
-                  <td>
-                    <div className="flex flex-col items-start gap-1">
-                      <StatusBadge status={r.status} />
-                      {isPartial && (
-                        <span className="text-[11px] text-violet-500 font-medium">
-                          {approvedQty} kg Approved (Requested: {r.quantityKg} kg)
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td>
-                    {isPartial && (
-                      <div className="flex gap-2 flex-wrap">
-                        <button
-                          type="button"
-                          disabled={busy}
-                          className="inline-flex items-center px-3 py-1.5 rounded-full text-[12px] font-semibold bg-[var(--primary-strong)] text-white hover:bg-[var(--primary-dark)] disabled:opacity-60 transition-colors"
-                          onClick={() => act(r.id, "approved")}
-                        >
-                          Accept {approvedQty} kg
-                        </button>
-                        <button
-                          type="button"
-                          disabled={busy}
-                          className="inline-flex items-center px-3 py-1.5 rounded-full text-[12px] font-semibold text-rose-600 ring-1 ring-rose-200 bg-white hover:bg-rose-50 disabled:opacity-60 transition-colors"
-                          onClick={() => act(r.id, "cancelled")}
-                        >
-                          Decline Offer
-                        </button>
-                      </div>
-                    )}
-                    {r.status === "rejected" && (
-                      <button
-                        type="button"
-                        className="inline-flex items-center gap-1 text-[12px] font-semibold text-slate-500 hover:text-slate-700 underline underline-offset-2"
-                        onClick={() => setReasonRequest(r)}
-                      >
-                        View Reason
-                      </button>
-                    )}
-                    {r.status === "pending" && (
-                      <span className="text-[12px] text-slate-400">Awaiting donor response</span>
-                    )}
-                    {r.status === "cancelled" && (
-                      <span className="text-[12px] text-slate-400">You declined this offer</span>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-        {!loading && requests.length === 0 && (
-          <div className="empty-state">You haven't requested any items yet.</div>
-        )}
-        <Pagination page={pageSafe} totalPages={totalPages} onChange={setPage} />
+      {error && (
+        <div className="bx-notice danger">
+          <X size={18} />
+          <div>{error}</div>
+        </div>
+      )}
+
+      <div className="bx-tabs" role="tablist" aria-label="Filter requests by status">
+        {TABS.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.key}
+            className={tab === t.key ? "bx-tab active" : "bx-tab"}
+            onClick={() => switchTab(t.key)}
+          >
+            {t.label}
+            <span className={`bx-tab-count${t.key === "action" && counts.action > 0 && tab !== t.key ? " alert" : ""}`}>
+              {counts[t.key]}
+            </span>
+          </button>
+        ))}
       </div>
 
-      {reasonRequest && (
-        <RejectionReasonModal request={reasonRequest} onClose={() => setReasonRequest(null)} />
+      {loading ? (
+        <div className="bx-req-list">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="skeleton" style={{ height: 86, borderRadius: 20 }} aria-hidden="true" />
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="bx-empty">
+          <div className="bx-empty-icon">{requests.length === 0 ? <Inbox size={26} /> : <Search size={26} />}</div>
+          <h3>{requests.length === 0 ? "No requests yet" : "Nothing here"}</h3>
+          <p>
+            {requests.length === 0
+              ? "Find surplus food near you and send your first request."
+              : "No requests have this status right now."}
+          </p>
+          {requests.length === 0 ? (
+            <Link to="/browse" className="bx-btn primary">
+              Browse available food
+            </Link>
+          ) : (
+            <button type="button" className="bx-btn outline" onClick={() => switchTab("all")}>
+              Show all requests
+            </button>
+          )}
+        </div>
+      ) : (
+        <>
+          <div className="bx-req-list">
+            {paged.map((r) => (
+              <RequestRow key={r.id} r={r} busy={busyId === r.id} onAct={act} onReason={setReasonRequest} />
+            ))}
+          </div>
+          <div className="bx-pagination">
+            <Pagination page={pageSafe} totalPages={totalPages} onChange={setPage} />
+          </div>
+        </>
       )}
+
+      {reasonRequest && <RejectionReasonModal request={reasonRequest} onClose={() => setReasonRequest(null)} />}
     </>
   );
 }

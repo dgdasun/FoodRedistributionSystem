@@ -6,6 +6,7 @@ import "./index.css";
 import "./styles/modern.css";
 import "./styles/ai.css";
 import "./styles/request-modal.css";
+import "./styles/beneficiary.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
