@@ -4,28 +4,31 @@
 @tailwind utilities;
 
 :root {
-  --primary: #1F6F3F;
-  --primary-dark: #14512C;
-  --primary-light: #EDF3E7;
-  --primary-lighter: #F7FAF2;
-  --accent: #7FA650;
-  --text-dark: #23211B;
-  --text-mid: #5C5648;
-  --text-light: #9A9383;
-  --border: #E5DFD2;
-  --card-border: #EBE6DA;
+  --primary: #387E01;
+  --primary-dark: #0C4002;
+  --primary-light: #EEF5E3;
+  --primary-lighter: #F7FBF0;
+  --accent: #559805;
+  --text-dark: #16200F;
+  --text-mid: #4D5945;
+  --text-light: #8A9482;
+  --border: #DFE7D5;
+  --card-border: #E6ECDD;
   --white: #ffffff;
 
-  /* Earthy identity: clay, sand and stone sit beside the greens as the
-     warm, natural half of the palette. Moss (--accent) measures 2.81:1
-     against white, so it is decorative only - never text, never a data
-     mark. Clay is brand/illustration, never a chart series next to green. */
-  --clay: #B4643A;
-  --clay-light: #F6EAE1;
-  --sand: #E8DCC8;
-  --sand-light: #F4EDE0;
-  --stone: #6B6355;
-  --paper: #FAF8F3;
+  /* Logo identity: every brand colour comes from the Zero Waste logo -
+     --primary-dark is the "zer" green (#0C4002), --primary the "waste" green
+     (#387E01) and --accent the bright ring green (#559805). The clay/sand/stone
+     names are kept so existing rules still resolve, but they now map to the
+     logo's dark green and its pale tints. The bright ring green (--accent)
+     measures ~3.4:1 against white, so it is decorative only - never body
+     text, never a data mark. */
+  --clay: #0C4002;
+  --clay-light: #E8F2D8;
+  --sand: #D8EABF;
+  --sand-light: #F1F7E7;
+  --stone: #5C6654;
+  --paper: #F6F9F1;
 
   --danger: #B4432F;
   --warning: #D97706;
@@ -34,13 +37,13 @@
 
   /* Shadows carry a warm brown cast rather than a blue-slate one, which is
      what keeps "soft and clean" from reading cold. */
-  --shadow: 0 1px 3px 0 rgba(61, 52, 38, 0.06), 0 1px 2px 0 rgba(61, 52, 38, 0.04);
-  --shadow-md: 0 4px 16px rgba(61, 52, 38, 0.07), 0 1px 2px rgba(61, 52, 38, 0.05);
-  --shadow-lg: 0 20px 40px -12px rgba(61, 52, 38, 0.16);
+  --shadow: 0 1px 3px 0 rgba(22, 32, 15, 0.06), 0 1px 2px 0 rgba(22, 32, 15, 0.04);
+  --shadow-md: 0 4px 16px rgba(22, 32, 15, 0.07), 0 1px 2px rgba(22, 32, 15, 0.05);
+  --shadow-lg: 0 20px 40px -12px rgba(22, 32, 15, 0.16);
 
   /* ---------- Surface tokens ----------
      Added for dark mode. Previously every panel hardcoded #fff and every page
-     background hardcoded #FAF8F3, which left no single place to flip. These
+     background hardcoded #F6F9F1, which left no single place to flip. These
      four name the elevation levels instead of the colours:
 
        --surface         cards, sidebar, topbar, modals - the "raised" plane
@@ -51,10 +54,10 @@
      Keep new markup on these rather than on literal hex, or dark mode grows
      another blind spot. */
   --surface: #FFFFFF;
-  --surface-sunken: #FAF8F3;
-  --surface-muted: #F2EEE5;
-  --surface-inset: #FAF8F3;
-  --overlay: rgba(20, 40, 25, 0.4);
+  --surface-sunken: #F6F9F1;
+  --surface-muted: #EEF3E6;
+  --surface-inset: #F6F9F1;
+  --overlay: rgba(12, 40, 4, 0.4);
 
   /* ---------- Status tints ----------
      Badge fill + text, paired. These stay on the semantic scales (blue/amber/
@@ -63,7 +66,7 @@
      tint which would glare against a dark card. */
   --status-info-bg: #E0F2FE;    --status-info-fg: #0369A1;
   --status-warn-bg: #FEF3C7;    --status-warn-fg: #B45309;
-  --status-ok-bg: #EDF3E7;      --status-ok-fg: #15803D;
+  --status-ok-bg: #EEF5E3;      --status-ok-fg: #15803D;
   --status-danger-bg: #FEE2E2;  --status-danger-fg: #B91C1C;
   --status-violet-bg: #EDE9FE;  --status-violet-fg: #7C3AED;
   --status-rose-bg: #FFE4E6;    --status-rose-fg: #BE123C;
@@ -75,23 +78,23 @@
   /* Decorative green ring (icon circles, scrollbar thumb). Needs to stay
      visible against --surface in both themes, so it cannot just be
      --primary-light - that tint disappears on a dark card. */
-  --ring-primary: var(--ring-primary);
+  --ring-primary: #CFE3B3;
   /* Pale green plate behind an icon (stat tiles, thumbnails, list rows). */
-  --icon-chip: #E9F0E1;
+  --icon-chip: #E8F2D8;
 
   /* ---------- Chart tokens ----------
      Recharts renders SVG attributes, which do not resolve var(), so ChartKit
      reads these through getComputedStyle instead of naming them in JSX. The
      status trio keeps its meaning across themes; the dark values are the same
      hues lifted to clear the darker plate. */
-  --chart-brand: #1F6F3F;
-  --chart-ink: #4A443A;
-  --chart-ink-muted: #9A9383;
-  --chart-grid: #EFEBE0;
+  --chart-brand: #387E01;
+  --chart-ink: #3E4836;
+  --chart-ink-muted: #8A9482;
+  --chart-grid: #E9EFE1;
   --chart-good: #15803D;
   --chart-warning: #D97706;
   --chart-critical: #9F1239;
-  --chart-neutral: #6B6355;
+  --chart-neutral: #5C6654;
 
   /* ---------- Tailwind scale channels ----------
      tailwind.config.js redefines slate/gray to warm taupe and emerald/green to
@@ -106,36 +109,36 @@
      Dark mode reverses each ramp: the light end is used for backgrounds and
      the dark end for text, so flipping the ends is what makes text-slate-900
      and bg-slate-50 both keep meaning. */
-  --tw-w-50: 250 248 243;
-  --tw-w-100: 242 238 229;
-  --tw-w-200: 229 223 210;
-  --tw-w-300: 214 207 192;
-  --tw-w-400: 169 161 146;
-  --tw-w-500: 138 130 115;
-  --tw-w-600: 107 99 85;
-  --tw-w-700: 84 78 66;
-  --tw-w-800: 58 53 44;
-  --tw-w-900: 35 33 27;
-  --tw-w-950: 23 21 15;
+  --tw-w-50: 247 249 243;
+  --tw-w-100: 238 243 230;
+  --tw-w-200: 223 231 213;
+  --tw-w-300: 203 212 192;
+  --tw-w-400: 155 164 145;
+  --tw-w-500: 122 132 112;
+  --tw-w-600: 92 102 84;
+  --tw-w-700: 72 81 64;
+  --tw-w-800: 47 56 40;
+  --tw-w-900: 22 32 15;
+  --tw-w-950: 12 19 7;
 
-  --tw-f-50: 245 249 239;
-  --tw-f-100: 228 239 216;
-  --tw-f-200: 203 224 188;
-  --tw-f-300: 168 204 148;
-  --tw-f-400: 127 166 80;
-  --tw-f-500: 63 131 71;
-  --tw-f-600: 31 111 63;
-  --tw-f-700: 20 81 44;
-  --tw-f-800: 15 62 34;
-  --tw-f-900: 10 45 25;
-  --tw-f-950: 7 30 17;
+  --tw-f-50: 247 251 240;
+  --tw-f-100: 235 245 222;
+  --tw-f-200: 214 234 186;
+  --tw-f-300: 181 214 134;
+  --tw-f-400: 128 184 60;
+  --tw-f-500: 85 152 5;
+  --tw-f-600: 56 126 1;
+  --tw-f-700: 40 100 2;
+  --tw-f-800: 24 78 3;
+  --tw-f-900: 12 64 2;
+  --tw-f-950: 7 40 1;
 
   color-scheme: light;
 }
 
 /* Light mode has no --primary-strong of its own: solid green fills already use
    --primary, and only the dark theme needs the two to diverge. */
-:root { --primary-strong: #1F6F3F; }
+:root { --primary-strong: #387E01; }
 
 /* ---------- Dark theme ----------
    The token *names* keep their light-mode spelling - --text-dark is still the
@@ -143,45 +146,45 @@
    deliberate: ~150 existing rules already reference these names, so flipping
    values in one place themes the whole app without renaming anything.
 
-   The greens lift as they darken: #1F6F3F only manages ~2.4:1 on a dark
-   surface, so --primary moves to #5FAF74 for text and icons, while
-   --primary-strong keeps a deeper tone for solid fills where white sits on
-   top. Neutrals stay warm (brown-grey, not blue-grey) so the earthy identity
-   survives the flip.
+   The greens lift as they darken: #387E01 only manages ~3:1 on a dark
+   surface, so --primary moves to #8DC63F for text and icons, while
+   --primary-strong keeps the logo's "waste" green for solid fills where
+   white sits on top. Neutrals carry a faint green tint (not blue-grey) so
+   the logo identity survives the flip.
 
    ThemeContext always writes an explicit data-theme, resolving the system
    preference itself, so this single block is the only dark declaration. */
 :root[data-theme="dark"] {
-  --primary: #5FAF74;
-  --primary-dark: #7FC894;
-  --primary-strong: #2A7F4A;
-  --primary-light: #1B2A1F;
-  --primary-lighter: #16211A;
-  --accent: #8FBA60;
+  --primary: #8DC63F;
+  --primary-dark: #A9D66E;
+  --primary-strong: #387E01;
+  --primary-light: #1B2A10;
+  --primary-lighter: #151F0D;
+  --accent: #6DB21A;
 
-  --text-dark: #F2EEE5;
-  --text-mid: #BDB5A5;
-  --text-light: #8F8878;
+  --text-dark: #EEF3E7;
+  --text-mid: #B4BEA9;
+  --text-light: #858F7A;
 
-  --border: #353027;
-  --card-border: #322D25;
-  --white: #1F1C17;
+  --border: #2C3524;
+  --card-border: #283120;
+  --white: #171C12;
 
-  --clay: #D98B5F;
-  --clay-light: #2E231C;
-  --sand: #3A3428;
-  --sand-light: #2A2620;
-  --stone: #A79E8D;
-  --paper: #14120F;
+  --clay: #8DC63F;
+  --clay-light: #1E2C13;
+  --sand: #2E3A22;
+  --sand-light: #1F2817;
+  --stone: #9EA893;
+  --paper: #0F130B;
 
   --danger: #E4735C;
   --warning: #E8A33D;
 
-  --surface: #1F1C17;
-  --surface-sunken: #14120F;
-  --surface-muted: #2A2620;
-  --surface-inset: #191712;
-  --overlay: rgba(5, 10, 6, 0.62);
+  --surface: #171C12;
+  --surface-sunken: #0F130B;
+  --surface-muted: #20281A;
+  --surface-inset: #13180F;
+  --overlay: rgba(4, 10, 2, 0.62);
 
   /* Dark UI reads elevation from lighter surfaces, not from drop shadows - a
      warm-brown shadow over a near-black page is invisible. */
@@ -191,51 +194,51 @@
 
   --status-info-bg: #102A36;    --status-info-fg: #7CC7E8;
   --status-warn-bg: #2E2312;    --status-warn-fg: #EDBA63;
-  --status-ok-bg: #16281C;      --status-ok-fg: #7FC894;
+  --status-ok-bg: #1A2A10;      --status-ok-fg: #A3D467;
   --status-danger-bg: #301813;  --status-danger-fg: #F0907B;
   --status-violet-bg: #221B31;  --status-violet-fg: #B9A2F2;
   --status-rose-bg: #2F161B;    --status-rose-fg: #F291A4;
   --status-danger-border: #4E251E;
   --status-warn-border: #4A3718;
 
-  --ring-primary: #33613F;
-  --icon-chip: #22301F;
+  --ring-primary: #3F6A1A;
+  --icon-chip: #1F2E14;
 
-  --chart-brand: #5FAF74;
-  --chart-ink: #BDB5A5;
-  --chart-ink-muted: #8F8878;
-  --chart-grid: #332E26;
+  --chart-brand: #8DC63F;
+  --chart-ink: #B4BEA9;
+  --chart-ink-muted: #858F7A;
+  --chart-grid: #2A3322;
   --chart-good: #5CBA79;
   --chart-warning: #E3A345;
   --chart-critical: #E8798F;
-  --chart-neutral: #A79E8D;
+  --chart-neutral: #9EA893;
 
   /* Reversed ramps. The mid neutrals are lifted rather than mirrored exactly,
      so text-slate-400 (meta text) still clears 4.5:1 on --surface instead of
      the ~2.9:1 a straight mirror would give. */
-  --tw-w-50: 26 24 19;
-  --tw-w-100: 35 32 25;
-  --tw-w-200: 46 42 34;
-  --tw-w-300: 58 53 44;
-  --tw-w-400: 138 130 115;
-  --tw-w-500: 157 148 132;
-  --tw-w-600: 179 170 152;
-  --tw-w-700: 200 192 175;
-  --tw-w-800: 223 216 200;
-  --tw-w-900: 242 238 229;
-  --tw-w-950: 250 248 243;
+  --tw-w-50: 16 21 12;
+  --tw-w-100: 23 28 18;
+  --tw-w-200: 32 40 26;
+  --tw-w-300: 44 53 36;
+  --tw-w-400: 122 132 112;
+  --tw-w-500: 143 153 132;
+  --tw-w-600: 166 175 155;
+  --tw-w-700: 189 198 179;
+  --tw-w-800: 213 220 205;
+  --tw-w-900: 238 243 231;
+  --tw-w-950: 247 249 243;
 
-  --tw-f-50: 22 33 26;
-  --tw-f-100: 27 42 31;
-  --tw-f-200: 36 56 42;
-  --tw-f-300: 47 74 55;
-  --tw-f-400: 76 138 94;
-  --tw-f-500: 95 175 116;
-  --tw-f-600: 121 196 141;
-  --tw-f-700: 147 211 163;
-  --tw-f-800: 176 224 188;
-  --tw-f-900: 205 235 213;
-  --tw-f-950: 230 245 234;
+  --tw-f-50: 20 31 12;
+  --tw-f-100: 27 42 16;
+  --tw-f-200: 36 56 21;
+  --tw-f-300: 49 76 27;
+  --tw-f-400: 92 150 28;
+  --tw-f-500: 116 180 45;
+  --tw-f-600: 141 198 63;
+  --tw-f-700: 166 212 108;
+  --tw-f-800: 193 226 150;
+  --tw-f-900: 220 240 192;
+  --tw-f-950: 239 248 227;
 
   color-scheme: dark;
 }
@@ -404,7 +407,7 @@ p { margin: 0; line-height: 1.55; }
   background: var(--primary-light);
   color: var(--primary);
   font-weight: 700;
-  box-shadow: inset 0 0 0 1px rgba(31, 111, 63, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(56, 126, 1, 0.08);
 }
 
 .nav-item .ico {
@@ -503,7 +506,7 @@ p { margin: 0; line-height: 1.55; }
   height: 38px;
   border-radius: 50%;
   overflow: hidden;
-  border: 2px solid #7FA650;
+  border: 2px solid #559805;
   flex-shrink: 0;
 }
 
@@ -1235,12 +1238,12 @@ p { margin: 0; line-height: 1.55; }
 .btn-primary {
   background: var(--primary-strong);
   color: white;
-  box-shadow: 0 4px 12px rgba(31, 111, 63, 0.22);
+  box-shadow: 0 4px 12px rgba(56, 126, 1, 0.22);
 }
 
 .btn-primary:hover {
   background: var(--primary-dark);
-  box-shadow: 0 6px 16px rgba(31, 111, 63, 0.3);
+  box-shadow: 0 6px 16px rgba(56, 126, 1, 0.3);
   transform: translateY(-1px);
 }
 
@@ -1287,7 +1290,7 @@ p { margin: 0; line-height: 1.55; }
 .form-row input:focus, .form-row select:focus, .form-row textarea:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(31, 111, 63, 0.1);
+  box-shadow: 0 0 0 3px rgba(56, 126, 1, 0.1);
 }
 .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 
@@ -1344,7 +1347,7 @@ p { margin: 0; line-height: 1.55; }
 .preset-option.active {
   border-color: var(--primary);
   background: var(--primary-light);
-  box-shadow: 0 0 0 3px rgba(31, 111, 63, 0.14);
+  box-shadow: 0 0 0 3px rgba(56, 126, 1, 0.14);
 }
 
 .category-rules-grid {
@@ -1485,7 +1488,7 @@ p { margin: 0; line-height: 1.55; }
 
 .threshold-input-wrap:focus-within {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(31, 111, 63, 0.14);
+  box-shadow: 0 0 0 3px rgba(56, 126, 1, 0.14);
 }
 
 .threshold-unit {
@@ -1601,7 +1604,7 @@ tbody tr:hover { background: var(--surface-muted); }
 }
 .mini-bar-fill {
   width: 100%;
-  background: linear-gradient(180deg, #7FA650, #1F6F3F);
+  background: linear-gradient(180deg, #559805, #387E01);
   border-radius: 6px 6px 0 0;
   transition: height .4s;
 }
@@ -1659,7 +1662,7 @@ tbody tr:hover { background: var(--surface-muted); }
   position: relative;
   width: 100%;
   aspect-ratio: 1 / 1;
-  background: #23211B;
+  background: #16200F;
   border-radius: 14px;
   overflow: hidden;
   margin-bottom: 14px;
@@ -1674,7 +1677,7 @@ tbody tr:hover { background: var(--surface-muted); }
 .scan-video-frame {
   position: absolute;
   inset: 14%;
-  border: 2.5px solid #7FA650;
+  border: 2.5px solid #559805;
   border-radius: 12px;
   box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.35);
 }
@@ -1777,7 +1780,7 @@ tbody tr:hover { background: var(--surface-muted); }
   color: white;
   font-size: 22px;
   border: none;
-  box-shadow: 0 6px 20px rgba(31, 111, 63, 0.35);
+  box-shadow: 0 6px 20px rgba(56, 126, 1, 0.35);
   z-index: 50;
   display: flex;
   align-items: center;
@@ -1950,7 +1953,7 @@ tbody tr:hover { background: var(--surface-muted); }
     180deg,
     rgba(10, 30, 15, 0.82) 0%,
     rgba(10, 30, 15, 0.45) 45%,
-    rgba(5, 20, 10, 0.88) 100%
+    rgba(6, 22, 2, 0.88) 100%
   );
   z-index: 1;
 }
@@ -1967,7 +1970,7 @@ tbody tr:hover { background: var(--surface-muted); }
   font-size: 13.5px;
   font-weight: 700;
   letter-spacing: 0.5px;
-  color: #E2F8E7;
+  color: #EEF7E0;
   margin-bottom: 14px;
   display: inline-flex;
   align-items: center;
@@ -1989,7 +1992,7 @@ tbody tr:hover { background: var(--surface-muted); }
   font-size: 14.5px;
   font-weight: 600;
   line-height: 1.55;
-  color: #E5DFD2;
+  color: #DFE7D5;
   margin: 0;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
 }
@@ -2069,7 +2072,7 @@ tbody tr:hover { background: var(--surface-muted); }
 .auth-input:focus {
   outline: none;
   border-color: var(--primary-strong);
-  box-shadow: 0 0 0 3px rgba(31, 111, 63, 0.12);
+  box-shadow: 0 0 0 3px rgba(56, 126, 1, 0.12);
 }
 
 select.auth-input {
@@ -2141,13 +2144,13 @@ select.auth-input {
 .auth-forgot-link {
   font-size: 12.5px;
   font-weight: 600;
-  color: #2563EB;
+  color: var(--primary);
   transition: color 0.15s;
 }
 
 .auth-forgot-link:hover {
   text-decoration: underline;
-  color: #1D4ED8;
+  color: var(--primary-dark);
 }
 
 .auth-submit-btn {
@@ -2187,7 +2190,7 @@ select.auth-input {
 }
 
 .auth-footer-text a {
-  color: #2563EB;
+  color: var(--primary);
   font-weight: 700;
   margin-left: 4px;
   transition: color 0.15s;
@@ -2195,7 +2198,7 @@ select.auth-input {
 
 .auth-footer-text a:hover {
   text-decoration: underline;
-  color: #1D4ED8;
+  color: var(--primary-dark);
 }
 
 /* Mobile Responsiveness */
@@ -2275,8 +2278,8 @@ select.auth-input {
   white-space: nowrap;
 }
 
-.home-btn-primary { background: var(--primary-strong); color: #fff; box-shadow: 0 6px 18px rgba(31, 111, 63, 0.28); }
-.home-btn-primary:hover { background: var(--primary-dark); transform: translateY(-2px); box-shadow: 0 10px 24px rgba(31, 111, 63, 0.35); }
+.home-btn-primary { background: var(--primary-strong); color: #fff; box-shadow: 0 6px 18px rgba(56, 126, 1, 0.28); }
+.home-btn-primary:hover { background: var(--primary-dark); transform: translateY(-2px); box-shadow: 0 10px 24px rgba(56, 126, 1, 0.35); }
 .home-btn-outline { background: var(--surface); border: 1.5px solid var(--border); color: var(--text-dark); }
 .home-btn-outline:hover { border-color: var(--primary); color: var(--primary); transform: translateY(-2px); }
 .home-btn-glass {
@@ -2301,29 +2304,6 @@ select.auth-input {
   display: flex;
   flex-direction: column;
   justify-content: center;
-}
-
-.home-hero-bg {
-  position: absolute;
-  inset: 0;
-  background-size: cover;
-  background-position: center;
-  transform: scale(1.04);
-  z-index: 0;
-}
-
-.home-hero-overlay { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
-.home-hero-overlay-side {
-  background: linear-gradient(
-    to right,
-    rgba(2, 44, 34, 0.94) 0%,
-    rgba(2, 20, 15, 0.88) 42%,
-    rgba(2, 6, 23, 0.5) 72%,
-    rgba(2, 6, 23, 0.05) 100%
-  );
-}
-.home-hero-overlay-bottom {
-  background: linear-gradient(to top, rgba(2, 8, 6, 0.75) 0%, rgba(2, 8, 6, 0) 34%);
 }
 
 .home-hero-inner {
@@ -2355,7 +2335,7 @@ select.auth-input {
   gap: 6px;
   font-size: 13px;
   font-weight: 700;
-  color: #A7F3D0;
+  color: #C9E6A0;
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
@@ -2378,7 +2358,7 @@ select.auth-input {
 .home-hero-subtitle {
   font-size: 17px;
   line-height: 1.65;
-  color: #E2F8E7;
+  color: #EEF7E0;
   max-width: 620px;
   margin: 0 0 32px 0;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
@@ -2418,10 +2398,6 @@ select.auth-input {
 .home-step-icon { width: 64px; height: 64px; border-radius: 50%; background: var(--surface); border: 1.5px solid var(--ring-primary); color: var(--primary); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; box-shadow: var(--shadow-md); transition: transform 0.25s ease; }
 .home-step:hover .home-step-icon { transform: scale(1.08); }
 .home-step p { font-size: 13.5px; color: var(--text-mid); line-height: 1.55; }
-.home-step-connector { display: none; }
-@media (min-width: 768px) {
-  .home-step-connector { display: block; position: absolute; top: 45px; left: calc(50% + 46px); width: calc(100% - 92px); height: 0; border-top: 1.5px dashed var(--ring-primary); }
-}
 
 .home-role-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
 .home-role-card { text-align: center; padding: 28px 18px; border-radius: 18px; background: var(--surface); border: 1px solid var(--card-border); box-shadow: var(--shadow); transition: transform 0.25s ease, box-shadow 0.25s ease; }
@@ -2430,9 +2406,9 @@ select.auth-input {
 .home-role-card h3 { font-size: 15.5px; margin: 0 0 6px; }
 .home-role-card p { font-size: 12.5px; color: var(--text-mid); line-height: 1.55; }
 
-.home-cta-banner { display: flex; align-items: center; justify-content: space-between; gap: 24px; background: linear-gradient(135deg, #14532D, #1F6F3F); border-radius: 26px; padding: 48px 52px; color: #fff; flex-wrap: wrap; }
+.home-cta-banner { display: flex; align-items: center; justify-content: space-between; gap: 24px; background: linear-gradient(135deg, #14532D, #387E01); border-radius: 26px; padding: 48px 52px; color: #fff; flex-wrap: wrap; }
 .home-cta-banner h2 { font-size: 26px; margin: 0 0 8px; color: #fff; letter-spacing: -0.02em; }
-.home-cta-banner p { font-size: 14.5px; color: #E4EFD8; margin: 0; }
+.home-cta-banner p { font-size: 14.5px; color: #E8F2D8; margin: 0; }
 .home-cta-banner .home-btn-primary { background: var(--surface); color: var(--primary-dark); box-shadow: none; }
 .home-cta-banner .home-btn-primary:hover { background: var(--primary-lighter); }
 
@@ -2454,7 +2430,7 @@ select.auth-input {
   width: fit-content;
   font-size: 12.5px;
   font-weight: 600;
-  color: #A7F3D0;
+  color: #C9E6A0;
   background: rgba(110, 231, 183, 0.1);
   border: 1px solid rgba(110, 231, 183, 0.28);
   padding: 6px 14px;
@@ -2490,14 +2466,6 @@ select.auth-input {
   .home-nav-links { display: none; }
   .home-stats-row, .home-role-grid, .home-steps-row { grid-template-columns: repeat(2, 1fr); }
   .home-hero { padding-top: 70px; min-height: 0; }
-  .home-hero-overlay-side {
-    background: linear-gradient(
-      to bottom,
-      rgba(2, 44, 34, 0.94) 0%,
-      rgba(2, 20, 15, 0.9) 55%,
-      rgba(2, 6, 23, 0.82) 100%
-    );
-  }
   .home-footer-grid { grid-template-columns: 1fr 1fr; }
   .home-footer-brand { grid-column: 1 / -1; }
 }
@@ -2722,7 +2690,7 @@ select.auth-input {
 
 .browse-search input:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(31, 111, 63, 0.1);
+  box-shadow: 0 0 0 3px rgba(56, 126, 1, 0.1);
 }
 
 .browse-search-clear {
@@ -2959,7 +2927,7 @@ select.auth-input {
   border-top: 1px solid var(--border);
   /* Keeps the labels off the iOS home indicator. */
   padding: 6px 4px calc(6px + env(safe-area-inset-bottom)) 4px;
-  box-shadow: 0 -2px 14px rgba(61, 52, 38, 0.07);
+  box-shadow: 0 -2px 14px rgba(22, 32, 15, 0.07);
 }
 
 .bottom-nav-item {

@@ -422,13 +422,13 @@ export function IconStatBowl({ size = 32, color = "var(--primary)", className = 
       />
       <path
         d="M18 18C18 11 13 7 8 8C8 14 12 18 18 18Z"
-        fill="#86EFAC"
+        fill="#B5D686"
       />
       <path
         d="M18 18C18 11 23 7 28 8C28 14 24 18 18 18Z"
-        fill="#4ADE80"
+        fill="#85B840"
       />
-      <circle cx="18" cy="11" r="3" fill="#7FA650" />
+      <circle cx="18" cy="11" r="3" fill="#559805" />
     </svg>
   );
 }
@@ -606,11 +606,11 @@ export function GraphicEcoTruck({ className = "" }) {
   return (
     <svg width="150" height="90" viewBox="0 0 160 100" fill="none" className={className}>
       {/* Background Skyline Silhouette */}
-      <rect x="20" y="30" width="18" height="50" fill="#E2EFE5" rx="2" />
-      <rect x="42" y="20" width="22" height="60" fill="#DBEBE0" rx="2" />
-      <rect x="68" y="35" width="20" height="45" fill="#E2EFE5" rx="2" />
-      <rect x="92" y="26" width="24" height="54" fill="#DBEBE0" rx="2" />
-      <rect x="120" y="40" width="18" height="40" fill="#E2EFE5" rx="2" />
+      <rect x="20" y="30" width="18" height="50" fill="#EAF3DE" rx="2" />
+      <rect x="42" y="20" width="22" height="60" fill="#DDECC9" rx="2" />
+      <rect x="68" y="35" width="20" height="45" fill="#EAF3DE" rx="2" />
+      <rect x="92" y="26" width="24" height="54" fill="#DDECC9" rx="2" />
+      <rect x="120" y="40" width="18" height="40" fill="#EAF3DE" rx="2" />
 
       {/* Tree */}
       <circle cx="145" cy="62" r="16" fill="#84CC16" opacity="0.85" />
@@ -620,11 +620,11 @@ export function GraphicEcoTruck({ className = "" }) {
       <path d="M0 86H160" stroke="#D6CFC0" strokeWidth="2" strokeLinecap="round" />
 
       {/* Green Van Body */}
-      <rect x="25" y="44" width="68" height="34" rx="4" fill="#15803D" />
+      <rect x="25" y="44" width="68" height="34" rx="4" fill="#387E01" />
       {/* Cab */}
       <path
         d="M93 54L105 54C108 54 111 57 113 60L117 66V78H93V54Z"
-        fill="#16A34A"
+        fill="#559805"
       />
       {/* Cab Window */}
       <path
@@ -635,17 +635,17 @@ export function GraphicEcoTruck({ className = "" }) {
       <rect x="115" y="70" width="3" height="4" rx="1" fill="#FEF08A" />
 
       {/* Leaf Decal on Van */}
-      <circle cx="59" cy="61" r="11" fill="#E4EFD8" />
+      <circle cx="59" cy="61" r="11" fill="#E8F2D8" />
       <path
         d="M54 65C55 60 58 57 63 56C63 61 60 64 56 66C55 66.2 54.2 65.5 54 65Z"
-        fill="#16A34A"
+        fill="#559805"
       />
 
       {/* Wheels */}
-      <circle cx="43" cy="80" r="7.5" fill="#2E2A22" />
-      <circle cx="43" cy="80" r="3.5" fill="#E5DFD2" />
-      <circle cx="103" cy="80" r="7.5" fill="#2E2A22" />
-      <circle cx="103" cy="80" r="3.5" fill="#E5DFD2" />
+      <circle cx="43" cy="80" r="7.5" fill="#262F1E" />
+      <circle cx="43" cy="80" r="3.5" fill="#DFE7D5" />
+      <circle cx="103" cy="80" r="7.5" fill="#262F1E" />
+      <circle cx="103" cy="80" r="3.5" fill="#DFE7D5" />
     </svg>
   );
 }
@@ -654,26 +654,26 @@ export function GraphicEcoTruck({ className = "" }) {
 export function GraphicEarthSprout({ size = 52, className = "" }) {
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" fill="none" className={className}>
-      <circle cx="32" cy="38" r="20" fill="#86EFAC" stroke="#15803D" strokeWidth="2.5" />
+      <circle cx="32" cy="38" r="20" fill="#B5D686" stroke="#387E01" strokeWidth="2.5" />
       <path
         d="M20 34C22 30 26 31 28 35C29 37 32 38 34 36C36 34 40 35 42 38C40 44 36 50 32 54C26 50 21 44 20 34Z"
-        fill="#7FA650"
+        fill="#559805"
         opacity="0.8"
       />
       {/* Sprout atop globe */}
       <path
         d="M32 28V14"
-        stroke="#15803D"
+        stroke="#387E01"
         strokeWidth="2.5"
         strokeLinecap="round"
       />
       <path
         d="M32 18C32 12 26 8 20 9C20 15 25 19 32 18Z"
-        fill="#16A34A"
+        fill="#559805"
       />
       <path
         d="M32 15C32 9 38 5 44 6C44 12 39 16 32 15Z"
-        fill="#7FA650"
+        fill="#559805"
       />
     </svg>
   );
@@ -686,30 +686,30 @@ export function GraphicSidebarSalad({ className = "" }) {
       {/* Background branch leaves */}
       <path
         d="M20 90C35 70 45 40 40 15"
-        stroke="#D1E7D6"
+        stroke="#D3E7BA"
         strokeWidth="2"
         strokeLinecap="round"
       />
       <path
         d="M40 30C48 25 58 28 60 38C52 42 44 38 40 30Z"
-        fill="#D1E7D6"
+        fill="#D3E7BA"
       />
       <path
         d="M30 60C38 55 48 58 50 68C42 72 34 68 30 60Z"
-        fill="#D1E7D6"
+        fill="#D3E7BA"
       />
 
       {/* Floating Green Heart */}
       <path
         d="M90 35C90 35 76 23 76 13C76 7.5 80.5 3 86 3C88.5 3 90 4.5 90 4.5C90 4.5 91.5 3 94 3C99.5 3 104 7.5 104 13C104 23 90 35 90 35Z"
-        fill="#7FA650"
+        fill="#559805"
       />
 
       {/* Veggies in Bowl */}
       {/* Lettuce / Greens */}
-      <circle cx="70" cy="58" r="16" fill="#86EFAC" />
-      <circle cx="110" cy="58" r="16" fill="#4ADE80" />
-      <circle cx="90" cy="52" r="18" fill="#7FA650" />
+      <circle cx="70" cy="58" r="16" fill="#B5D686" />
+      <circle cx="110" cy="58" r="16" fill="#85B840" />
+      <circle cx="90" cy="52" r="18" fill="#559805" />
       {/* Carrot slices / Tomato */}
       <circle cx="65" cy="54" r="7" fill="#F97316" />
       <circle cx="115" cy="54" r="8" fill="#EF4444" />
@@ -722,11 +722,11 @@ export function GraphicSidebarSalad({ className = "" }) {
       {/* Green Salad Bowl */}
       <path
         d="M35 62C35 98 60 114 90 114C120 114 145 98 145 62H35Z"
-        fill="#15803D"
+        fill="#387E01"
       />
       {/* Bowl Rim Highlight */}
-      <ellipse cx="90" cy="62" rx="55" ry="6" fill="#16A34A" />
-      <ellipse cx="90" cy="62" rx="52" ry="4" fill="#7FA650" opacity="0.6" />
+      <ellipse cx="90" cy="62" rx="55" ry="6" fill="#559805" />
+      <ellipse cx="90" cy="62" rx="52" ry="4" fill="#559805" opacity="0.6" />
     </svg>
   );
 }
@@ -737,6 +737,26 @@ export function IconUpload({ size = 16, color = "currentColor", className = "" }
     <svg width={size} height={size} viewBox="0 0 20 20" fill="none" className={className} style={{ display: "inline-block", verticalAlign: "middle" }}>
       <path d="M10 13V3M10 3L6.5 6.5M10 3L13.5 6.5" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M3.5 13.5V15C3.5 15.8284 4.17157 16.5 5 16.5H15C15.8284 16.5 16.5 15.8284 16.5 15V13.5" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+// Camera Outline (Profile photo)
+export function IconCamera({ size = 16, color = "currentColor", className = "" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 20 20" fill="none" className={className} style={{ display: "inline-block", verticalAlign: "middle" }}>
+      <path d="M3 7C3 6.17 3.67 5.5 4.5 5.5H6.25L7.5 3.5H12.5L13.75 5.5H15.5C16.33 5.5 17 6.17 17 7V15C17 15.83 16.33 16.5 15.5 16.5H4.5C3.67 16.5 3 15.83 3 15V7Z" stroke={color} strokeWidth="1.6" strokeLinejoin="round" />
+      <circle cx="10" cy="10.75" r="3" stroke={color} strokeWidth="1.6" />
+    </svg>
+  );
+}
+
+// Trash Outline (Remove)
+export function IconTrash({ size = 16, color = "currentColor", className = "" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 20 20" fill="none" className={className} style={{ display: "inline-block", verticalAlign: "middle" }}>
+      <path d="M3.5 5.5H16.5M8 5.5V4C8 3.45 8.45 3 9 3H11C11.55 3 12 3.45 12 4V5.5M5 5.5L5.75 16C5.79 16.56 6.26 17 6.82 17H13.18C13.74 17 14.21 16.56 14.25 16L15 5.5" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M8.5 9V13.5M11.5 9V13.5" stroke={color} strokeWidth="1.6" strokeLinecap="round" />
     </svg>
   );
 }
