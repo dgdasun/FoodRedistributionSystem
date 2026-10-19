@@ -96,19 +96,25 @@ public class AIClientService {
             if (response != null && response.get("ranking") instanceof List<?> rawList) {
                 for (Object o : rawList) {
                     if (o instanceof Map<?, ?> m) {
-                        ranking.add(new RecommendationDTO(
+                        RecommendationDTO dto = new RecommendationDTO(
                                 String.valueOf(m.get("requestId")),
                                 String.valueOf(m.get("beneficiaryId")),
                                 String.valueOf(m.get("beneficiaryName")),
                                 m.get("score") == null ? 0.0 : Double.parseDouble(m.get("score").toString())
-                        ));
+                        );
+                        dto.setFactors(toDoubleMap(m.get("factors")));
+                        dto.setWeights(toDoubleMap(m.get("weights")));
+                        ranking.add(dto);
                     }
                 }
             }
+            addRequestContext(ranking, pendingRequests);
             return ranking;
         } catch (RestClientException e) {
             log.warn("AI service unreachable for priority ranking, falling back to first-come-first-served: {}", e.getMessage());
-            return fallbackRanking(pendingRequests);
+            List<RecommendationDTO> ranking = fallbackRanking(pendingRequests, beneficiaries);
+            addRequestContext(ranking, pendingRequests);
+            return ranking;
         }
     }
 
@@ -146,11 +152,41 @@ public class AIClientService {
     }
 
     /** Simple non-AI fallback so the platform still functions if the Python service is down. */
-    private List<RecommendationDTO> fallbackRanking(List<FoodRequest> pendingRequests) {
+    private List<RecommendationDTO> fallbackRanking(List<FoodRequest> pendingRequests, List<User> beneficiaries) {
+        Map<String, String> names = new HashMap<>();
+        for (User u : beneficiaries) {
+            names.put(u.getId(), u.getOrganizationName() != null ? u.getOrganizationName() : u.getName());
+        }
         List<RecommendationDTO> ranking = new ArrayList<>();
         for (FoodRequest r : pendingRequests) {
-            ranking.add(new RecommendationDTO(r.getId(), r.getBeneficiaryId(), "Unknown", 0.0));
+            String name = names.get(r.getBeneficiaryId());
+            ranking.add(new RecommendationDTO(r.getId(), r.getBeneficiaryId(), name != null ? name : "Unknown", 0.0));
         }
         return ranking;
+    }
+
+    /** Copies urgency, distance and quantity from each ranked request so the UI can show them alongside the score. */
+    private void addRequestContext(List<RecommendationDTO> ranking, List<FoodRequest> pendingRequests) {
+        Map<String, FoodRequest> byId = new HashMap<>();
+        for (FoodRequest r : pendingRequests) {
+            byId.put(r.getId(), r);
+        }
+        for (RecommendationDTO dto : ranking) {
+            FoodRequest r = byId.get(dto.getRequestId());
+            if (r == null) continue;
+            dto.setUrgency(r.getUrgency());
+            dto.setDistanceKm(r.getDistanceKm());
+            dto.setQuantityKg(r.getQuantityKg());
+        }
+    }
+
+    private static Map<String, Double> toDoubleMap(Object raw) {
+        Map<String, Double> out = new HashMap<>();
+        if (raw instanceof Map<?, ?> m) {
+            m.forEach((k, v) -> {
+                if (v instanceof Number n) out.put(String.valueOf(k), n.doubleValue());
+            });
+        }
+        return out;
     }
 }

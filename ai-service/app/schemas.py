@@ -3,7 +3,7 @@ Pydantic request/response models for the FoodShare AI/ML microservice.
 These mirror the JSON payloads sent by the Spring Boot backend's
 AIClientService (see backend-spring/src/main/java/com/foodshare/service/AIClientService.java).
 """
-from typing import List, Optional
+from typing import Dict, List, Optional
 from pydantic import BaseModel
 
 
@@ -44,6 +44,9 @@ class RankedRequest(BaseModel):
     beneficiaryId: str
     beneficiaryName: str
     score: float
+    # Per-factor 0-1 scores and the weight each carries, so the UI can explain the ranking.
+    factors: Dict[str, float] = {}
+    weights: Dict[str, float] = {}
 
 
 class PriorityResponse(BaseModel):
