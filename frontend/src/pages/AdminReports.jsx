@@ -1,8 +1,11 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { CalendarRange, Download, FileBarChart, Loader2, Search, RefreshCw, Sparkles, SlidersHorizontal } from "lucide-react";
 import { api } from "../api.js";
 import StatCard from "../components/StatCard.jsx";
+import { Stagger } from "../components/motion/Motion.jsx";
+import { CategoryBarChart, HorizontalBarChart, StatusDonut, useChartPalette } from "../components/charts/ChartKit.jsx";
+import { useToast } from "../components/Toast.jsx";
 import {
-  IconLeafBullet,
   IconStatStore,
   IconStatBowl,
   IconStatPeople,
@@ -12,43 +15,80 @@ import {
   IconForkKnife,
   IconTrashCan,
 } from "../components/Icons.jsx";
+import { imageFor } from "../foodImages.js";
+import "../styles/food-requests.css";
+import "../styles/admin-reports.css";
 
-const STATUS_COLORS = {
-  fresh: "#0369A1",
-  surplus: "var(--status-warn-fg)",
-  reserved: "var(--status-violet-fg)",
-  expired: "var(--status-danger-fg)",
-  collected: "var(--status-ok-fg)",
-  unknown: "var(--stone)",
-};
-
-function pad(n) {
-  return String(n).padStart(2, "0");
-}
-function toISO(y, m, d) {
-  return `${y}-${pad(m)}-${pad(d)}`;
-}
-function daysInMonth(y, m) {
-  return new Date(y, m, 0).getDate();
-}
+const pad = (n) => String(n).padStart(2, "0");
+const toISO = (y, m, d) => `${y}-${pad(m)}-${pad(d)}`;
+const isoOf = (date) => toISO(date.getFullYear(), date.getMonth() + 1, date.getDate());
+const daysInMonth = (y, m) => new Date(y, m, 0).getDate();
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
+function prettyDate(iso) {
+  const d = new Date(`${iso}T00:00:00`);
+  return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+}
+
+function spanDays(r) {
+  return Math.round((new Date(`${r.endDate}T00:00:00`) - new Date(`${r.startDate}T00:00:00`)) / 86400000) + 1;
+}
+
+/** Quick ranges. Each returns {startDate, endDate}; clamping to the 2-year window happens later. */
+function buildPresets(today) {
+  const y = today.getFullYear();
+  const m = today.getMonth() + 1;
+  const back = (days) => {
+    const d = new Date(today);
+    d.setDate(d.getDate() - days);
+    return isoOf(d);
+  };
+  const lastMonthY = m === 1 ? y - 1 : y;
+  const lastMonth = m === 1 ? 12 : m - 1;
+  return [
+    { key: "today", label: "Today", range: { startDate: isoOf(today), endDate: isoOf(today) } },
+    { key: "7d", label: "Last 7 days", range: { startDate: back(6), endDate: isoOf(today) } },
+    { key: "month", label: "This month", range: { startDate: toISO(y, m, 1), endDate: isoOf(today) } },
+    { key: "lastmonth", label: "Last month", range: { startDate: toISO(lastMonthY, lastMonth, 1), endDate: toISO(lastMonthY, lastMonth, daysInMonth(lastMonthY, lastMonth)) } },
+    { key: "12m", label: "Last 12 months", range: { startDate: back(364), endDate: isoOf(today) } },
+    { key: "year", label: "This year", range: { startDate: toISO(y, 1, 1), endDate: isoOf(today) } },
+  ];
+}
+
+/** True below phone width; a 12-column chart's rotated labels collide there. */
+function useNarrow(query = "(max-width: 640px)") {
+  const [narrow, setNarrow] = useState(() => typeof window !== "undefined" && window.matchMedia(query).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(query);
+    const on = () => setNarrow(mq.matches);
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, [query]);
+  return narrow;
+}
+
+const STATUS_TONE = { collected: "good", surplus: "warning", expired: "critical", reserved: "neutral", fresh: "neutral" };
+
 export default function AdminReports() {
+  const toast = useToast();
+  const narrow = useNarrow();
+  const { STATUS } = useChartPalette();
   const today = useMemo(() => new Date(), []);
-  const todayISO = toISO(today.getFullYear(), today.getMonth() + 1, today.getDate());
-  const minDateObj = useMemo(() => {
+  const todayISO = isoOf(today);
+  const minISO = useMemo(() => {
     const d = new Date(today);
     d.setFullYear(d.getFullYear() - 2);
-    return d;
+    return isoOf(d);
   }, [today]);
-  const minISO = toISO(minDateObj.getFullYear(), minDateObj.getMonth() + 1, minDateObj.getDate());
+  const presets = useMemo(() => buildPresets(today), [today]);
 
   const yearOptions = useMemo(() => {
     const opts = [];
-    for (let y = minDateObj.getFullYear(); y <= today.getFullYear(); y++) opts.push(y);
-    return opts;
-  }, [minDateObj, today]);
+    for (let y = Number(minISO.slice(0, 4)); y <= today.getFullYear(); y++) opts.push(y);
+    return opts.reverse();
+  }, [minISO, today]);
 
+  const [preset, setPreset] = useState("12m");
   const [year, setYear] = useState("");
   const [month, setMonth] = useState("");
   const [day, setDay] = useState("");
@@ -57,14 +97,15 @@ export default function AdminReports() {
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState("");
+  const [generatedAt, setGeneratedAt] = useState(null);
+  const [recordQuery, setRecordQuery] = useState("");
+  const [recordStatus, setRecordStatus] = useState("");
 
   const monthOptions = useMemo(() => {
     if (!year) return [];
     const opts = [];
     for (let m = 1; m <= 12; m++) {
-      const first = toISO(year, m, 1);
-      const last = toISO(year, m, daysInMonth(year, m));
-      if (last >= minISO && first <= todayISO) opts.push(m);
+      if (toISO(year, m, daysInMonth(year, m)) >= minISO && toISO(year, m, 1) <= todayISO) opts.push(m);
     }
     return opts;
   }, [year, minISO, todayISO]);
@@ -72,35 +113,28 @@ export default function AdminReports() {
   const dayOptions = useMemo(() => {
     if (!year || !month) return [];
     const opts = [];
-    const dim = daysInMonth(year, month);
-    for (let d = 1; d <= dim; d++) {
+    for (let d = 1; d <= daysInMonth(year, month); d++) {
       const iso = toISO(year, month, d);
       if (iso >= minISO && iso <= todayISO) opts.push(d);
     }
     return opts;
   }, [year, month, minISO, todayISO]);
 
-  const computeRange = () => {
+  const clamp = (r) => ({
+    startDate: r.startDate < minISO ? minISO : r.startDate,
+    endDate: r.endDate > todayISO ? todayISO : r.endDate,
+  });
+
+  const customRange = () => {
     if (!year) return null;
-    let start, end;
-    if (day && month) {
-      start = end = toISO(year, month, day);
-    } else if (month) {
-      start = toISO(year, month, 1);
-      end = toISO(year, month, daysInMonth(year, month));
-    } else {
-      start = toISO(year, 1, 1);
-      end = toISO(year, 12, 31);
-    }
-    if (start < minISO) start = minISO;
-    if (end > todayISO) end = todayISO;
-    return { startDate: start, endDate: end };
+    if (day && month) return clamp({ startDate: toISO(year, month, day), endDate: toISO(year, month, day) });
+    if (month) return clamp({ startDate: toISO(year, month, 1), endDate: toISO(year, month, daysInMonth(year, month)) });
+    return clamp({ startDate: toISO(year, 1, 1), endDate: toISO(year, 12, 31) });
   };
 
-  const generate = async () => {
-    const r = computeRange();
+  const run = async (r) => {
     if (!r) {
-      setError("Select at least a year to generate a report.");
+      setError("Pick a year to build a custom report.");
       return;
     }
     setLoading(true);
@@ -109,314 +143,300 @@ export default function AdminReports() {
       const data = await api.get(`/reports?startDate=${r.startDate}&endDate=${r.endDate}`);
       setReport(data);
       setRange(r);
+      setGeneratedAt(new Date());
+      setRecordQuery("");
+      setRecordStatus("");
     } catch (e) {
       setError(e.message || "Failed to generate report.");
-      setReport(null);
     } finally {
       setLoading(false);
     }
   };
 
+  // Open on the last 12 months so the page has something to read straight away.
+  useEffect(() => {
+    run(clamp(presets.find((p) => p.key === "12m").range));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const pickPreset = (p) => {
+    setPreset(p.key);
+    run(clamp(p.range));
+  };
+
   const downloadPdf = async () => {
     if (!range) return;
     setDownloading(true);
-    setError("");
     try {
       await api.download(
         `/reports/pdf?startDate=${range.startDate}&endDate=${range.endDate}`,
         `foodshare-report-${range.startDate}_to_${range.endDate}.pdf`
       );
+      toast.success("PDF report downloaded.");
     } catch (e) {
-      setError(e.message || "Failed to download PDF.");
+      toast.error(e.message || "Failed to download PDF.");
     } finally {
       setDownloading(false);
     }
   };
 
-  const maxCategoryKg = report ? Math.max(...Object.values(report.categoryBreakdown || {}), 1) : 1;
-  const maxTrendKg = report ? Math.max(...(report.trend || []).map((t) => t.quantityKg), 1) : 1;
-  const totalStatusCount = report
-    ? Object.values(report.statusBreakdown || {}).reduce((a, b) => a + b, 0)
-    : 0;
-  const visibleDonations = report ? (report.donations || []).slice(0, 150) : [];
+  const s = report?.summary;
+  const statusEntries = Object.entries(report?.statusBreakdown || {});
+  const statusSegments = statusEntries.map(([key, value]) => ({
+    key,
+    label: key.charAt(0).toUpperCase() + key.slice(1),
+    color: STATUS[STATUS_TONE[key] || "neutral"],
+    value,
+  }));
+  const trendData = Object.fromEntries((report?.trend || []).map((t) => [t.label, t.quantityKg]));
+  const trendTotal = (report?.trend || []).reduce((a, t) => a + t.quantityKg, 0);
+  const peak = (report?.trend || []).reduce((best, t) => (t.quantityKg > (best?.quantityKg ?? -1) ? t : best), null);
+
+  const records = useMemo(() => {
+    const q = recordQuery.trim().toLowerCase();
+    return (report?.donations || [])
+      .filter((d) => !recordStatus || d.status === recordStatus)
+      .filter((d) => !q || [d.name, d.category, d.pickupLocation].filter(Boolean).some((f) => f.toLowerCase().includes(q)));
+  }, [report, recordQuery, recordStatus]);
+  const visibleRecords = records.slice(0, 150);
+  const collectedShare = s && s.totalQuantityKg ? Math.round((s.collectedKg / s.totalQuantityKg) * 100) : 0;
 
   return (
     <div className="dashboard-container">
-      <div className="page-header">
-        <h1>Generate Reports</h1>
-        <p>Pick a year, month and day within the last two years to build a report — then export it as a PDF.</p>
+      <div className="page-header rp-header">
+        <div>
+          <h1>Generate Reports</h1>
+          <p>Pick a period from the last two years, review the numbers, then export the full report as a PDF.</p>
+        </div>
       </div>
 
-      <div className="card" style={{ marginBottom: 20 }}>
-        <div className="card-title">
-          <h3 className="section-title-with-leaf">
-            <IconLeafBullet size={19} color="var(--primary)" />
-            Report Period
-          </h3>
+      {/* ---------- Period builder ---------- */}
+      <section className="card rp-period">
+        <div className="rp-period-head">
+          <span className="rp-period-icon"><CalendarRange size={20} /></span>
+          <div>
+            <h3>Report period</h3>
+            <p>Choose a quick range or build a custom one.</p>
+          </div>
         </div>
 
-        <div className="form-grid-2" style={{ gridTemplateColumns: "repeat(3, 1fr)", alignItems: "end" }}>
-          <div className="form-row" style={{ marginBottom: 0 }}>
-            <label>Year</label>
-            <select
-              value={year}
-              onChange={(e) => {
-                setYear(e.target.value ? Number(e.target.value) : "");
-                setMonth("");
-                setDay("");
-              }}
+        <div className="rp-presets" role="radiogroup" aria-label="Quick ranges">
+          {presets.map((p) => (
+            <button
+              key={p.key}
+              type="button"
+              role="radio"
+              aria-checked={preset === p.key}
+              className={preset === p.key ? "rp-preset active" : "rp-preset"}
+              onClick={() => pickPreset(p)}
+              disabled={loading}
             >
-              <option value="">Select year</option>
-              {yearOptions.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="form-row" style={{ marginBottom: 0 }}>
-            <label>Month</label>
-            <select
-              value={month}
-              disabled={!year}
-              onChange={(e) => {
-                setMonth(e.target.value ? Number(e.target.value) : "");
-                setDay("");
-              }}
-            >
-              <option value="">All months</option>
-              {monthOptions.map((m) => (
-                <option key={m} value={m}>
-                  {MONTH_NAMES[m - 1]}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="form-row" style={{ marginBottom: 0 }}>
-            <label>Day</label>
-            <select value={day} disabled={!month} onChange={(e) => setDay(e.target.value ? Number(e.target.value) : "")}>
-              <option value="">All days</option>
-              {dayOptions.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </select>
-          </div>
+              {p.label}
+            </button>
+          ))}
+          <button
+            type="button"
+            role="radio"
+            aria-checked={preset === "custom"}
+            className={preset === "custom" ? "rp-preset active" : "rp-preset"}
+            onClick={() => setPreset("custom")}
+          >
+            <SlidersHorizontal size={14} /> Custom
+          </button>
         </div>
 
-        <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap", alignItems: "center" }}>
-          <button className="btn btn-primary" onClick={generate} disabled={!year || loading}>
-            {loading ? "Generating..." : "Generate Report"}
-          </button>
-          <button className="btn btn-outline" onClick={downloadPdf} disabled={!report || downloading}>
-            {downloading ? "Preparing PDF..." : "Download PDF"}
-          </button>
-          {range && (
-            <span style={{ fontSize: 12.5, color: "var(--text-light)" }}>
-              Period: {range.startDate} to {range.endDate}
-            </span>
-          )}
-        </div>
-        {error && <div style={{ color: "var(--status-danger-fg)", fontSize: 13, marginTop: 10 }}>{error}</div>}
-      </div>
+        {preset === "custom" && (
+          <div className="rp-custom">
+            <label>
+              <span>Year</span>
+              <select
+                className="fr-select"
+                value={year}
+                onChange={(e) => {
+                  setYear(e.target.value ? Number(e.target.value) : "");
+                  setMonth("");
+                  setDay("");
+                }}
+              >
+                <option value="">Select year</option>
+                {yearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </label>
+            <label>
+              <span>Month</span>
+              <select
+                className="fr-select"
+                value={month}
+                disabled={!year}
+                onChange={(e) => {
+                  setMonth(e.target.value ? Number(e.target.value) : "");
+                  setDay("");
+                }}
+              >
+                <option value="">All months</option>
+                {monthOptions.map((m) => <option key={m} value={m}>{MONTH_NAMES[m - 1]}</option>)}
+              </select>
+            </label>
+            <label>
+              <span>Day</span>
+              <select className="fr-select" value={day} disabled={!month} onChange={(e) => setDay(e.target.value ? Number(e.target.value) : "")}>
+                <option value="">All days</option>
+                {dayOptions.map((d) => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </label>
+            <button type="button" className="btn btn-primary rp-generate" onClick={() => run(customRange())} disabled={!year || loading}>
+              {loading ? <Loader2 size={16} className="rp-spin" /> : <Sparkles size={16} />} Generate
+            </button>
+          </div>
+        )}
 
-      {!report && !loading && (
-        <div className="card empty-state">Select a year (and optionally a month or day) above, then click Generate Report.</div>
-      )}
+        {error && <p className="rp-error">{error}</p>}
+      </section>
+
+      {!report && loading && <div className="card rp-loading"><Loader2 size={22} className="rp-spin" /> Building report…</div>}
 
       {report && (
-        <>
-          <div className="grid-4 stats-grid">
-            <StatCard
-              icon={<IconStatStore size={30} color="var(--primary)" />}
-              label="Total Donations"
-              value={report.summary.totalDonations}
-              sub="Batches in this period"
-            />
-            <StatCard
-              icon={<IconStatBowl size={30} color="var(--primary)" />}
-              label="Total Food Donated"
-              value={report.summary.totalQuantityKg}
-              unit="KG"
-              sub={`Equals ${Number(report.summary.mealsProvided).toLocaleString()} meals`}
-            />
-            <StatCard
-              icon={<IconStatPeople size={30} color="var(--primary)" />}
-              label="Beneficiaries Served"
-              value={report.summary.beneficiariesServed}
-              sub="Unique organizations"
-            />
-            <StatCard
-              icon={<IconStatCO2 size={30} color="var(--primary)" />}
-              label="CO₂ Saved"
-              value={report.summary.co2SavedKg}
-              unit="KG"
-              sub="Environmental impact"
-            />
+        <div className={loading ? "rp-report rp-busy" : "rp-report"}>
+          {/* ---------- Report cover ---------- */}
+          <section className="rp-cover">
+            <svg className="rp-cover-art" viewBox="0 0 600 200" preserveAspectRatio="xMaxYMid slice" aria-hidden="true">
+              <circle cx="560" cy="10" r="120" />
+              <circle cx="430" cy="210" r="70" />
+            </svg>
+            <div className="rp-cover-main">
+              <span className="rp-eyebrow"><FileBarChart size={13} /> Redistribution report</span>
+              <h2>{prettyDate(range.startDate)}{range.startDate !== range.endDate ? ` – ${prettyDate(range.endDate)}` : ""}</h2>
+              <p>
+                {spanDays(range)} day{spanDays(range) === 1 ? "" : "s"} · grouped by {report.period.groupedBy}
+                {generatedAt && ` · generated ${generatedAt.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`}
+              </p>
+            </div>
+            <div className="rp-cover-actions">
+              <button type="button" className="rp-cover-btn" onClick={() => run(range)} disabled={loading} aria-label="Refresh report">
+                <RefreshCw size={16} className={loading ? "rp-spin" : undefined} />
+              </button>
+              <button type="button" className="rp-cover-btn primary" onClick={downloadPdf} disabled={downloading}>
+                {downloading ? <Loader2 size={16} className="rp-spin" /> : <Download size={16} />} Download PDF
+              </button>
+            </div>
+          </section>
+
+          <Stagger className="grid-4 stats-grid" key={`${range.startDate}-${range.endDate}`}>
+            <StatCard icon={<IconStatStore size={28} color="var(--primary)" />} label="Donations" value={s.totalDonations} sub="Batches listed in this period" />
+            <StatCard icon={<IconStatBowl size={28} color="var(--primary)" />} label="Food donated" value={s.totalQuantityKg} unit="KG" sub={`${collectedShare}% collected so far`} />
+            <StatCard icon={<IconStatPeople size={28} color="var(--status-violet-fg)" />} iconBg="var(--status-violet-bg)" label="Organizations served" value={s.beneficiariesServed} sub="Unique NGOs & farms" />
+            <StatCard icon={<IconStatCO2 size={28} color="var(--status-ok-fg)" />} label="CO₂ saved" value={s.co2SavedKg} unit="KG" sub="Estimated from food diverted" />
+          </Stagger>
+
+          <div className="rp-mini">
+            <div><span className="rp-mini-icon"><IconTicket size={17} color="currentColor" /></span><strong>{s.totalTickets}</strong><span>Tickets issued</span></div>
+            <div><span className="rp-mini-icon"><IconInbox size={17} color="currentColor" /></span><strong>{s.totalRequests}</strong><span>Requests received</span></div>
+            <div><span className="rp-mini-icon"><IconForkKnife size={17} color="currentColor" /></span><strong>{Number(s.mealsProvided).toLocaleString()}</strong><span>Meals provided (est.)</span></div>
+            <div><span className="rp-mini-icon"><IconTrashCan size={17} color="currentColor" /></span><strong>{s.collectedKg} kg</strong><span>Collected</span></div>
           </div>
 
-          <div className="grid-4 stats-grid">
-            <StatCard
-              icon={<IconTicket size={28} color="var(--primary)" />}
-              label="Tickets Issued"
-              value={report.summary.totalTickets}
-              sub={`${report.summary.collectedKg} kg collected`}
-            />
-            <StatCard
-              icon={<IconInbox size={28} color="var(--primary)" />}
-              label="Requests Received"
-              value={report.summary.totalRequests}
-              sub="Beneficiary requests"
-            />
-            <StatCard
-              icon={<IconForkKnife size={28} color="var(--primary)" />}
-              label="Meals Provided"
-              value={Number(report.summary.mealsProvided).toLocaleString()}
-              sub="Estimated"
-            />
-            <StatCard
-              icon={<IconTrashCan size={28} color="var(--primary)" />}
-              label="Waste Diverted"
-              value={report.summary.totalQuantityKg}
-              unit="KG"
-              sub="Kept out of landfill"
-            />
-          </div>
+          <section className="card rp-card">
+            <div className="rp-card-head">
+              <h3>{report.period.groupedBy === "day" ? "Daily trend" : "Monthly trend"}</h3>
+              <div className="rp-card-meta">
+                <span className="rp-chip">{Math.round(trendTotal * 10) / 10} kg total</span>
+                {peak && peak.quantityKg > 0 && <span className="rp-chip rp-chip-ok">Peak: {peak.label} · {peak.quantityKg} kg</span>}
+              </div>
+            </div>
+            {trendTotal > 0 ? (
+              narrow ? (
+                <HorizontalBarChart data={trendData} height={Math.max(220, (report.trend || []).length * 30)} unit="kg" labelWidth={76} sorted={false} />
+              ) : (
+                <CategoryBarChart data={trendData} height={300} xLabel="Period" unit="kg" />
+              )
+            ) : (
+              <div className="rp-empty">No donations were listed in this period.</div>
+            )}
+          </section>
 
           <div className="grid-2 cards-row">
-            <div className="card">
-              <div className="card-title">
-                <h3 className="section-title-with-leaf">
-                  <IconLeafBullet size={19} color="var(--primary)" />
-                  Donations by Category
-                </h3>
+            <section className="card rp-card">
+              <div className="rp-card-head">
+                <h3>Donations by category</h3>
+                <span className="rp-chip">{Object.keys(report.categoryBreakdown || {}).length} categories</span>
               </div>
-              {Object.entries(report.categoryBreakdown || {}).length === 0 && (
-                <div className="empty-state">No donations recorded for this period.</div>
+              {Object.keys(report.categoryBreakdown || {}).length ? (
+                <HorizontalBarChart data={report.categoryBreakdown} height={280} unit="kg" labelWidth={120} />
+              ) : (
+                <div className="rp-empty">No donations recorded for this period.</div>
               )}
-              {Object.entries(report.categoryBreakdown || {}).map(([cat, kg]) => (
-                <div key={cat} style={{ marginBottom: 14 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5, marginBottom: 6 }}>
-                    <span style={{ fontWeight: 500 }}>{cat}</span>
-                    <strong>{kg} kg</strong>
-                  </div>
-                  <div style={{ background: "var(--icon-chip)", borderRadius: 8, height: 9 }}>
-                    <div
-                      style={{
-                        width: `${Math.max(2, (kg / maxCategoryKg) * 100)}%`,
-                        background: "linear-gradient(90deg, #559805, #387E01)",
-                        height: 9,
-                        borderRadius: 8,
-                        transition: "width .5s",
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
+            </section>
 
-            <div className="card">
-              <div className="card-title">
-                <h3 className="section-title-with-leaf">
-                  <IconLeafBullet size={19} color="var(--primary)" />
-                  Donation Status Breakdown
-                </h3>
+            <section className="card rp-card">
+              <div className="rp-card-head">
+                <h3>Donation status</h3>
+                <span className="rp-chip">{statusEntries.reduce((a, [, v]) => a + v, 0)} donations</span>
               </div>
-              {totalStatusCount === 0 && <div className="empty-state">No donations recorded for this period.</div>}
-              {Object.entries(report.statusBreakdown || {}).map(([status, count]) => {
-                const pct = totalStatusCount ? Math.round((count / totalStatusCount) * 100) : 0;
-                const color = STATUS_COLORS[status] || STATUS_COLORS.unknown;
-                return (
-                  <div key={status} style={{ marginBottom: 14 }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 13.5, marginBottom: 6 }}>
-                      <span style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 500, textTransform: "capitalize" }}>
-                        <span style={{ width: 9, height: 9, borderRadius: "50%", background: color, display: "inline-block" }} />
-                        {status}
-                      </span>
-                      <strong>
-                        {count} &bull; {pct}%
-                      </strong>
-                    </div>
-                    <div style={{ background: "var(--surface-muted)", borderRadius: 8, height: 9 }}>
-                      <div style={{ width: `${Math.max(2, pct)}%`, background: color, height: 9, borderRadius: 8, transition: "width .5s" }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+              {statusSegments.length ? (
+                <StatusDonut segments={statusSegments} unit="donations" centerLabel="donations" height={280} />
+              ) : (
+                <div className="rp-empty">No donations recorded for this period.</div>
+              )}
+            </section>
           </div>
 
-          <div className="card" style={{ marginBottom: 20 }}>
-            <div className="card-title">
-              <h3 className="section-title-with-leaf">
-                <IconLeafBullet size={19} color="var(--primary)" />
-                {report.period.groupedBy === "day" ? "Daily Trend (kg donated)" : "Monthly Trend (kg donated)"}
-              </h3>
+          {/* ---------- Records ---------- */}
+          <section className="card rp-card">
+            <div className="rp-card-head rp-records-head">
+              <h3>Donation records <span className="rp-chip">{report.donations.length}</span></h3>
+              <div className="fr-tools">
+                <select className="fr-select" value={recordStatus} onChange={(e) => setRecordStatus(e.target.value)} aria-label="Filter records by status">
+                  <option value="">Any status</option>
+                  {statusEntries.map(([k]) => <option key={k} value={k}>{k.charAt(0).toUpperCase() + k.slice(1)}</option>)}
+                </select>
+                <label className="fr-search">
+                  <Search size={16} />
+                  <input type="search" placeholder="Search item, category or location" value={recordQuery} onChange={(e) => setRecordQuery(e.target.value)} />
+                </label>
+              </div>
             </div>
-            {(report.trend || []).length === 0 && <div className="empty-state">No trend data for this period.</div>}
-            {(report.trend || []).length > 0 && (
-              <div className="mini-bar-chart">
-                {report.trend.map((t) => (
-                  <div className="mini-bar-col" key={t.label} title={`${t.label}: ${t.quantityKg} kg · ${t.donations} donation(s)`}>
-                    <div className="mini-bar-track">
-                      <div
-                        className="mini-bar-fill"
-                        style={{ height: `${Math.max(2, (t.quantityKg / maxTrendKg) * 100)}%` }}
-                      />
-                    </div>
-                    <span className="mini-bar-label">{t.label}</span>
-                  </div>
-                ))}
+
+            {records.length === 0 ? (
+              <div className="rp-empty">{report.donations.length ? "No records match this search." : "No donation records for this period."}</div>
+            ) : (
+              <div className="rp-table-wrap">
+                <table className="rp-table">
+                  <thead>
+                    <tr>
+                      <th>Item</th>
+                      <th>Date</th>
+                      <th className="num">Qty</th>
+                      <th>Status</th>
+                      <th>Location</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visibleRecords.map((d) => (
+                      <tr key={d.id}>
+                        <td>
+                          <div className="rp-item">
+                            <img src={imageFor(d.category)} alt="" loading="lazy" />
+                            <div>
+                              <strong>{d.name}</strong>
+                              <span>{d.category}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="rp-muted">{prettyDate(d.createdAt)}</td>
+                        <td className="num"><strong>{d.quantityKg}</strong> kg</td>
+                        <td><span className={`rp-status rp-status-${d.status}`}><i />{d.status}</span></td>
+                        <td className="rp-muted rp-loc" title={d.pickupLocation}>{d.pickupLocation}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
-          </div>
-
-          <div className="card">
-            <div className="card-title">
-              <h3 className="section-title-with-leaf">
-                <IconLeafBullet size={19} color="var(--primary)" />
-                Donation Records ({report.donations.length})
-              </h3>
-            </div>
-            <div className="report-table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Item</th>
-                    <th>Category</th>
-                    <th>Qty (kg)</th>
-                    <th>Status</th>
-                    <th>Location</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {visibleDonations.map((d) => (
-                    <tr key={d.id}>
-                      <td>{d.createdAt}</td>
-                      <td>{d.name}</td>
-                      <td>{d.category}</td>
-                      <td>{d.quantityKg}</td>
-                      <td>
-                        <span className={`badge-status ${d.status}`}>{d.status}</span>
-                      </td>
-                      <td>{d.pickupLocation}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {report.donations.length === 0 && <div className="empty-state">No donation records for this period.</div>}
-              {report.donations.length > visibleDonations.length && (
-                <p className="report-note">
-                  Showing {visibleDonations.length} of {report.donations.length} records — the full list is included in the PDF export.
-                </p>
-              )}
-            </div>
-          </div>
-        </>
+            {records.length > visibleRecords.length && (
+              <p className="rp-note">Showing {visibleRecords.length} of {records.length} records - the full list is in the PDF export.</p>
+            )}
+          </section>
+        </div>
       )}
     </div>
   );

@@ -16,6 +16,8 @@ import {
 } from "../components/Icons.jsx";
 
 const MEALS_PER_KG = 2;
+// Same factor DashboardService uses for the donor/admin CO2 figure.
+const CO2_KG_PER_KG_FOOD = 2.5;
 
 function BeneficiaryImpact({ user }) {
   const [tickets, setTickets] = useState([]);
@@ -32,19 +34,35 @@ function BeneficiaryImpact({ user }) {
   const collectedKg = Math.round(collectedTickets.reduce((sum, t) => sum + (t.quantityKg || 0), 0) * 10) / 10;
   const mealsReceived = Math.round(collectedKg * MEALS_PER_KG);
   const peopleFed = Math.round(mealsReceived / 3);
+  // Farms take expired stock for feed and compost, so meals and people fed
+  // would be the wrong story - they divert waste and the emissions it causes.
+  const isFarm = user.role === "farm";
+  const co2Avoided = Math.round(collectedKg * CO2_KG_PER_KG_FOOD * 10) / 10;
 
   return (
     <div className="dashboard-container">
       <div className="page-header">
         <h1 className="welcome-title">Your Impact</h1>
-        <p className="welcome-sub">Food collected and distributed through {user.organizationName || "your organization"}.</p>
+        <p className="welcome-sub">
+          {isFarm
+            ? `Expired food turned into animal feed and compost by ${user.organizationName || "your farm"} instead of going to landfill.`
+            : `Food collected and distributed through ${user.organizationName || "your organization"}.`}
+        </p>
       </div>
 
       <div className="grid-4 stats-grid">
-        <StatMiniCard icon={<IconForkKnife size={28} color="var(--primary)" />} label="Meals Received" value={mealsReceived} sub={`${collectedKg} kg collected to date`} />
+        {isFarm ? (
+          <StatMiniCard icon={<IconDonations size={28} color="var(--primary)" />} label="Diverted from Landfill" value={`${collectedKg} kg`} sub="Expired food collected to date" />
+        ) : (
+          <StatMiniCard icon={<IconForkKnife size={28} color="var(--primary)" />} label="Meals Received" value={mealsReceived} sub={`${collectedKg} kg collected to date`} />
+        )}
         <StatMiniCard icon={<IconInbox size={28} color="var(--primary)" />} label="Pending Requests" value={pendingRequests.length} sub="Awaiting donor approval" />
         <StatMiniCard icon={<IconTicket size={28} color="var(--primary)" />} label="Ready for Pickup" value={readyForPickup.length} sub="Active collection tickets" />
-        <StatMiniCard icon={<IconStatPeople size={28} color="var(--primary)" />} label="People Fed" value={peopleFed} sub="Estimated from meals collected" />
+        {isFarm ? (
+          <StatMiniCard icon={<IconStatCO2 size={28} color="var(--primary)" />} label="CO₂ Avoided" value={`${co2Avoided} kg`} sub="Estimated from food diverted" />
+        ) : (
+          <StatMiniCard icon={<IconStatPeople size={28} color="var(--primary)" />} label="People Fed" value={peopleFed} sub="Estimated from meals collected" />
+        )}
       </div>
 
       <div className="card" style={{ marginTop: 10 }}>
@@ -55,7 +73,11 @@ function BeneficiaryImpact({ user }) {
           </h3>
         </div>
         {tickets.length === 0 ? (
-          <div className="empty-state">No collections yet — browse available food to make your first request.</div>
+          <div className="empty-state">
+            {isFarm
+              ? "No collections yet — browse expired food to make your first request."
+              : "No collections yet — browse available food to make your first request."}
+          </div>
         ) : (
           <div className="impact-mini-grid">
             <div className="impact-mini-card">
@@ -73,7 +95,7 @@ function BeneficiaryImpact({ user }) {
               </div>
               <div className="impact-mini-info">
                 <div className="val">{collectedKg} KG</div>
-                <div className="lbl">Total Food Received</div>
+                <div className="lbl">{isFarm ? "Received for Feed / Compost" : "Total Food Received"}</div>
               </div>
             </div>
           </div>

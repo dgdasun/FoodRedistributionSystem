@@ -25,9 +25,8 @@ export const NAV_BY_ROLE = {
     { to: "/dashboard", label: "Dashboard", short: "Home", Icon: IconDashboard },
     { to: "/donations", label: "My Donations", short: "Donations", Icon: IconDonations },
     { to: "/requests", label: "Food Requests", short: "Requests", Icon: IconInbox },
-    { to: "/tickets", label: "Pickup Tickets", short: "Tickets", Icon: IconTicket },
-    { to: "/impact", label: "Impact", short: "Impact", Icon: IconImpact },
     { to: "/pickups", label: "Pickup History", short: "History", Icon: IconTruck },
+    { to: "/impact", label: "Impact", short: "Impact", Icon: IconImpact },
     { to: "/profile", label: "Profile", short: "Profile", Icon: IconUser },
   ],
   beneficiary: [
@@ -43,6 +42,7 @@ export const NAV_BY_ROLE = {
     { to: "/browse", label: "Expired Food", short: "Browse", Icon: IconFoodPlate },
     { to: "/my-requests", label: "My Requests", short: "Requests", Icon: IconInbox },
     { to: "/tickets", label: "My Tickets", short: "Tickets", Icon: IconTicket },
+    { to: "/impact", label: "Impact", short: "Impact", Icon: IconImpact },
     { to: "/profile", label: "Profile", short: "Profile", Icon: IconUser },
   ],
   admin: [

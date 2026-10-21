@@ -756,9 +756,15 @@ p { margin: 0; line-height: 1.55; }
 
 .impact-mini-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  /* minmax(0, ...) lets the tiles shrink below their content width; plain 1fr
+     forced the card - and the whole page - wider than a phone screen. */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   margin-top: 12px;
+}
+.impact-card-custom { min-width: 0; }
+@media (max-width: 620px) {
+  .impact-mini-grid { grid-template-columns: 1fr; }
 }
 
 .impact-mini-card {
@@ -1219,6 +1225,13 @@ p { margin: 0; line-height: 1.55; }
   display: flex;
   align-items: center;
   justify-content: flex-end;
+}
+.next-pickup-card,
+.next-pickup-left { min-width: 0; }
+/* The truck illustration is decoration; on a phone it would push the card
+   past the screen edge, so the pickup details get the full width instead. */
+@media (max-width: 620px) {
+  .next-pickup-graphic { display: none; }
 }
 
 /* ---------- Buttons & Forms ---------- */
@@ -1769,107 +1782,6 @@ tbody tr:hover { background: var(--surface-muted); }
 }
 
 /* ---------- Chatbot ---------- */
-.chat-fab {
-  position: fixed;
-  bottom: 26px;
-  right: 26px;
-  width: 54px;
-  height: 54px;
-  border-radius: 50%;
-  background: var(--primary-strong);
-  color: white;
-  font-size: 22px;
-  border: none;
-  box-shadow: 0 6px 20px rgba(56, 126, 1, 0.35);
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.chat-window {
-  position: fixed;
-  bottom: 90px;
-  right: 26px;
-  width: 330px;
-  height: 440px;
-  background: var(--surface);
-  border-radius: 18px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  z-index: 50;
-  border: 1px solid var(--border);
-}
-
-.chat-header {
-  background: var(--primary-strong);
-  color: white;
-  padding: 14px 18px;
-  font-weight: 700;
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.chat-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.chat-msg {
-  padding: 10px 14px;
-  border-radius: 14px;
-  font-size: 13px;
-  max-width: 85%;
-  line-height: 1.4;
-  white-space: pre-line;
-}
-
-.chat-msg.bot {
-  background: var(--surface-muted);
-  color: var(--text-dark);
-  align-self: flex-start;
-  border-bottom-left-radius: 3px;
-}
-
-.chat-msg.user {
-  background: var(--primary-strong);
-  color: white;
-  align-self: flex-end;
-  border-bottom-right-radius: 3px;
-}
-
-.chat-input-row {
-  display: flex;
-  border-top: 1px solid var(--border);
-}
-
-.chat-input-row input {
-  flex: 1;
-  border: none;
-  padding: 12px 14px;
-  font-size: 13px;
-}
-
-.chat-input-row input:focus {
-  outline: none;
-}
-
-.chat-input-row button {
-  background: var(--primary-strong);
-  color: white;
-  border: none;
-  padding: 0 18px;
-  font-weight: 600;
-}
-
 .loading-wrap {
   display: flex;
   align-items: center;
@@ -2566,17 +2478,7 @@ select.auth-input {
     padding: 16px 16px calc(76px + env(safe-area-inset-bottom)) 16px;
   }
 
-  /* The chat launcher and its panel sit above the tab bar, not behind it. */
-  .chat-fab {
-    bottom: calc(74px + env(safe-area-inset-bottom));
-  }
-
-  .chat-window {
-    bottom: calc(138px + env(safe-area-inset-bottom));
-    right: 16px;
-    left: 16px;
-    width: auto;
-  }
+  /* The chat launcher's mobile position lives in styles/chatbot.css. */
 
   .card {
     padding: 18px 16px;

@@ -78,7 +78,7 @@ function AppRoutes() {
       {/* Beneficiary / farm — also public: guests and pending accounts can browse read-only */}
       <Route path="/browse" element={<BrowseRoute />} />
       <Route path="/my-requests" element={<Protected roles={["beneficiary", "farm"]} requireVerified><MyRequests /></Protected>} />
-      <Route path="/tickets" element={<Protected roles={["beneficiary", "farm", "donor"]} requireVerified><Tickets /></Protected>} />
+      <Route path="/tickets" element={<Protected roles={["beneficiary", "farm"]} requireVerified><Tickets /></Protected>} />
 
       {/* Admin */}
       <Route path="/admin/users" element={<Protected roles={["admin"]}><AdminUsers /></Protected>} />

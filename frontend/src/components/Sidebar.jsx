@@ -46,29 +46,32 @@ export default function Sidebar() {
         {items.map((item) => {
           const ItemIcon = item.Icon;
           return (
-            <li key={item.to}>
-              <NavLink
-                to={item.to}
-                className={({ isActive }) => "nav-item" + (isActive ? " active" : "")}
-              >
-                <span className="ico">
-                  <ItemIcon size={19} color="currentColor" />
-                </span>
-                <span className="nav-label">{item.label}</span>
-              </NavLink>
-            </li>
+            <React.Fragment key={item.to}>
+              <li>
+                <NavLink
+                  to={item.to}
+                  className={({ isActive }) => "nav-item" + (isActive ? " active" : "")}
+                >
+                  <span className="ico">
+                    <ItemIcon size={19} color="currentColor" />
+                  </span>
+                  <span className="nav-label">{item.label}</span>
+                </NavLink>
+              </li>
+              {/* The scanner opens a pop-up rather than a route, so it sits beside Pickup History here instead of in nav.js. */}
+              {item.to === "/pickups" && user?.role === "donor" && (
+                <li>
+                  <button className="nav-item" onClick={openScanner}>
+                    <span className="ico">
+                      <IconScan size={19} />
+                    </span>
+                    <span className="nav-label">Scan QR Code</span>
+                  </button>
+                </li>
+              )}
+            </React.Fragment>
           );
         })}
-        {user?.role === "donor" && (
-          <li>
-            <button className="nav-item" onClick={openScanner}>
-              <span className="ico">
-                <IconScan size={19} />
-              </span>
-              <span className="nav-label">Scan QR Code</span>
-            </button>
-          </li>
-        )}
         <li>
           <NavLink to="/help" className={({ isActive }) => "nav-item" + (isActive ? " active" : "")}>
             <span className="ico">

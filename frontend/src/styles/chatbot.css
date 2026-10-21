@@ -1,0 +1,299 @@
+/* Floating assistant (components/Chatbot.jsx). Replaces the old chat-* rules
+   in index.css. Theme tokens only, so dark mode follows. */
+
+/* ---------- Launcher ---------- */
+.cb-fab {
+  position: fixed;
+  right: 26px;
+  bottom: 26px;
+  z-index: 55;
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  background: linear-gradient(140deg, #4f9410, #2c6a02 60%, #0c4002);
+  box-shadow: 0 14px 30px -10px rgba(56, 126, 1, 0.75), 0 0 0 4px rgba(141, 198, 63, 0.18);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.cb-fab:hover { transform: translateY(-2px) scale(1.04); }
+.cb-fab:focus-visible { outline: none; box-shadow: 0 0 0 4px var(--ring-primary); }
+.cb-fab-icon {
+  grid-area: 1 / 1;
+  display: grid;
+  place-items: center;
+  transition: transform 0.25s ease, opacity 0.2s ease;
+}
+.cb-fab-close { opacity: 0; transform: rotate(-90deg) scale(0.6); }
+.cb-fab.open .cb-fab-chat { opacity: 0; transform: rotate(90deg) scale(0.6); }
+.cb-fab.open .cb-fab-close { opacity: 1; transform: none; }
+
+/* ---------- Window ---------- */
+.cb-window {
+  position: fixed;
+  right: 26px;
+  bottom: 98px;
+  z-index: 55;
+  display: flex;
+  flex-direction: column;
+  width: 380px;
+  height: min(560px, calc(100vh - 130px));
+  border-radius: 24px;
+  border: 1px solid var(--card-border);
+  background: var(--surface);
+  box-shadow: 0 30px 60px -20px rgba(12, 40, 4, 0.35), var(--shadow-md);
+  overflow: hidden;
+  transform-origin: bottom right;
+}
+
+.cb-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 16px 14px 16px 16px;
+  color: #fff;
+  background: linear-gradient(125deg, #0c4002 0%, #2c6a02 55%, #4f9410 100%);
+  overflow: hidden;
+}
+.cb-header::after {
+  content: "";
+  position: absolute;
+  right: -40px;
+  top: -60px;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.07);
+  pointer-events: none;
+}
+.cb-title { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.cb-title strong { font-size: 15px; font-weight: 800; letter-spacing: -0.01em; }
+.cb-title span { font-size: 12px; color: rgba(255, 255, 255, 0.78); }
+.cb-head-btn {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.cb-head-btn:hover { background: rgba(255, 255, 255, 0.2); }
+
+.cb-avatar {
+  position: relative;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid var(--card-border);
+}
+.cb-avatar-lg { width: 40px; height: 40px; border: 0; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); }
+.cb-online {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #8dc63f;
+  border: 2px solid #2c6a02;
+}
+
+/* ---------- Messages ---------- */
+.cb-body {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 14px 10px;
+  background:
+    radial-gradient(circle at 100% 0%, var(--primary-lighter), transparent 45%),
+    var(--surface-sunken);
+  scrollbar-width: thin;
+}
+.cb-day {
+  align-self: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-light);
+  background: var(--surface);
+  border: 1px solid var(--card-border);
+}
+
+.cb-row { display: flex; align-items: flex-end; gap: 8px; max-width: 100%; }
+.cb-user { justify-content: flex-end; }
+.cb-stack { display: flex; flex-direction: column; gap: 3px; max-width: 80%; min-width: 0; }
+.cb-user .cb-stack { align-items: flex-end; }
+
+.cb-bubble {
+  padding: 10px 13px;
+  border-radius: 18px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  animation: cb-in 0.25s ease;
+}
+.cb-bot .cb-bubble {
+  color: var(--text-dark);
+  background: var(--surface);
+  border: 1px solid var(--card-border);
+  border-bottom-left-radius: 6px;
+  box-shadow: var(--shadow);
+}
+.cb-user .cb-bubble {
+  color: #fff;
+  background: linear-gradient(135deg, #4f9410, #387e01);
+  border-bottom-right-radius: 6px;
+  box-shadow: 0 8px 18px -12px rgba(56, 126, 1, 0.9);
+}
+.cb-bot .cb-error {
+  color: var(--status-danger-fg);
+  background: var(--status-danger-bg);
+  border-color: var(--status-danger-border);
+}
+.cb-retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.cb-time { padding: 0 4px; font-size: 10.5px; color: var(--text-light); }
+@keyframes cb-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+.cb-typing { display: inline-flex; align-items: center; gap: 4px; padding: 13px 14px; }
+.cb-typing i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-light);
+  animation: cb-dot 1.2s ease-in-out infinite;
+}
+.cb-typing i:nth-child(2) { animation-delay: 0.15s; }
+.cb-typing i:nth-child(3) { animation-delay: 0.3s; }
+@keyframes cb-dot { 0%, 60%, 100% { transform: translateY(0); opacity: 0.4; } 30% { transform: translateY(-4px); opacity: 1; } }
+
+.cb-suggest {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 2px 0 0 36px;
+}
+.cb-suggest > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-light);
+}
+.cb-suggest button {
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--ring-primary);
+  background: var(--surface);
+  color: var(--primary);
+  font-size: 12.5px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+.cb-suggest button:hover { background: var(--primary-light); border-color: var(--primary); transform: translateX(2px); }
+
+/* ---------- Composer ---------- */
+.cb-composer {
+  padding: 10px 12px 8px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+.cb-input {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 5px 5px 5px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--surface-inset);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+.cb-input:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px var(--ring-primary); background: var(--surface); }
+.cb-input textarea {
+  flex: 1;
+  min-width: 0;
+  min-height: 36px;
+  max-height: 104px;
+  padding: 8px 0;
+  border: 0;
+  outline: 0;
+  resize: none;
+  background: transparent;
+  box-shadow: none;
+  font: inherit;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--text-dark);
+}
+.cb-input textarea:focus { box-shadow: none; }
+.cb-send {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  background: var(--primary-strong);
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+.cb-send:hover:not(:disabled) { transform: scale(1.06); }
+.cb-send:disabled { opacity: 0.35; cursor: not-allowed; }
+.cb-foot { display: block; margin-top: 6px; text-align: center; font-size: 10.5px; color: var(--text-light); }
+
+/* ---------- Mobile: sit above the bottom tab bar ---------- */
+@media (max-width: 620px) {
+  .cb-fab { right: 16px; bottom: calc(74px + env(safe-area-inset-bottom)); width: 54px; height: 54px; }
+  .cb-window {
+    left: 12px;
+    right: 12px;
+    width: auto;
+    bottom: calc(138px + env(safe-area-inset-bottom));
+    height: min(520px, calc(100vh - 170px));
+    border-radius: 22px;
+  }
+  .cb-foot { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cb-bubble, .cb-typing i { animation: none; }
+  .cb-fab-icon { transition: none; }
+}

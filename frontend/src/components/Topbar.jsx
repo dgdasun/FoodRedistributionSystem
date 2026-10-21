@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { AlertTriangle, Bell, CheckCheck, Clock, HandHeart, Sprout, Ticket } from "lucide-react";
 import { useAuth } from "../AuthContext.jsx";
 import { useFoodAlerts } from "../FoodAlertContext.jsx";
 import { api } from "../api.js";
@@ -8,18 +9,35 @@ import { IconBell } from "./Icons.jsx";
 import ThemeToggle from "./ThemeToggle.jsx";
 import { navItemsFor } from "../nav.js";
 import { avatarUrl } from "../avatar.js";
+import "../styles/notifications.css";
 
 const EXTRA_TITLES = { "/help": "Help & Support", "/profile": "Profile" };
+const MAX_SHOWN = 20;
 
-// Accent dot color per notification type. Urgent gets the alarm red, warning
-// gets amber, and the composting reroute ("info") gets a calm green — it's a
-// status update, not something gone wrong.
-function dotColor(type) {
-  if (type === "urgent") return "var(--danger)";
-  if (type === "warning") return "#D97706";
-  if (type === "info") return "var(--primary)";
-  return "var(--text-light)"; // backend system/request/ticket notifications — neutral
+// Icon tile per notification type. Urgent gets the alarm red, warning amber,
+// and the composting reroute ("info") a calm green — it's a status update, not
+// something gone wrong. Backend notifications carry no title, so the type
+// supplies one.
+const TYPE_META = {
+  urgent: { Icon: AlertTriangle, title: "Urgent" },
+  warning: { Icon: Clock, title: "Expiring soon" },
+  info: { Icon: Sprout, title: "Update" },
+  request: { Icon: HandHeart, title: "Food request" },
+  ticket: { Icon: Ticket, title: "Pickup ticket" },
+  system: { Icon: Bell, title: "Notification" },
+};
+
+const metaFor = (type) => (TYPE_META[type] ? { key: type, ...TYPE_META[type] } : { key: "system", ...TYPE_META.system });
+
+// Alert messages repeat their title ("🌱 Rerouted to Composting: Rolls is…");
+// drop that prefix since the title is already shown above the message.
+function stripTitle(message, title) {
+  if (!message || !title) return message;
+  const rest = message.replace(/^[^\p{L}\p{N}]+/u, "");
+  return rest.startsWith(title) ? rest.slice(title.length).replace(/^[\s:–—-]+/, "") : message;
 }
+
+const isToday = (d) => new Date(d).toDateString() === new Date().toDateString();
 
 export default function Topbar() {
   const { user } = useAuth();
@@ -89,14 +107,56 @@ export default function Topbar() {
 
   // Opening the dropdown counts as "viewing" the notifications, so clear the
   // unread badge then — not only when the user explicitly hits "Mark all read".
+  // The ids that were unread at that moment stay highlighted as "new" while the
+  // panel is open, otherwise the highlight would vanish before it's seen.
+  const [freshIds, setFreshIds] = useState(() => new Set());
+  const wrapRef = useRef(null);
+
   const toggleOpen = () => {
-    setOpen((prevOpen) => {
-      const nextOpen = !prevOpen;
-      if (nextOpen && totalUnread > 0) {
-        markAllRead();
-      }
-      return nextOpen;
-    });
+    if (!open) {
+      setFreshIds(new Set(combined.filter((n) => !n.read).map((n) => n.id)));
+      if (totalUnread > 0) markAllRead();
+    }
+    setOpen(!open);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e) => wrapRef.current && !wrapRef.current.contains(e.target) && setOpen(false);
+    const onKey = (e) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const shown = combined.slice(0, MAX_SHOWN);
+  const groups = [
+    { label: "Today", items: shown.filter((n) => isToday(n.createdAt)) },
+    { label: "Earlier", items: shown.filter((n) => !isToday(n.createdAt)) },
+  ].filter((g) => g.items.length > 0);
+
+  const renderItem = (n) => {
+    const meta = metaFor(n.type);
+    const title = n.title || meta.title;
+    const isNew = freshIds.has(n.id) || !n.read;
+    return (
+      <button key={n.id} type="button" className={`notif-item${isNew ? " is-new" : ""}`} onClick={() => markOneRead(n)}>
+        <span className={`notif-icon t-${meta.key}`}>
+          <meta.Icon size={17} strokeWidth={2.2} />
+        </span>
+        <span className="notif-body">
+          <span className="notif-row">
+            <span className="notif-title">{title}</span>
+            <span className="notif-time">{timeAgo(n.createdAt)}</span>
+          </span>
+          <span className="notif-msg">{stripTitle(n.message, title)}</span>
+        </span>
+        {isNew && <span className="notif-dot" aria-label="New" />}
+      </button>
+    );
   };
 
   const roleLabel = {
@@ -120,83 +180,56 @@ export default function Topbar() {
       </div>
       <div className="topbar-actions">
         <ThemeToggle />
-        <div className="bell-wrap" onClick={toggleOpen}>
-          <div className="bell-circle">
+        <div className="bell-wrap" ref={wrapRef}>
+          <div className="bell-circle" onClick={toggleOpen} role="button" aria-label="Notifications" aria-expanded={open}>
             <IconBell size={20} color="var(--primary)" />
             {totalUnread > 0 && <span className="bell-badge">{totalUnread}</span>}
           </div>
           {open && (
-            <div
-              style={{
-                position: "absolute",
-                right: 0,
-                top: 40,
-                width: 320,
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-                borderRadius: 14,
-                boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
-                zIndex: 50,
-                maxHeight: 360,
-                overflowY: "auto",
-              }}
-            >
-              <div
-                style={{
-                  padding: "12px 16px",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  borderBottom: "1px solid var(--border)",
-                }}
-              >
-                <strong style={{ fontSize: 13.5, color: "var(--text-dark)" }}>Notifications</strong>
-                <span
-                  style={{ fontSize: 12, color: "var(--primary)", cursor: "pointer", fontWeight: 600 }}
-                  onClick={markAllRead}
-                >
-                  Mark all read
+            <div className="notif-panel" role="dialog" aria-label="Notifications">
+              <div className="notif-head">
+                <span className="notif-head-title">
+                  Notifications
+                  {freshIds.size > 0 && <span className="notif-count">{freshIds.size} new</span>}
                 </span>
+                <button
+                  type="button"
+                  className="notif-mark-all"
+                  onClick={() => {
+                    markAllRead();
+                    setFreshIds(new Set());
+                  }}
+                  disabled={freshIds.size === 0 && totalUnread === 0}
+                >
+                  <CheckCheck size={15} />
+                  Mark all read
+                </button>
               </div>
-              {combined.length === 0 && (
-                <div style={{ padding: 24, fontSize: 13, color: "var(--text-light)", textAlign: "center" }}>
-                  No notifications yet — all caught up! 🌱
+
+              {combined.length === 0 ? (
+                <div className="notif-empty">
+                  <span className="notif-empty-icon">
+                    <Bell size={22} />
+                  </span>
+                  <strong>You're all caught up</strong>
+                  <span>New alerts about your food and requests will show up here.</span>
+                </div>
+              ) : (
+                <div className="notif-list">
+                  {groups.map((g) => (
+                    <div key={g.label}>
+                      <div className="notif-group">{g.label}</div>
+                      {g.items.map(renderItem)}
+                    </div>
+                  ))}
                 </div>
               )}
-              {combined.slice(0, 8).map((n) => (
-                <div
-                  key={n.id}
-                  onClick={() => markOneRead(n)}
-                  style={{
-                    padding: "11px 16px",
-                    fontSize: 12.5,
-                    borderBottom: "1px solid var(--border)",
-                    background: n.read ? "var(--surface)" : "var(--primary-lighter)",
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: 8,
-                    cursor: n.read ? "default" : "pointer",
-                  }}
-                >
-                  <span
-                    style={{
-                      width: 7,
-                      height: 7,
-                      marginTop: 4,
-                      borderRadius: "50%",
-                      background: dotColor(n.type),
-                      flexShrink: 0,
-                    }}
-                  />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    {n.title && (
-                      <div style={{ fontWeight: 600, color: "var(--text-dark)", marginBottom: 2 }}>{n.title}</div>
-                    )}
-                    <div style={{ color: "var(--text-mid)" }}>{n.message}</div>
-                    <div style={{ fontSize: 11, color: "var(--text-light)", marginTop: 3 }}>{timeAgo(n.createdAt)}</div>
-                  </div>
+
+              {combined.length > MAX_SHOWN && (
+                <div className="notif-foot">
+                  Showing the latest {MAX_SHOWN} of {combined.length}
                 </div>
-              ))}
+              )}
             </div>
           )}
         </div>

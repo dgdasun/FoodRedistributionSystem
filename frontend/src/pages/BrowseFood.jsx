@@ -2,21 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../AuthContext.jsx";
 import { api } from "../api.js";
-import {
-  Search,
-  SlidersHorizontal,
-  X,
-  List,
-  Map as MapIcon,
-  MapPin,
-  Minus,
-  Plus,
-  Lock,
-  Hourglass,
-  Info,
-  Package,
-  Sparkles,
-} from "lucide-react";
+import { IconPackageBox, IconMapPin } from "../components/Icons.jsx";
+import { Search, SlidersHorizontal, X, List, Map as MapIcon } from "lucide-react";
 import { useLiveData } from "../hooks/useLiveData.js";
 import FreshnessMeter, { freshnessOf } from "../components/FreshnessMeter.jsx";
 import { SkeletonGrid } from "../components/Skeleton.jsx";
@@ -25,16 +12,6 @@ import { useToast } from "../components/Toast.jsx";
 import SuccessBurst from "../components/SuccessBurst.jsx";
 import FoodMap from "../components/FoodMap.jsx";
 import { imageFor } from "../foodImages.js";
-
-const URGENCIES = ["critical", "high", "medium", "low"];
-
-function useEscape(onClose) {
-  useEffect(() => {
-    const onKey = (e) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-}
 
 function RequestModal({ item, user, onClose }) {
   const max = Number(item.quantityKg) || 1;
@@ -77,120 +54,52 @@ function RequestModal({ item, user, onClose }) {
   };
 
   return (
-    <div className="bx-modal-backdrop" onClick={onClose}>
-      <div
-        className="bx-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-label={`Request ${item.name}`}
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div
+      style={{
+        position: "fixed", inset: 0, background: "var(--overlay)",
+        display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60,
+      }}
+      onClick={onClose}
+    >
+      <div className="card" style={{ width: 380 }} onClick={(e) => e.stopPropagation()}>
         {done ? (
-          <div className="bx-modal-center">
-            <SuccessBurst
-              title="Request submitted"
-              message={`${qty} kg of ${item.name}. The donor has been notified - you'll get a collection ticket once approved.`}
-            >
-              <button className="bx-btn primary" style={{ marginTop: 6 }} onClick={onClose}>
-                Done
-              </button>
-            </SuccessBurst>
-          </div>
+          <SuccessBurst
+            title="Request submitted"
+            message={`${quantityKg} kg of ${item.name}. The donor has been notified - you'll get a collection ticket once approved.`}
+          >
+            <button className="btn btn-primary" style={{ marginTop: 6 }} onClick={onClose}>
+              Done
+            </button>
+          </SuccessBurst>
         ) : (
-          <>
-            <div className="bx-modal-media">
-              <img src={imageFor(item.category)} alt="" />
-              <button type="button" className="bx-modal-close" onClick={onClose} aria-label="Close">
-                <X size={16} />
-              </button>
-              <div className="bx-modal-media-text">
-                <small>{item.category}</small>
-                <h3>{item.name}</h3>
-              </div>
+          <form onSubmit={submit} className={shake ? "shake" : undefined}>
+            <h3 style={{ marginTop: 0 }}>Request: {item.name}</h3>
+            <p style={{ fontSize: 12.5, color: "var(--text-light)", marginTop: -8 }}>
+              {item.quantityKg} kg available · {item.pickupLocation}
+            </p>
+            <div className="form-row">
+              <label>Quantity needed (kg)</label>
+              <input type="number" max={item.quantityKg} min={1} value={quantityKg} onChange={(e) => setQuantityKg(e.target.value)} required />
             </div>
-
-            <form onSubmit={submit} className={`bx-modal-body${shake ? " shake" : ""}`}>
-              <div className="bx-modal-meta">
-                <span>
-                  <Package size={14} /> {item.quantityKg} kg available
-                </span>
-                <span>
-                  <MapPin size={14} /> {item.pickupLocation}
-                </span>
-              </div>
-
-              <div className="bx-field">
-                <div className="bx-field-label">
-                  <span>How much do you need?</span>
-                  <span>max {max} kg</span>
-                </div>
-                <div className="bx-stepper">
-                  <button type="button" onClick={() => setQty(qty - 1)} disabled={qty <= 1} aria-label="Decrease quantity">
-                    <Minus size={16} />
-                  </button>
-                  <input
-                    type="number"
-                    min={1}
-                    max={max}
-                    value={quantityKg}
-                    onChange={(e) => setQuantityKg(e.target.value)}
-                    onBlur={() => setQty(qty || 1)}
-                    aria-label="Quantity in kilograms"
-                    required
-                  />
-                  <button type="button" onClick={() => setQty(qty + 1)} disabled={qty >= max} aria-label="Increase quantity">
-                    <Plus size={16} />
-                  </button>
-                </div>
-                {quickPicks.length > 1 && (
-                  <div className="bx-quick">
-                    {quickPicks.map((v) => (
-                      <button
-                        key={v}
-                        type="button"
-                        className={qty === v ? "bx-toggle active" : "bx-toggle"}
-                        onClick={() => setQty(v)}
-                      >
-                        {v === max ? `All ${v} kg` : `${v} kg`}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="bx-field">
-                <div className="bx-field-label">
-                  <span>Urgency</span>
-                </div>
-                <div className="bx-urgency" role="radiogroup" aria-label="Urgency">
-                  {URGENCIES.map((u) => (
-                    <button
-                      key={u}
-                      type="button"
-                      role="radio"
-                      aria-checked={urgency === u}
-                      className={urgency === u ? `active ${u}` : u}
-                      onClick={() => setUrgency(u)}
-                    >
-                      <span className="bx-dot" />
-                      {u[0].toUpperCase() + u.slice(1)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {error && <p className="bx-form-error">{error}</p>}
-
-              <div className="bx-modal-actions">
-                <button type="button" className="bx-btn outline" onClick={onClose}>
-                  Cancel
-                </button>
-                <button className="bx-btn primary" disabled={busy}>
-                  {busy ? "Submitting…" : `Request ${qty || 0} kg`}
-                </button>
-              </div>
-            </form>
-          </>
+            <div className="form-row">
+              <label>Urgency</label>
+              <select value={urgency} onChange={(e) => setUrgency(e.target.value)}>
+                <option value="critical">Critical</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
+            </div>
+            {error && <p style={{ color: "var(--danger)", fontSize: 13 }}>{error}</p>}
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="btn btn-primary" style={{ flex: 1 }} disabled={busy}>
+                {busy ? "Submitting…" : "Submit Request"}
+              </button>
+              <button type="button" className="btn btn-outline" onClick={onClose}>
+                Cancel
+              </button>
+            </div>
+          </form>
         )}
       </div>
     </div>
@@ -201,33 +110,41 @@ function LockedModal({ mode, onClose }) {
   const isGuest = mode === "guest";
   useEscape(onClose);
   return (
-    <div className="bx-modal-backdrop" onClick={onClose}>
-      <div className="bx-modal" role="dialog" aria-modal="true" style={{ width: 400 }} onClick={(e) => e.stopPropagation()}>
-        <div className="bx-modal-center">
-          <div className="bx-empty-icon">{isGuest ? <Lock size={26} /> : <Hourglass size={26} />}</div>
-          {isGuest ? (
-            <>
-              <h3 style={{ margin: "0 0 6px" }}>Login required</h3>
-              <p>Please log in or register as a verified Beneficiary/NGO to claim food donations.</p>
-              <div className="bx-modal-actions">
-                <Link to="/login" className="bx-btn primary">
-                  Log in
-                </Link>
-                <Link to="/register" className="bx-btn outline">
-                  Register
-                </Link>
-              </div>
-            </>
-          ) : (
-            <>
-              <h3 style={{ margin: "0 0 6px" }}>Verification pending</h3>
-              <p>Your account is pending verification. Once approved by Admin, you can claim this item.</p>
-              <button className="bx-btn primary block" onClick={onClose}>
-                Got it
-              </button>
-            </>
-          )}
-        </div>
+    <div
+      style={{
+        position: "fixed", inset: 0, background: "var(--overlay)",
+        display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60,
+      }}
+      onClick={onClose}
+    >
+      <div className="card" style={{ width: 380, textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
+        <div style={{ fontSize: 34, marginBottom: 8 }}>{isGuest ? "🔒" : "⏳"}</div>
+        {isGuest ? (
+          <>
+            <h3 style={{ marginTop: 0 }}>Login required</h3>
+            <p style={{ fontSize: 13.5, color: "var(--text-mid)" }}>
+              Please log in or register as a verified Beneficiary/NGO to claim food donations.
+            </p>
+            <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+              <Link to="/login" className="btn btn-primary" style={{ flex: 1, justifyContent: "center" }}>
+                Log in
+              </Link>
+              <Link to="/register" className="btn btn-outline" style={{ flex: 1, justifyContent: "center" }}>
+                Register
+              </Link>
+            </div>
+          </>
+        ) : (
+          <>
+            <h3 style={{ marginTop: 0 }}>Verification pending</h3>
+            <p style={{ fontSize: 13.5, color: "var(--text-mid)" }}>
+              Your account is pending verification. Once approved by Admin, you can claim this item.
+            </p>
+            <button className="btn btn-primary" style={{ marginTop: 6 }} onClick={onClose}>
+              Got it
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
@@ -246,65 +163,64 @@ const SORTS = {
   name: { label: "Name A-Z", fn: (a, b) => String(a.name).localeCompare(String(b.name)) },
 };
 
-function FilterPanel({ categories, selected, onToggle, band, onBand, minKg, onMinKg, onReset, resultCount }) {
+const SORTS = [
+  { key: "expiry", label: "Expiring soonest", cmp: (a, b) => Number(a.daysUntilExpiry) - Number(b.daysUntilExpiry) },
+  { key: "qty", label: "Most quantity", cmp: (a, b) => Number(b.quantityKg) - Number(a.quantityKg) },
+  { key: "newest", label: "Newest", cmp: (a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")) },
+];
+
+function expiryText(item) {
+  const d = Number(item.daysUntilExpiry);
+  if (!Number.isFinite(d)) return "-";
+  if (d < 0) return "Past expiry";
+  if (d === 0) return "Today";
+  return `${d} day${d === 1 ? "" : "s"} left`;
+}
+
+function formatKg(n) {
+  return Number.isInteger(n) ? String(n) : n.toFixed(1);
+}
+
+function FilterPanel({ categories, counts, selected, onToggle, band, onBand, minKg, onMinKg, onReset, resultCount }) {
   return (
-    <aside className="bx-filters" aria-label="Filters">
-      <div className="bx-filters-head">
-        <h3>
-          <SlidersHorizontal size={16} color="var(--primary)" />
-          Filters
+    <div className="card browse-filters">
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+        <h3 style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 14 }}>
+          <SlidersHorizontal size={15} color="var(--primary)" />
+          Filter
         </h3>
-        <button type="button" className="bx-btn link" onClick={onReset}>
+        <button
+          type="button"
+          onClick={onReset}
+          style={{ fontSize: 12, color: "var(--text-light)", background: "none", border: "none" }}
+        >
           Reset
         </button>
       </div>
 
-      <div className="bx-filter-section">
-        <div className="bx-filter-label">
-          <span>Food type</span>
-          {selected.length > 0 && <span>{selected.length} selected</span>}
-        </div>
-        <div className="bx-toggle-grid">
-          {categories.map((c) => (
-            <button
-              key={c}
-              type="button"
-              className={selected.includes(c) ? "bx-toggle active" : "bx-toggle"}
-              aria-pressed={selected.includes(c)}
-              onClick={() => onToggle(c)}
-            >
-              {c}
-            </button>
-          ))}
-          {categories.length === 0 && <span className="filter-empty">No categories available.</span>}
-        </div>
+      <div className="filter-group">
+        <span className="filter-legend">Food type</span>
+        {categories.map((c) => (
+          <label key={c} className="filter-row">
+            <input type="checkbox" checked={selected.includes(c)} onChange={() => onToggle(c)} />
+            <span>{c}</span>
+          </label>
+        ))}
+        {categories.length === 0 && <p className="filter-empty">No categories available.</p>}
       </div>
 
-      <div className="bx-filter-section">
-        <div className="bx-filter-label">
-          <span>Expires within</span>
-        </div>
-        <div className="bx-toggle-grid" role="radiogroup" aria-label="Expires within">
-          {EXPIRY_BANDS.map((b) => (
-            <button
-              key={b.key}
-              type="button"
-              role="radio"
-              aria-checked={band === b.key}
-              className={band === b.key ? "bx-toggle active" : "bx-toggle"}
-              onClick={() => onBand(b.key)}
-            >
-              {b.label}
-            </button>
-          ))}
-        </div>
+      <div className="filter-group">
+        <span className="filter-legend">Expires within</span>
+        {EXPIRY_BANDS.map((b) => (
+          <label key={b.key} className="filter-row">
+            <input type="radio" name="expiry-band" checked={band === b.key} onChange={() => onBand(b.key)} />
+            <span>{b.label}</span>
+          </label>
+        ))}
       </div>
 
-      <div className="bx-filter-section">
-        <div className="bx-filter-label">
-          <span>Minimum quantity</span>
-          <span>{minKg === 0 ? "Any" : `${minKg}+ kg`}</span>
-        </div>
+      <div className="filter-group" style={{ borderBottom: "none", paddingBottom: 0 }}>
+        <span className="filter-legend">Minimum quantity</span>
         <input
           type="range"
           min={0}
@@ -312,20 +228,25 @@ function FilterPanel({ categories, selected, onToggle, band, onBand, minKg, onMi
           step={5}
           value={minKg}
           onChange={(e) => onMinKg(Number(e.target.value))}
-          className="bx-range"
+          className="filter-range"
           aria-label="Minimum quantity in kilograms"
         />
-        <div className="bx-range-scale">
-          <span>0</span>
-          <span>25</span>
-          <span>50 kg</span>
+        <div style={{ fontSize: 12.5, color: "var(--text-mid)", marginTop: 4 }}>
+          {minKg === 0 ? "Any quantity" : minKg + " kg or more"}
         </div>
-      </div>
+        <h3 className="bf-card-title">{item.name}</h3>
+        <p className="bf-card-location">
+          <MapPin size={14} /> {item.pickupLocation}
+        </p>
 
-      <div className="bx-filter-foot">
-        <strong>{resultCount}</strong> item{resultCount === 1 ? "" : "s"} match
+        <div className="bf-card-meter">
+          <FreshnessMeter item={item} />
+        </div>
+
+      <div className="filter-count">
+        {resultCount} item{resultCount === 1 ? "" : "s"} match
       </div>
-    </aside>
+    </div>
   );
 }
 
@@ -345,6 +266,7 @@ export default function BrowseFood() {
 
   const isFarm = user?.role === "farm";
   const canRequest = !!user && (user.role === "beneficiary" || user.role === "farm") && !!user.verified;
+  const actionLabel = !user ? "Request food" : canRequest ? "Request this item" : "Verification required";
 
   const { data, refresh } = useLiveData("/donations?published=true", { intervalMs: 20000 });
   const items = data?.donations;
@@ -360,35 +282,21 @@ export default function BrowseFood() {
     [relevant]
   );
 
-  const countByCat = useMemo(() => {
-    const m = {};
-    relevant.forEach((i) => (m[i.category] = (m[i.category] || 0) + 1));
-    return m;
-  }, [relevant]);
-
-  const summary = useMemo(() => {
-    const kg = relevant.reduce((s, i) => s + (Number(i.quantityKg) || 0), 0);
-    const urgent = relevant.filter((i) => freshnessOf(i).key === "urgent").length;
-    return { count: relevant.length, kg: Math.round(kg * 10) / 10, urgent };
-  }, [relevant]);
-
   // Every filter runs client-side over the live list, so typing or ticking a
   // box re-renders instantly instead of waiting on a round trip.
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     const bandDef = EXPIRY_BANDS.find((b) => b.key === band);
-    return relevant
-      .filter((i) => {
-        if (q && ![i.name, i.category, i.pickupLocation].filter(Boolean).some((f) => f.toLowerCase().includes(q))) {
-          return false;
-        }
-        if (cats.length && !cats.includes(i.category)) return false;
-        if (bandDef && bandDef.test && !bandDef.test(Number(i.daysUntilExpiry))) return false;
-        if (minKg > 0 && Number(i.quantityKg) < minKg) return false;
-        return true;
-      })
-      .sort(SORTS[sort].fn);
-  }, [relevant, query, cats, band, minKg, sort]);
+    return relevant.filter((i) => {
+      if (q && ![i.name, i.category, i.pickupLocation].filter(Boolean).some((f) => f.toLowerCase().includes(q))) {
+        return false;
+      }
+      if (cats.length && !cats.includes(i.category)) return false;
+      if (bandDef && bandDef.test && !bandDef.test(Number(i.daysUntilExpiry))) return false;
+      if (minKg > 0 && Number(i.quantityKg) < minKg) return false;
+      return true;
+    });
+  }, [relevant, query, cats, band, minKg]);
 
   const toggleCat = (c) => setCats((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]));
   const reset = () => {
@@ -398,7 +306,6 @@ export default function BrowseFood() {
     setQuery("");
   };
   const filtersActive = cats.length > 0 || band !== "" || minKg > 0 || query !== "";
-  const bandLabel = EXPIRY_BANDS.find((b) => b.key === band)?.label;
 
   const handleAction = (item) => {
     if (!user) return setLocked("guest");
@@ -409,68 +316,40 @@ export default function BrowseFood() {
 
   return (
     <>
-      <section className="bx-hero">
-        <div className="bx-hero-text">
-          <span className="bx-eyebrow">
-            <Sparkles size={13} /> {isFarm ? "Compost & feed" : "Live listings"}
-          </span>
-          <h1>{isFarm ? "Expired Food for Compost / Feed" : "Available Surplus Food"}</h1>
-          <p>
-            {isFarm
-              ? "Request expired items redirected for livestock feeding or composting."
-              : "Browse near-expiry food published by donors near you and request what your community needs."}
-          </p>
-        </div>
-        <div className="bx-stats">
-          <div className="bx-stat">
-            <span className="bx-stat-value">{loading ? "–" : summary.count}</span>
-            <span className="bx-stat-label">
-              <span className="bx-dot" style={{ background: "var(--primary)" }} /> Listings
-            </span>
-          </div>
-          <div className="bx-stat">
-            <span className="bx-stat-value">
-              {loading ? "–" : summary.kg}
-              <small>kg</small>
-            </span>
-            <span className="bx-stat-label">
-              <span className="bx-dot" style={{ background: "var(--status-info-fg)" }} /> Available
-            </span>
-          </div>
-          {!isFarm && (
-            <div className="bx-stat">
-              <span className="bx-stat-value">{loading ? "–" : summary.urgent}</span>
-              <span className="bx-stat-label">
-                <span className="bx-dot" style={{ background: "var(--warning)" }} /> Expiring soon
-              </span>
-            </div>
-          )}
-        </div>
-      </section>
+      <div className="page-header">
+        <h1>{isFarm ? "Expired Food for Compost / Feed" : "Available Surplus Food"}</h1>
+        <p>
+          {isFarm
+            ? "Request expired items redirected for livestock feeding or composting."
+            : "Browse near-expiry food published by donors and submit a request."}
+        </p>
+      </div>
 
       {!user && (
-        <div className="bx-notice info">
-          <Info size={18} color="var(--primary)" />
+        <div className="banner" style={{ background: "var(--sand-light)" }}>
           <div>
             <strong>You are browsing as a guest</strong>
-            Anyone can view available surplus food. Log in or register as a verified Beneficiary/NGO to claim items.
+            <p>Anyone can view available surplus food. Log in or register as a verified Beneficiary/NGO to claim items.</p>
           </div>
         </div>
       )}
 
       {user && !user.verified && (user.role === "beneficiary" || user.role === "farm") && (
-        <div className="bx-notice warn">
-          <Hourglass size={18} color="var(--status-warn-fg)" />
+        <div className="banner" style={{ background: "var(--status-warn-bg)" }}>
           <div>
             <strong>Your organization is pending verification</strong>
-            You can browse listings, but requests require admin verification first.
+            <p>You can browse listings, but requests require admin verification first.</p>
           </div>
         </div>
       )}
 
-      <div className="bx-toolbar">
-        <div className="bx-search">
-          <Search size={17} />
+      <div className="browse-toolbar">
+        <div className="browse-search">
+          <Search
+            size={16}
+            color="var(--text-light)"
+            style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)" }}
+          />
           <input
             type="search"
             value={query}
@@ -479,18 +358,11 @@ export default function BrowseFood() {
             aria-label="Search available food"
           />
           {query && (
-            <button type="button" onClick={() => setQuery("")} aria-label="Clear search" className="bx-search-clear">
-              <X size={13} />
+            <button type="button" onClick={() => setQuery("")} aria-label="Clear search" className="browse-search-clear">
+              <X size={14} color="var(--text-light)" />
             </button>
           )}
         </div>
-        <select className="bx-select" value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Sort listings">
-          {Object.entries(SORTS).map(([k, s]) => (
-            <option key={k} value={k}>
-              {s.label}
-            </option>
-          ))}
-        </select>
         <div className="view-switch" role="group" aria-label="Result view">
           <button
             type="button"
@@ -511,9 +383,8 @@ export default function BrowseFood() {
         </div>
         <button
           type="button"
-          className="bx-btn outline bx-filter-toggle"
+          className="btn btn-outline btn-sm browse-filter-toggle"
           onClick={() => setShowFilters((v) => !v)}
-          aria-expanded={showFilters}
         >
           <SlidersHorizontal size={14} />
           {filtersActive ? "Filters on" : "Filters"}
@@ -521,65 +392,34 @@ export default function BrowseFood() {
       </div>
 
       {categories.length > 0 && (
-        <div className="bx-chips" role="group" aria-label="Filter by food type">
+        <div className="category-chips" role="group" aria-label="Filter by food type">
           <button
             type="button"
-            className={cats.length === 0 ? "bx-chip text-only active" : "bx-chip text-only"}
+            className={cats.length === 0 ? "category-chip active" : "category-chip"}
             onClick={() => setCats([])}
             aria-pressed={cats.length === 0}
           >
-            All food <span className="bx-chip-count">{relevant.length}</span>
+            All food
           </button>
           {categories.map((c) => (
             <button
               key={c}
               type="button"
-              className={cats.includes(c) ? "bx-chip active" : "bx-chip"}
+              className={cats.includes(c) ? "category-chip active" : "category-chip"}
               onClick={() => toggleCat(c)}
               aria-pressed={cats.includes(c)}
             >
               <img src={imageFor(c)} alt="" />
               {c}
-              <span className="bx-chip-count">{countByCat[c]}</span>
             </button>
           ))}
         </div>
       )}
 
-      {filtersActive && (
-        <div className="bx-active-filters">
-          <span>
-            Showing <strong>{visible.length}</strong> of {relevant.length}
-          </span>
-          {query && (
-            <button type="button" className="bx-pill-x" onClick={() => setQuery("")}>
-              “{query}” <X size={12} />
-            </button>
-          )}
-          {cats.map((c) => (
-            <button key={c} type="button" className="bx-pill-x" onClick={() => toggleCat(c)}>
-              {c} <X size={12} />
-            </button>
-          ))}
-          {band && (
-            <button type="button" className="bx-pill-x" onClick={() => setBand("")}>
-              {bandLabel} <X size={12} />
-            </button>
-          )}
-          {minKg > 0 && (
-            <button type="button" className="bx-pill-x" onClick={() => setMinKg(0)}>
-              {minKg}+ kg <X size={12} />
-            </button>
-          )}
-          <button type="button" className="bx-btn link" onClick={reset}>
-            Clear all
-          </button>
-        </div>
-      )}
-
-      <div className={showFilters ? "bx-browse filters-open" : "bx-browse"}>
+      <div className={showFilters ? "browse-layout filters-open" : "browse-layout"}>
         <FilterPanel
           categories={categories}
+          counts={counts}
           selected={cats}
           onToggle={toggleCat}
           band={band}
@@ -591,45 +431,50 @@ export default function BrowseFood() {
         />
 
         <div>
-          {view === "map" && !loading && <FoodMap items={visible} onSelect={handleAction} actionLabel={actionLabel} />}
-          {view === "map" && loading && <div className="bx-empty">Loading map…</div>}
+          {view === "map" && !loading && (
+            <FoodMap
+              items={visible}
+              onSelect={handleAction}
+              actionLabel={!user ? "Request Food" : canRequest ? "Request This Item" : "Verification required"}
+            />
+          )}
+          {view === "map" && loading && <div className="card empty-state">Loading map…</div>}
 
-          <div className="bx-grid" hidden={view === "map"}>
+          <div className="browse-grid" hidden={view === "map"}>
             {loading && <SkeletonGrid count={6} />}
-
             {!loading &&
               visible.map((item) => {
                 const f = freshnessOf(item);
                 return (
-                  <HoverLift className="bx-food" key={item.id}>
-                    <div className="bx-food-media">
-                      <img src={imageFor(item.category)} alt={item.category} loading="lazy" />
-                      <span className="bx-badge bx-food-tag" style={{ background: f.tint, color: f.color }}>
+                  <HoverLift className="card food-card" key={item.id}>
+                    <div className="food-card-media">
+                      <img
+                        src={imageFor(item.category)}
+                        alt={item.category}
+                        loading="lazy"
+                      />
+                      <span className="food-card-chip" style={{ background: f.tint, color: f.color }}>
                         {f.label}
                       </span>
-                      <span className="bx-food-qty">
-                        <strong>{item.quantityKg}</strong>
-                        <span>kg</span>
+                      <span className="food-card-qty">
+                        <IconPackageBox size={13} color="currentColor" /> {item.quantityKg} kg
                       </span>
                     </div>
 
-                    <div className="bx-food-body">
-                      <span className="bx-food-cat">{item.category}</span>
-                      <strong className="bx-food-title">{item.name}</strong>
-                      <p className="bx-food-loc">
-                        <MapPin size={14} /> {item.pickupLocation}
+                    <div className="food-card-body">
+                      <span className="food-card-category">{item.category}</span>
+                      <strong className="food-card-title">{item.name}</strong>
+                      <p className="food-card-location">
+                        <IconMapPin size={14} color="var(--text-light)" /> {item.pickupLocation}
                       </p>
 
-                      <div className="bx-food-meter">
-                        <FreshnessMeter item={item} />
-                      </div>
+                      <FreshnessMeter item={item} />
 
                       <button
-                        className={canRequest || !user ? "bx-btn primary block" : "bx-btn ghost block"}
+                        className="btn btn-primary btn-sm food-card-action"
                         onClick={() => handleAction(item)}
                       >
-                        {!user || !canRequest ? <Lock size={14} /> : null}
-                        {actionLabel}
+                        {!user ? "Request Food" : canRequest ? "Request This Item" : "Verification required"}
                       </button>
                     </div>
                   </HoverLift>
@@ -638,20 +483,16 @@ export default function BrowseFood() {
           </div>
 
           {!loading && visible.length === 0 && view === "list" && (
-            <FadeIn className="bx-empty">
-              <div className="bx-empty-icon">
-                <Search size={26} />
-              </div>
-              <h3>{relevant.length === 0 ? "No listings right now" : "Nothing matches"}</h3>
-              <p>
-                {relevant.length === 0
-                  ? "Donors publish new surplus throughout the day - check back soon."
-                  : "Try a different search or loosen your filters."}
-              </p>
+            <FadeIn className="card empty-state">
+              {relevant.length === 0
+                ? "No listings available right now - check back soon."
+                : "No items match your search and filters."}
               {relevant.length > 0 && (
-                <button className="bx-btn outline" onClick={reset}>
-                  Clear filters
-                </button>
+                <div style={{ marginTop: 12 }}>
+                  <button className="btn btn-outline btn-sm" onClick={reset}>
+                    Clear filters
+                  </button>
+                </div>
               )}
             </FadeIn>
           )}
@@ -669,6 +510,6 @@ export default function BrowseFood() {
         />
       )}
       {locked && <LockedModal mode={locked} onClose={() => setLocked(null)} />}
-    </>
+    </div>
   );
 }
