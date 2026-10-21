@@ -721,6 +721,70 @@
   font-weight: 600;
   color: var(--text-mid);
 }
+.bf-field-label-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.bf-field-label-row span:last-child { color: var(--text-light); font-weight: 500; }
+
+/* Quantity stepper: - [ 10 ] + */
+.bf-stepper {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-inset);
+  overflow: hidden;
+}
+.bf-stepper button {
+  width: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--text-mid);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.bf-stepper button:hover:not(:disabled) { background: var(--surface-muted); color: var(--primary); }
+.bf-stepper button:disabled { opacity: 0.4; cursor: not-allowed; }
+.bf-stepper input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  border-radius: 0;
+  background: var(--surface);
+  color: var(--text-dark);
+  text-align: center;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  padding: 10px 6px;
+  -moz-appearance: textfield;
+}
+.bf-stepper input::-webkit-outer-spin-button,
+.bf-stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.bf-stepper input:focus { outline: 2px solid var(--primary); outline-offset: -2px; }
+
+.bf-quick { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.bf-quick-btn {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-mid);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 11px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.bf-quick-btn:hover { border-color: var(--primary); color: var(--primary); }
+.bf-quick-btn.active { background: var(--primary-light); border-color: var(--primary); color: var(--primary); }
 .bf-segment {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

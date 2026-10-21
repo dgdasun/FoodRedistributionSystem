@@ -99,6 +99,14 @@
 .mr-qty strong { font-size: 16px; font-weight: 800; color: var(--text-dark); }
 .mr-qty span { font-size: 11.5px; color: var(--text-light); }
 
+.mr-status { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+
+/* Submitted -> approved -> collected */
+.mr-progress { display: inline-flex; gap: 3px; }
+.mr-progress i { width: 16px; height: 4px; border-radius: 2px; background: var(--surface-muted); }
+.mr-progress i.on { background: var(--primary); }
+.mr-progress i.stop { background: var(--status-danger-fg); }
+
 .mr-badge,
 .mr-urgency {
   display: inline-flex;
