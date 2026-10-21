@@ -1,0 +1,386 @@
+/* Food Requests (donor) - request cards in place of the old table.
+   Colours come from the theme tokens in index.css, so dark mode follows.
+   Prefix `fr-` keeps clear of the `rq-` classes used by RequestDetailModal. */
+
+.fr-panel {
+  padding: 22px 24px 18px;
+}
+
+/* ---------- Toolbar ---------- */
+.fr-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.fr-tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--surface-muted);
+}
+
+.fr-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-mid);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+.fr-tab:hover { color: var(--text-dark); }
+.fr-tab.active {
+  background: var(--surface);
+  color: var(--primary);
+  box-shadow: var(--shadow);
+}
+.fr-tab:focus-visible,
+.fr-btn:focus-visible,
+.fr-select:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.fr-count {
+  min-width: 22px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--icon-chip);
+  color: var(--primary);
+  font-size: 11.5px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.fr-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.fr-select {
+  height: 40px;
+  padding: 0 34px 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238A9482' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")
+    no-repeat right 14px center;
+  color: var(--text-dark);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  appearance: none;
+  cursor: pointer;
+}
+
+.fr-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 260px;
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-light);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.fr-search:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--ring-primary);
+}
+.fr-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text-dark);
+  font: inherit;
+  font-size: 13.5px;
+}
+
+/* ---------- Cards ---------- */
+.fr-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 14px;
+}
+
+.fr-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 16px 14px 20px;
+  overflow: hidden;
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  background: var(--surface);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.fr-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--border);
+  box-shadow: var(--shadow-md);
+}
+.fr-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--card-border);
+}
+.fr-strip-ok::before { background: var(--status-ok-fg); }
+.fr-strip-warn::before { background: var(--status-warn-fg); }
+.fr-strip-danger::before { background: var(--status-danger-fg); }
+.fr-strip-info::before { background: var(--status-info-fg); }
+.fr-strip-violet::before { background: var(--status-violet-fg); }
+.fr-actionable {
+  background: linear-gradient(180deg, var(--primary-lighter), var(--surface) 46%);
+}
+
+.fr-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.fr-avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--icon-chip);
+  color: var(--primary);
+  font-weight: 800;
+  font-size: 16px;
+}
+.fr-avatar-farm {
+  background: var(--status-warn-bg);
+  color: var(--status-warn-fg);
+}
+
+.fr-who {
+  flex: 1;
+  min-width: 0;
+}
+.fr-name {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-dark);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.fr-verified {
+  display: inline-flex;
+  color: var(--status-ok-fg);
+}
+.fr-org {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+  color: var(--text-light);
+  font-size: 12px;
+}
+.fr-type {
+  padding: 1px 8px;
+  border-radius: 6px;
+  background: var(--status-ok-bg);
+  color: var(--status-ok-fg);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.fr-type-farm {
+  background: var(--status-warn-bg);
+  color: var(--status-warn-fg);
+}
+
+.fr-pill {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+.fr-pill-ok { background: var(--status-ok-bg); color: var(--status-ok-fg); }
+.fr-pill-warn { background: var(--status-warn-bg); color: var(--status-warn-fg); }
+.fr-pill-danger { background: var(--status-danger-bg); color: var(--status-danger-fg); }
+.fr-pill-info { background: var(--status-info-bg); color: var(--status-info-fg); }
+
+.fr-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.fr-dot-pulse {
+  animation: fr-pulse 1.4s ease-in-out infinite;
+}
+@keyframes fr-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 currentColor; }
+  50% { box-shadow: 0 0 0 4px transparent; }
+}
+
+.fr-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 14px 0 10px;
+  padding: 10px;
+  border-radius: 14px;
+  background: var(--surface-sunken);
+}
+.fr-item img {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  object-fit: cover;
+  background: var(--surface-muted);
+}
+.fr-item-text {
+  min-width: 0;
+}
+.fr-item-qty {
+  color: var(--text-mid);
+  font-size: 13.5px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.fr-item-qty strong {
+  color: var(--text-dark);
+  font-size: 15px;
+  font-weight: 800;
+}
+.fr-item-note {
+  margin-top: 2px;
+  color: var(--status-violet-fg);
+  font-size: 12px;
+  font-weight: 600;
+}
+.fr-item-cat {
+  margin-top: 2px;
+  color: var(--text-light);
+  font-size: 11.5px;
+}
+
+.fr-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  color: var(--text-mid);
+  font-size: 12.5px;
+}
+.fr-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.fr-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 14px;
+}
+
+.fr-status {
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.fr-status-ok { color: var(--status-ok-fg); }
+.fr-status-warn { color: var(--status-warn-fg); }
+.fr-status-danger { color: var(--status-danger-fg); }
+.fr-status-violet { color: var(--status-violet-fg); }
+.fr-status-muted { color: var(--text-light); }
+
+.fr-btn {
+  height: 36px;
+  padding: 0 16px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-dark);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+.fr-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.fr-btn-primary {
+  border-color: transparent;
+  background: var(--primary-strong, var(--primary));
+  color: #fff;
+}
+.fr-btn-primary:hover {
+  color: #fff;
+  filter: brightness(1.08);
+}
+
+/* ---------- Small screens ---------- */
+@media (max-width: 720px) {
+  .fr-panel {
+    padding: 16px 14px 12px;
+  }
+  .fr-tools,
+  .fr-search {
+    width: 100%;
+  }
+  .fr-search {
+    flex: 1;
+  }
+  .fr-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fr-card,
+  .fr-tab,
+  .fr-btn {
+    transition: none;
+  }
+  .fr-card:hover {
+    transform: none;
+  }
+  .fr-dot-pulse {
+    animation: none;
+  }
+}

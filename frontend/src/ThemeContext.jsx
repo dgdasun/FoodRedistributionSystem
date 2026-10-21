@@ -76,7 +76,16 @@ export function ThemeProvider({ children }) {
   }, [theme, setTheme]);
 
   const value = useMemo(
-    () => ({ theme, isDark: theme === "dark", toggle, setTheme, followSystem: choice === null }),
+    () => ({
+      theme,
+      isDark: theme === "dark",
+      toggle,
+      setTheme,
+      followSystem: choice === null,
+      // What the user picked, for pickers: "light" | "dark" | "system".
+      mode: choice ?? "system",
+      setMode: (m) => setTheme(m === "system" ? null : m),
+    }),
     [theme, toggle, setTheme, choice]
   );
 

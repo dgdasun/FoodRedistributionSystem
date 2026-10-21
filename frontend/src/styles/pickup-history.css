@@ -1,0 +1,340 @@
+/* Pickup History (donor) - timeline of collection tickets.
+   Colours come from the theme tokens in index.css, so dark mode follows. */
+
+.ph-card {
+  padding: 22px 24px 18px;
+}
+
+/* ---------- Toolbar ---------- */
+.ph-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.ph-filters {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--surface-muted);
+}
+
+.ph-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-mid);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+.ph-filter:hover {
+  color: var(--text-dark);
+}
+.ph-filter.active {
+  background: var(--surface);
+  color: var(--primary);
+  box-shadow: var(--shadow);
+}
+.ph-filter:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.ph-count {
+  min-width: 22px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--icon-chip);
+  color: var(--primary);
+  font-size: 11.5px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.ph-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 1 300px;
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-light);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.ph-search:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--ring-primary);
+}
+.ph-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text-dark);
+  font: inherit;
+  font-size: 13.5px;
+}
+
+.ph-error {
+  margin: 12px 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--status-danger-bg);
+  color: var(--status-danger-fg);
+  font-size: 13px;
+}
+
+/* ---------- Timeline ---------- */
+.ph-timeline {
+  position: relative;
+  margin-top: 10px;
+}
+
+.ph-group {
+  position: relative;
+  padding: 14px 0 6px 26px;
+}
+/* Vertical rail linking the days. */
+.ph-group::before {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--card-border);
+}
+.ph-group:first-child::before {
+  top: 22px;
+}
+.ph-group:last-child::before {
+  bottom: auto;
+  height: 22px;
+}
+
+.ph-day {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 10px;
+  color: var(--text-mid);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+/* Node on the rail. */
+.ph-day::before {
+  content: "";
+  position: absolute;
+  left: -25px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 3px solid var(--primary);
+}
+
+.ph-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 12px;
+}
+
+/* ---------- Ticket card ---------- */
+.ph-ticket {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px 12px 12px;
+  overflow: hidden;
+  border: 1px solid var(--card-border);
+  border-radius: 18px;
+  background: var(--surface);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.ph-ticket:hover {
+  transform: translateY(-2px);
+  border-color: var(--border);
+  box-shadow: var(--shadow-md);
+}
+/* Status strip on the leading edge. */
+.ph-ticket::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: transparent;
+}
+.ph-tone-ok::before { background: var(--status-ok-fg); }
+.ph-tone-warn::before { background: var(--status-warn-fg); }
+.ph-tone-danger::before { background: var(--status-danger-fg); }
+
+.ph-thumb {
+  flex: none;
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
+  object-fit: cover;
+  background: var(--surface-muted);
+}
+.ph-tone-danger .ph-thumb {
+  filter: grayscale(0.55);
+  opacity: 0.85;
+}
+
+.ph-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.ph-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ph-name {
+  margin: 0;
+  color: var(--text-dark);
+  font-size: 15.5px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.ph-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.ph-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.ph-pill-ok { background: var(--status-ok-bg); color: var(--status-ok-fg); }
+.ph-pill-warn { background: var(--status-warn-bg); color: var(--status-warn-fg); }
+.ph-pill-danger { background: var(--status-danger-bg); color: var(--status-danger-fg); }
+
+.ph-sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 3px;
+  color: var(--text-light);
+  font-size: 12px;
+}
+.ph-code {
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: var(--surface-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+}
+
+.ph-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 8px;
+  color: var(--text-mid);
+  font-size: 12.5px;
+}
+.ph-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+.ph-meta-loc {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ph-qty {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 62px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: var(--primary-lighter);
+  color: var(--primary);
+}
+.ph-qty strong {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+.ph-qty span {
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+/* ---------- Small screens ---------- */
+@media (max-width: 720px) {
+  .ph-card {
+    padding: 16px 14px 12px;
+  }
+  .ph-search {
+    flex: 1 1 100%;
+  }
+  .ph-list {
+    grid-template-columns: 1fr;
+  }
+  .ph-group {
+    padding-left: 20px;
+  }
+  .ph-day::before {
+    left: -19px;
+  }
+  .ph-group::before {
+    left: 4px;
+  }
+  .ph-thumb {
+    width: 52px;
+    height: 52px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ph-ticket,
+  .ph-filter {
+    transition: none;
+  }
+  .ph-ticket:hover {
+    transform: none;
+  }
+}

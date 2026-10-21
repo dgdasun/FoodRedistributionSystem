@@ -1,25 +1,32 @@
-import React, { useEffect, useState } from "react";
-import { Clock } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  Clock, Search, MapPin, User, Mail, Phone, FileText, Eye, Download, Check, X, AlertTriangle, ShieldCheck,
+  ShieldX, Hash, Loader2, Users as UsersIcon,
+} from "lucide-react";
 import { api } from "../api.js";
 import { getRelativeTime, formatExactTime } from "../timeAgo.js";
-import { IconMapPin, IconUser, IconDocument, IconEye, IconDownload, IconShieldCheck } from "../components/Icons.jsx";
+import StatCard from "../components/StatCard.jsx";
+import { Stagger } from "../components/motion/Motion.jsx";
+import { useToast } from "../components/Toast.jsx";
+import { IconShieldCheck, IconInbox, IconStatPeople } from "../components/Icons.jsx";
+import { verificationStatusOf } from "../verification.js";
+import "../styles/food-requests.css";
+import "../styles/admin-verifications.css";
 
-const ROLE_LABEL = {
-  donor: "Donor",
-  beneficiary: "NGO / Charity",
-  farm: "Farm / Compost",
-};
+const ROLE_LABEL = { donor: "Donor", beneficiary: "NGO / Charity", farm: "Farm / Compost" };
 
-const ROLE_CLASS = {
-  donor: "donor",
-  beneficiary: "beneficiary",
-  farm: "farm",
-};
-
-const TABS = [
+const STATUS_TABS = [
+  { key: "pending", label: "Pending" },
+  { key: "approved", label: "Approved" },
+  { key: "rejected", label: "Rejected" },
   { key: "all", label: "All" },
-  { key: "donor", label: "Donors" },
-  { key: "beneficiary", label: "Beneficiaries / NGOs" },
+];
+
+const ROLE_FILTERS = [
+  { value: "", label: "All account types" },
+  { value: "donor", label: "Donors" },
+  { value: "beneficiary", label: "NGOs / Charities" },
+  { value: "farm", label: "Farms / Compost" },
 ];
 
 const REJECTION_REASONS = [
@@ -30,12 +37,6 @@ const REJECTION_REASONS = [
   "Other",
 ];
 
-function matchesTab(b, tab) {
-  if (tab === "all") return true;
-  if (tab === "donor") return b.role === "donor";
-  return b.role === "beneficiary" || b.role === "farm";
-}
-
 function initialsOf(name) {
   if (!name) return "?";
   const parts = name.trim().split(/\s+/);
@@ -43,13 +44,7 @@ function initialsOf(name) {
   return letters.toUpperCase();
 }
 
-function roleLabel(b) {
-  return ROLE_LABEL[b.role] || b.orgType || b.role;
-}
-
-function cleanDocName(doc) {
-  return doc.replace(/^\d+-/, "");
-}
+const cleanDocName = (doc) => doc.replace(/^\d+-/, "");
 
 /**
  * When the account last submitted documents for review. verificationSubmittedAt
@@ -65,185 +60,140 @@ function submittedAtOf(b) {
   return b.createdAt || null;
 }
 
-const TIME_BADGE_TONE = {
-  neutral: "bg-gray-100 text-gray-600",
-  approved: "bg-emerald-50 text-emerald-700",
-  rejected: "bg-[var(--status-danger-bg)] text-[var(--status-danger-fg)]",
-};
-
 function TimeBadge({ label, at, tone = "neutral" }) {
   const relative = getRelativeTime(at);
   if (!relative) return null;
-
   return (
-    <span
-      className={`ml-auto inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${TIME_BADGE_TONE[tone]}`}
-      title={formatExactTime(at)}
-    >
-      <Clock size={12} strokeWidth={2.25} className="shrink-0" aria-hidden="true" />
+    <span className={`av-time av-time-${tone}`} title={formatExactTime(at)}>
+      <Clock size={12} strokeWidth={2.25} aria-hidden="true" />
       {label} {relative}
     </span>
   );
 }
 
-/**
- * Approved/rejected cards show when the admin decided. Accounts reviewed before
- * verificationReviewedAt existed have no decision time on record, so they show
- * the submission time instead of a made-up review time.
- */
-function ReviewedBadge({ b, label, tone }) {
-  if (b.verificationReviewedAt) {
-    return <TimeBadge label={label} at={b.verificationReviewedAt} tone={tone} />;
-  }
-  return <TimeBadge label="Submitted" at={submittedAtOf(b)} />;
+function RoleChip({ role }) {
+  return <span className={`av-role av-role-${role}`}>{ROLE_LABEL[role] || role}</span>;
 }
 
-function DocumentSection({ userId, documents }) {
+/** Every uploaded file, each with its own view / download. */
+function Documents({ userId, documents, compact = false }) {
   const docs = documents || [];
+  if (docs.length === 0) {
+    return (
+      <div className="av-doc-none">
+        <AlertTriangle size={14} /> No document uploaded{compact ? "" : " - the account must upload one before it can be approved."}
+      </div>
+    );
+  }
   return (
-    <div className="verify-doc-row">
-      {docs.length === 0 ? (
-        <span className="verify-doc-none">
-          <IconDocument size={14} />
-          No document uploaded
-        </span>
-      ) : (
-        docs.map((doc) => (
-          <div className="verify-doc-name" key={doc} title={cleanDocName(doc)}>
-            <IconDocument size={14} />
-            {cleanDocName(doc)}
-          </div>
-        ))
-      )}
-      {docs.length > 0 && (
-        <div className="verify-doc-actions">
-          <a
-            className="btn-outline-sm"
-            href={`/api/beneficiaries/${userId}/documents/${docs[docs.length - 1]}`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            <IconEye size={13} />
-            View Document
+    <div className="av-docs">
+      {docs.map((doc) => (
+        <div className="av-doc" key={doc}>
+          <span className="av-doc-icon"><FileText size={16} /></span>
+          <span className="av-doc-name" title={cleanDocName(doc)}>{cleanDocName(doc)}</span>
+          <a className="av-doc-btn" href={`/api/beneficiaries/${userId}/documents/${doc}`} target="_blank" rel="noreferrer" aria-label={`View ${cleanDocName(doc)}`}>
+            <Eye size={14} />
           </a>
           <button
             type="button"
-            className="btn-outline-sm"
-            onClick={() =>
-              api.download(
-                `/beneficiaries/${userId}/documents/${docs[docs.length - 1]}`,
-                cleanDocName(docs[docs.length - 1])
-              )
-            }
+            className="av-doc-btn"
+            onClick={() => api.download(`/beneficiaries/${userId}/documents/${doc}`, cleanDocName(doc))}
+            aria-label={`Download ${cleanDocName(doc)}`}
           >
-            <IconDownload size={13} />
-            Download
+            <Download size={14} />
           </button>
         </div>
-      )}
+      ))}
     </div>
   );
 }
 
-function PendingCard({ b, onApprove, onReject }) {
-  const hasDocument = (b.verificationDocuments || []).length > 0;
+function PendingCard({ b, busy, onApprove, onReject }) {
+  const docs = b.verificationDocuments || [];
+  const checks = [
+    { ok: docs.length > 0, label: docs.length ? `${docs.length} document${docs.length === 1 ? "" : "s"} uploaded` : "No document yet" },
+    { ok: !!b.registrationNumber, label: b.registrationNumber ? "Registration number given" : "No registration number" },
+    { ok: !!b.location, label: b.location ? "Location set" : "No location" },
+  ];
   return (
-    <div className="verify-card">
-      <div className="verify-avatar">{initialsOf(b.organizationName || b.name)}</div>
-      <div className="verify-body">
-        <div className="verify-top-row">
-          <span className="verify-org-name">{b.organizationName || b.name}</span>
-          <span className={`role-badge ${ROLE_CLASS[b.role] || ""}`}>{roleLabel(b)}</span>
+    <article className="av-card av-pending">
+      <header className="av-card-head">
+        <span className={`av-avatar av-avatar-${b.role}`}>{initialsOf(b.organizationName || b.name)}</span>
+        <div className="av-card-title">
+          <div className="av-card-name">
+            <strong>{b.organizationName || b.name}</strong>
+            <RoleChip role={b.role} />
+          </div>
           <TimeBadge label="Submitted" at={submittedAtOf(b)} />
         </div>
-        <div className="verify-meta-row">
-          {b.location && (
-            <span className="meta-item">
-              <IconMapPin size={13} color="var(--text-light)" />
-              {b.location}
-            </span>
-          )}
-          {b.name && (
-            <span className="meta-item">
-              <IconUser size={13} color="var(--text-light)" />
-              {b.name}
-            </span>
-          )}
-        </div>
-        <DocumentSection userId={b.id} documents={b.verificationDocuments} />
-        <div className="verify-actions-row">
+      </header>
+
+      <dl className="av-facts">
+        {b.name && <div><dt><User size={13} /> Contact</dt><dd>{b.name}</dd></div>}
+        {b.email && <div><dt><Mail size={13} /> Email</dt><dd title={b.email}>{b.email}</dd></div>}
+        {b.phone && <div><dt><Phone size={13} /> Phone</dt><dd>{b.phone}</dd></div>}
+        {b.location && <div><dt><MapPin size={13} /> Location</dt><dd>{b.location}</dd></div>}
+        {b.registrationNumber && <div><dt><Hash size={13} /> Reg. no.</dt><dd>{b.registrationNumber}</dd></div>}
+        {b.organizationSize > 0 && <div><dt><UsersIcon size={13} /> Serves</dt><dd>{b.organizationSize} people</dd></div>}
+      </dl>
+
+      <Documents userId={b.id} documents={docs} />
+
+      <footer className="av-card-foot">
+        <ul className="av-checks">
+          {checks.map((c) => (
+            <li key={c.label} className={c.ok ? "ok" : "miss"}>
+              {c.ok ? <Check size={12} strokeWidth={3} /> : <X size={12} strokeWidth={3} />} {c.label}
+            </li>
+          ))}
+        </ul>
+        <div className="av-actions">
+          <button type="button" className="av-btn av-btn-reject" onClick={() => onReject(b)} disabled={busy}>
+            <ShieldX size={15} /> Reject
+          </button>
           <button
-            className="btn btn-primary btn-sm"
-            onClick={() => onApprove(b.id)}
-            disabled={!hasDocument}
-            title={!hasDocument ? "Verification document required for approval" : undefined}
+            type="button"
+            className="av-btn av-btn-approve"
+            onClick={() => onApprove(b)}
+            disabled={busy || docs.length === 0}
+            title={docs.length === 0 ? "Verification document required for approval" : undefined}
           >
-            Approve
-          </button>
-          <button className="btn btn-danger-outline btn-sm" onClick={() => onReject(b)}>
-            Reject
+            {busy ? <Loader2 size={15} className="av-spin" /> : <ShieldCheck size={15} />} Approve
           </button>
         </div>
-      </div>
-    </div>
+      </footer>
+    </article>
   );
 }
 
-function VerifiedCard({ b }) {
+function ReviewedRow({ b, status }) {
+  const approved = status === "approved";
   return (
-    <div className="verify-card">
-      <div className="verify-avatar">{initialsOf(b.organizationName || b.name)}</div>
-      <div className="verify-body">
-        <div className="verify-top-row">
-          <span className="verify-org-name">{b.organizationName || b.name}</span>
-          <span className={`role-badge ${ROLE_CLASS[b.role] || ""}`}>{roleLabel(b)}</span>
-          <span className="verified-pill">
-            <IconShieldCheck size={12} />
-            Verified
+    <article className={`av-card av-row av-row-${status}`}>
+      <span className={`av-avatar av-avatar-${b.role}`}>{initialsOf(b.organizationName || b.name)}</span>
+      <div className="av-row-main">
+        <div className="av-card-name">
+          <strong>{b.organizationName || b.name}</strong>
+          <RoleChip role={b.role} />
+          <span className={`av-status av-status-${status}`}>
+            {approved ? <ShieldCheck size={12} /> : <ShieldX size={12} />}
+            {approved ? "Verified" : "Rejected"}
           </span>
-          <ReviewedBadge b={b} label="Approved" tone="approved" />
         </div>
-        <div className="verify-meta-row">
-          {b.location && (
-            <span className="meta-item">
-              <IconMapPin size={13} color="var(--text-light)" />
-              {b.location}
-            </span>
-          )}
+        <div className="av-row-meta">
+          {b.location && <span><MapPin size={12} /> {b.location}</span>}
+          {b.name && <span><User size={12} /> {b.name}</span>}
+          <span><FileText size={12} /> {(b.verificationDocuments || []).length} document{(b.verificationDocuments || []).length === 1 ? "" : "s"}</span>
         </div>
-        <DocumentSection userId={b.id} documents={b.verificationDocuments} />
+        {!approved && b.rejectionReason && <div className="av-reason">“{b.rejectionReason}”</div>}
+        {(b.verificationDocuments || []).length > 0 && <Documents userId={b.id} documents={b.verificationDocuments} compact />}
       </div>
-    </div>
-  );
-}
-
-function RejectedCard({ b }) {
-  return (
-    <div className="verify-card">
-      <div className="verify-avatar">{initialsOf(b.organizationName || b.name)}</div>
-      <div className="verify-body">
-        <div className="verify-top-row">
-          <span className="verify-org-name">{b.organizationName || b.name}</span>
-          <span className={`role-badge ${ROLE_CLASS[b.role] || ""}`}>{roleLabel(b)}</span>
-          <span className="rejected-pill">Rejected</span>
-          <ReviewedBadge b={b} label="Rejected" tone="rejected" />
-        </div>
-        <div className="verify-meta-row">
-          {b.location && (
-            <span className="meta-item">
-              <IconMapPin size={13} color="var(--text-light)" />
-              {b.location}
-            </span>
-          )}
-        </div>
-        {b.rejectionReason && (
-          <div style={{ fontSize: 12.5, color: "var(--status-danger-fg)", marginBottom: 10 }}>
-            <strong>Reason:</strong> {b.rejectionReason}
-          </div>
-        )}
-        <DocumentSection userId={b.id} documents={b.verificationDocuments} />
-      </div>
-    </div>
+      {b.verificationReviewedAt ? (
+        <TimeBadge label={approved ? "Approved" : "Rejected"} at={b.verificationReviewedAt} tone={status} />
+      ) : (
+        <TimeBadge label="Joined" at={b.createdAt} />
+      )}
+    </article>
   );
 }
 
@@ -256,7 +206,7 @@ function RejectModal({ target, onClose, onConfirm }) {
   const confirm = async () => {
     const finalReason = reason === "Other" ? customReason.trim() : reason;
     if (!finalReason) {
-      setError("Please provide a rejection reason.");
+      setError("Please describe the reason.");
       return;
     }
     setSubmitting(true);
@@ -270,56 +220,50 @@ function RejectModal({ target, onClose, onConfirm }) {
   };
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "var(--overlay)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 60,
-      }}
-      onClick={onClose}
-    >
-      <div className="card" style={{ width: 420 }} onClick={(e) => e.stopPropagation()}>
-        <h3 style={{ marginTop: 0, marginBottom: 4 }}>Reject Verification</h3>
-        <p style={{ fontSize: 12.5, color: "var(--text-light)", margin: "0 0 16px" }}>
-          {target.organizationName || target.name} will be notified that their verification was rejected.
-        </p>
-
-        <div className="form-row">
-          <label>Rejection reason</label>
-          <select value={reason} onChange={(e) => setReason(e.target.value)}>
-            {REJECTION_REASONS.map((r) => (
-              <option key={r} value={r}>
-                {r}
-              </option>
-            ))}
-          </select>
+    <div className="rq-overlay" onClick={onClose}>
+      <div className="rq-modal av-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="av-reject-title">
+        <div className="rq-head">
+          <div className="rq-head-icon av-head-danger"><ShieldX size={20} /></div>
+          <div className="rq-head-text">
+            <h3 id="av-reject-title">Reject verification</h3>
+            <span>{target.organizationName || target.name} will be told why.</span>
+          </div>
         </div>
-
-        {reason === "Other" && (
-          <div className="form-row">
-            <label>Describe the reason</label>
+        <div className="rq-body">
+          <span className="av-label">Reason</span>
+          <div className="av-reasons" role="radiogroup" aria-label="Rejection reason">
+            {REJECTION_REASONS.map((r) => (
+              <button
+                key={r}
+                type="button"
+                role="radio"
+                aria-checked={reason === r}
+                className={reason === r ? "av-reason-chip active" : "av-reason-chip"}
+                onClick={() => setReason(r)}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+          {reason === "Other" && (
             <textarea
+              className="av-textarea"
               rows={3}
-              placeholder="Explain why this account is being rejected..."
+              placeholder="Explain why this account is being rejected…"
               value={customReason}
               onChange={(e) => setCustomReason(e.target.value)}
+              autoFocus
             />
+          )}
+          {error && <p className="av-error">{error}</p>}
+        </div>
+        <div className="rq-foot">
+          <div className="rq-actions">
+            <button type="button" className="btn btn-outline" onClick={onClose} disabled={submitting}>Cancel</button>
+            <button type="button" className="btn av-btn-danger" onClick={confirm} disabled={submitting}>
+              {submitting ? "Rejecting…" : "Confirm rejection"}
+            </button>
           </div>
-        )}
-
-        {error && <div style={{ color: "var(--danger)", fontSize: 12.5, marginBottom: 10 }}>{error}</div>}
-
-        <div style={{ display: "flex", gap: 8 }}>
-          <button className="btn btn-danger-outline" style={{ flex: 1 }} onClick={confirm} disabled={submitting}>
-            {submitting ? "Rejecting..." : "Confirm Rejection"}
-          </button>
-          <button className="btn btn-outline" style={{ flex: 1 }} onClick={onClose} disabled={submitting}>
-            Cancel
-          </button>
         </div>
       </div>
     </div>
@@ -327,105 +271,178 @@ function RejectModal({ target, onClose, onConfirm }) {
 }
 
 export default function AdminVerifications() {
-  const [pending, setPending] = useState([]);
-  const [verified, setVerified] = useState([]);
-  const [rejected, setRejected] = useState([]);
-  const [tab, setTab] = useState("all");
+  const toast = useToast();
+  const [accounts, setAccounts] = useState(null);
+  const [tab, setTab] = useState("pending");
+  const [role, setRole] = useState("");
+  const [query, setQuery] = useState("");
   const [rejectTarget, setRejectTarget] = useState(null);
-  const [actionError, setActionError] = useState("");
+  const [busyId, setBusyId] = useState(null);
 
-  const load = () => {
-    api.get("/beneficiaries?status=pending").then((d) => setPending(d.beneficiaries));
-    api.get("/beneficiaries?status=approved").then((d) => setVerified(d.beneficiaries));
-    api.get("/beneficiaries?status=rejected").then((d) => setRejected(d.beneficiaries));
-  };
+  // One request for every reviewed account; each is bucketed with the shared
+  // rule in verification.js rather than by the raw verificationStatus field.
+  const load = () =>
+    api
+      .get("/beneficiaries")
+      .then((d) => setAccounts(d.beneficiaries || []))
+      .catch((e) => {
+        toast.error(e.message);
+        setAccounts((prev) => prev || []);
+      });
 
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const approve = async (id) => {
-    setActionError("");
+  const all = accounts || [];
+  const loading = accounts === null;
+
+  const counts = useMemo(() => {
+    const c = { all: all.length, pending: 0, approved: 0, rejected: 0 };
+    all.forEach((b) => { c[verificationStatusOf(b)] += 1; });
+    return c;
+  }, [all]);
+
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return all
+      .filter((b) => tab === "all" || verificationStatusOf(b) === tab)
+      .filter((b) => !role || b.role === role)
+      .filter((b) => !q || [b.organizationName, b.name, b.email, b.location].filter(Boolean).some((f) => f.toLowerCase().includes(q)))
+      // The review queue is first-come first-served; history reads newest first.
+      .sort((a, b) => {
+        const t = (x) => new Date(submittedAtOf(x) || 0).getTime() || 0;
+        const d = t(a) - t(b);
+        return tab === "pending" ? d : -d;
+      });
+  }, [all, tab, role, query]);
+
+  const missingDocs = all.filter((b) => verificationStatusOf(b) === "pending" && !(b.verificationDocuments || []).length).length;
+
+  const approve = async (b) => {
+    setBusyId(b.id);
     try {
-      await api.patch(`/beneficiaries/${id}/verify`, { verified: true });
-      load();
+      await api.patch(`/beneficiaries/${b.id}/verify`, { verified: true });
+      toast.success(`${b.organizationName || b.name} is now verified.`);
+      await load();
     } catch (e) {
-      setActionError(e.message || "Failed to approve account.");
+      toast.error(e.message || "Failed to approve account.");
+    } finally {
+      setBusyId(null);
     }
   };
 
   const reject = async (reason) => {
     await api.patch(`/beneficiaries/${rejectTarget.id}/reject`, { reason });
+    toast.success(`${rejectTarget.organizationName || rejectTarget.name} was rejected.`);
     setRejectTarget(null);
-    load();
+    await load();
   };
 
-  const pendingFiltered = pending.filter((b) => matchesTab(b, tab));
-  const verifiedFiltered = verified.filter((b) => matchesTab(b, tab));
-  const rejectedFiltered = rejected.filter((b) => matchesTab(b, tab));
+  const dash = (v) => (loading ? "—" : v);
 
   return (
     <>
       <div className="page-header">
         <h1>Account Verifications</h1>
-        <p>Approve donors, NGOs, charities and farm/compost partners before they can fully use the platform.</p>
+        <p>Review the documents of donors, NGOs and farm / compost partners before they can fully use the platform.</p>
       </div>
 
-      <div className="toolbar">
-        <div className="pill-tabs">
-          {TABS.map((t) => (
-            <div
-              key={t.key}
-              className={`pill-tab ${tab === t.key ? "active" : ""}`}
-              onClick={() => setTab(t.key)}
-              style={{ cursor: "pointer" }}
-            >
-              {t.label}
-            </div>
-          ))}
-        </div>
-      </div>
+      <Stagger className="grid-4 stats-grid">
+        <StatCard
+          icon={<IconInbox size={26} color="var(--status-warn-fg)" />}
+          iconBg="var(--status-warn-bg)"
+          label="Waiting for review"
+          value={dash(counts.pending)}
+          sub={counts.pending ? "Oldest first in the queue" : "Queue is clear"}
+        />
+        <StatCard
+          icon={<IconShieldCheck size={26} color="var(--status-ok-fg)" />}
+          label="Verified"
+          value={dash(counts.approved)}
+          sub={`of ${counts.all} reviewed accounts`}
+        />
+        <StatCard
+          icon={<ShieldX size={26} color="var(--status-danger-fg)" />}
+          iconBg="var(--status-danger-bg)"
+          label="Rejected"
+          value={dash(counts.rejected)}
+          sub="Told why, can reapply"
+        />
+        <StatCard
+          icon={<IconStatPeople size={26} color="var(--status-violet-fg)" />}
+          iconBg="var(--status-violet-bg)"
+          label="Missing documents"
+          value={dash(missingDocs)}
+          sub="Pending, can't be approved yet"
+        />
+      </Stagger>
 
-      {actionError && (
-        <div className="card" style={{ marginBottom: 20, color: "var(--danger)", fontSize: 13 }}>
-          {actionError}
+      <div className="card fr-panel">
+        <div className="fr-toolbar">
+          <div className="fr-tabs" role="tablist" aria-label="Filter by status">
+            {STATUS_TABS.map((t) => (
+              <button
+                key={t.key}
+                type="button"
+                role="tab"
+                aria-selected={tab === t.key}
+                className={`fr-tab${tab === t.key ? " active" : ""}`}
+                onClick={() => setTab(t.key)}
+              >
+                {t.label}
+                <span className="fr-count">{dash(counts[t.key])}</span>
+              </button>
+            ))}
+          </div>
+          <div className="fr-tools">
+            <select className="fr-select" aria-label="Account type" value={role} onChange={(e) => setRole(e.target.value)}>
+              {ROLE_FILTERS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+            <label className="fr-search">
+              <Search size={16} />
+              <input
+                type="search"
+                placeholder="Search organization, contact or location"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                aria-label="Search accounts"
+              />
+            </label>
+          </div>
         </div>
-      )}
 
-      <div className="card" style={{ marginBottom: 20 }}>
-        <div className="card-title">
-          <h3>⏳ Pending Approval ({pendingFiltered.length})</h3>
-        </div>
-        <div className="verify-list">
-          {pendingFiltered.map((b) => (
-            <PendingCard key={b.id} b={b} onApprove={approve} onReject={setRejectTarget} />
-          ))}
-        </div>
-        {pendingFiltered.length === 0 && <div className="empty-state">No pending verifications 🎉</div>}
-      </div>
+        {loading && (
+          <div className="av-list">
+            {Array.from({ length: 2 }).map((_, i) => <div key={i} className="av-card av-skel" aria-hidden="true" />)}
+          </div>
+        )}
 
-      <div className="card" style={{ marginBottom: 20 }}>
-        <div className="card-title">
-          <h3>✅ Verified Partners ({verifiedFiltered.length})</h3>
-        </div>
-        <div className="verify-list">
-          {verifiedFiltered.map((b) => (
-            <VerifiedCard key={b.id} b={b} />
-          ))}
-        </div>
-        {verifiedFiltered.length === 0 && <div className="empty-state">No verified partners yet.</div>}
-      </div>
+        {!loading && visible.length === 0 && (
+          <div className="av-empty">
+            <div className="av-empty-icon">{tab === "pending" ? <ShieldCheck size={26} /> : <UsersIcon size={26} />}</div>
+            <strong>{tab === "pending" && !query && !role ? "All caught up" : "Nothing here"}</strong>
+            <p>
+              {tab === "pending" && !query && !role
+                ? "No accounts are waiting for review. New sign-ups appear here once they register."
+                : "No accounts match this view."}
+            </p>
+          </div>
+        )}
 
-      <div className="card">
-        <div className="card-title">
-          <h3>❌ Rejected ({rejectedFiltered.length})</h3>
-        </div>
-        <div className="verify-list">
-          {rejectedFiltered.map((b) => (
-            <RejectedCard key={b.id} b={b} />
-          ))}
-        </div>
-        {rejectedFiltered.length === 0 && <div className="empty-state">No rejected accounts.</div>}
+        {!loading && visible.length > 0 && (
+          <div className="av-list">
+            {visible.map((b) => {
+              const status = verificationStatusOf(b);
+              return status === "pending" ? (
+                <PendingCard key={b.id} b={b} busy={busyId === b.id} onApprove={approve} onReject={setRejectTarget} />
+              ) : (
+                <ReviewedRow key={b.id} b={b} status={status} />
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {rejectTarget && <RejectModal target={rejectTarget} onClose={() => setRejectTarget(null)} onConfirm={reject} />}

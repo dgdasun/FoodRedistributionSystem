@@ -1,0 +1,203 @@
+/* Appearance menu (topbar) and Appearance picker (Profile). */
+
+.theme-menu-wrap {
+  position: relative;
+}
+
+.theme-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 10px);
+  width: 260px;
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg), 0 2px 6px rgba(22, 32, 15, 0.05);
+  z-index: 50;
+  transform-origin: top right;
+  animation: theme-pop 0.16s ease-out;
+}
+
+@keyframes theme-pop {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-menu { animation: none; }
+}
+
+.theme-menu-head {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-light);
+  padding: 8px 10px 6px;
+}
+
+.theme-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.theme-menu-item:hover { background: var(--surface-muted); }
+.theme-menu-item:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.theme-menu-item.is-active { background: var(--primary-lighter); }
+
+.theme-menu-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--surface-muted);
+  color: var(--text-mid);
+}
+
+.theme-menu-item.is-active .theme-menu-icon {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+.theme-menu-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.theme-menu-text strong { font-size: 13.5px; color: var(--text-dark); font-weight: 650; }
+.theme-menu-text span { font-size: 12px; color: var(--text-light); }
+.theme-menu-check { color: var(--primary); flex-shrink: 0; }
+
+/* ---------- Profile: Appearance picker ---------- */
+
+.appearance-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 560px) {
+  .appearance-grid { grid-template-columns: 1fr; }
+}
+
+.appearance-option {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+
+.appearance-option:hover { border-color: var(--ring-primary); transform: translateY(-1px); }
+.appearance-option:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.appearance-option.is-active {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--ring-primary);
+}
+
+.appearance-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13.5px;
+  font-weight: 650;
+  color: var(--text-dark);
+  padding: 0 2px;
+}
+
+.appearance-check { margin-left: auto; color: var(--primary); }
+
+.appearance-sub {
+  font-size: 12px;
+  color: var(--text-light);
+  padding: 0 2px;
+  margin-top: -4px;
+}
+
+/* Mini mock of the app - fixed colours on purpose, so each tile always shows
+   its own theme no matter which one is active. */
+.appearance-preview {
+  display: flex;
+  gap: 6px;
+  height: 84px;
+  padding: 8px;
+  border-radius: 11px;
+  overflow: hidden;
+  --pv-bg: #f6f9f1;
+  --pv-side: #ffffff;
+  --pv-card: #ffffff;
+  --pv-line: #dfe7d5;
+  --pv-accent: #387e01;
+  background: var(--pv-bg);
+}
+
+.appearance-preview.p-dark {
+  --pv-bg: #0f1410;
+  --pv-side: #171d17;
+  --pv-card: #1b221b;
+  --pv-line: #2a332a;
+  --pv-accent: #7cc242;
+}
+
+.appearance-preview.p-system {
+  background: linear-gradient(105deg, #f6f9f1 0 50%, #0f1410 50% 100%);
+}
+
+.ap-side {
+  width: 22%;
+  border-radius: 6px;
+  background: var(--pv-side);
+  border: 1px solid var(--pv-line);
+}
+
+.ap-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.ap-bar {
+  height: 8px;
+  width: 55%;
+  border-radius: 4px;
+  background: var(--pv-accent);
+}
+
+.ap-card {
+  flex: 1;
+  border-radius: 6px;
+  background: var(--pv-card);
+  border: 1px solid var(--pv-line);
+}
+
+.ap-card.short { flex: 0.6; }
+
+.p-system .ap-side,
+.p-system .ap-card {
+  background: rgba(127, 140, 120, 0.25);
+  border-color: rgba(127, 140, 120, 0.35);
+}
+.p-system .ap-bar { background: #559805; }

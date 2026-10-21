@@ -1,12 +1,20 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../AuthContext.jsx";
 import { api } from "../api.js";
 import { useToast } from "../components/Toast.jsx";
-import { IconUpload, IconPlus } from "../components/Icons.jsx";
 import { Link } from "react-router-dom";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import {
+  ChevronDown, Plus, Upload, Download, X, MapPin, Package, Search, CheckCircle2, AlertTriangle,
+  Loader2, PackageOpen,
+} from "lucide-react";
 import DonationTimeline from "../components/DonationTimeline.jsx";
 import Pagination from "../components/Pagination.jsx";
+import StatCard from "../components/StatCard.jsx";
+import { Stagger } from "../components/motion/Motion.jsx";
+import { IconDonations, IconSparkle, IconShieldCheck, IconWeight } from "../components/Icons.jsx";
+import { imageFor } from "../foodImages.js";
+import "../styles/food-requests.css";
+import "../styles/donations.css";
 
 // No "Fresh" tab: the platform only carries near-expiry surplus and expired
 // stock, so a fresh listing can never exist to filter for.
@@ -17,10 +25,38 @@ const TABS = [
   { key: "collected", label: "Collected" },
 ];
 
+const SORTS = [
+  { key: "expiry", label: "Expiry: soonest", cmp: (a, b) => String(a.expiryDate).localeCompare(String(b.expiryDate)) },
+  { key: "expiry-desc", label: "Expiry: latest", cmp: (a, b) => String(b.expiryDate).localeCompare(String(a.expiryDate)) },
+  { key: "qty", label: "Quantity: most", cmp: (a, b) => Number(b.quantityKg) - Number(a.quantityKg) },
+  { key: "name", label: "Name: A-Z", cmp: (a, b) => String(a.name).localeCompare(String(b.name)) },
+];
+
+const CATEGORIES = ["Vegetables", "Dairy", "Bakery", "Cooked Meals", "Fruits", "Packaged Goods", "Other"];
+
+const STATUS_LABEL = { surplus: "Surplus", expired: "Expired", collected: "Collected", reserved: "Reserved", fresh: "Fresh" };
+
 // Matches the other table pages (Requests, My Requests, Admin Users).
 const PAGE_SIZE = 8;
 
-function AddItemForm({ user, onCreated, onClose }) {
+const unitOf = (d) => (d.category === "Cooked Meals" ? "portions" : "kg");
+
+function expiryInfo(d) {
+  const days = Number(d.daysUntilExpiry);
+  if (d.status === "collected") return { text: "Handed over", tone: "ok" };
+  if (!Number.isFinite(days)) return { text: "", tone: "muted" };
+  if (days < 0) return { text: `Expired ${-days}d ago`, tone: "danger" };
+  if (days === 0) return { text: "Expires today", tone: "danger" };
+  if (days <= 1) return { text: "1 day left", tone: "warn" };
+  return { text: `${days} days left`, tone: days <= 3 ? "warn" : "ok" };
+}
+
+function formatDate(iso) {
+  const d = new Date(`${iso}T00:00:00`);
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+}
+
+function AddItemModal({ user, onCreated, onClose }) {
   // Mirrors how the backend builds it, so the form shows the value that will
   // actually be saved rather than a guess.
   const donorPickup = [user.organizationName, user.location].filter(Boolean).join(", ");
@@ -63,99 +99,188 @@ function AddItemForm({ user, onCreated, onClose }) {
   };
 
   return (
-    <div className="card" style={{ marginBottom: 18 }}>
-      <div className="card-title">
-        <h3>➕ Add Inventory Item</h3>
-        <span className="view-all" onClick={onClose} style={{ cursor: "pointer" }}>
-          Close
-        </span>
-      </div>
-      <form onSubmit={submit} className={shake ? "shake" : undefined}>
-        <div className="form-grid-2">
-          <div className="form-row">
-            <label>Product name</label>
-            <input value={form.name} onChange={(e) => update("name", e.target.value)} required />
+    <div className="rq-overlay" onClick={onClose}>
+      <div className="rq-modal dn-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="dn-add-title">
+        <form onSubmit={submit} className={shake ? "shake" : undefined}>
+          <div className="rq-head">
+            <div className="rq-head-icon"><Plus size={20} /></div>
+            <div className="rq-head-text">
+              <h3 id="dn-add-title">Add inventory item</h3>
+              <span>Near-expiry items are flagged as surplus automatically.</span>
+            </div>
+            <button type="button" className="dn-icon-btn" onClick={onClose} aria-label="Close">
+              <X size={16} />
+            </button>
           </div>
-          <div className="form-row">
-            <label>Category</label>
-            <select value={form.category} onChange={(e) => update("category", e.target.value)}>
-              {["Vegetables", "Dairy", "Bakery", "Cooked Meals", "Fruits", "Packaged Goods", "Other"].map((c) => (
-                <option key={c}>{c}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-        <div className="form-grid-2">
-          <div className="form-row">
-            <label>Batch number</label>
-            <input value={form.batchNumber} onChange={(e) => update("batchNumber", e.target.value)} placeholder="e.g. B-3001" />
-          </div>
-          <div className="form-row">
-            <label>{isPortioned ? "Quantity (portions)" : "Quantity (kg)"}</label>
-            <input
-              type="number"
-              min={isPortioned ? 1 : undefined}
-              step={isPortioned ? 1 : "any"}
-              value={form.quantityKg}
-              onChange={(e) => update("quantityKg", e.target.value)}
-              placeholder={isPortioned ? "e.g. 25 meal packs" : undefined}
-              required
-            />
-          </div>
-        </div>
-        <div className="form-grid-2">
-          <div className="form-row">
-            <label>Expiry date</label>
-            <input type="date" value={form.expiryDate} onChange={(e) => update("expiryDate", e.target.value)} required />
-          </div>
-          <div className="form-row">
-            <label>Pickup location</label>
+
+          <div className="rq-body">
+            <div className="dn-cat-picker">
+              <span className="dn-label">Category</span>
+              <div className="dn-cats" role="radiogroup" aria-label="Category">
+                {CATEGORIES.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    role="radio"
+                    aria-checked={form.category === c}
+                    className={form.category === c ? "dn-cat active" : "dn-cat"}
+                    onClick={() => update("category", c)}
+                  >
+                    <img src={imageFor(c)} alt="" />
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="form-grid-2">
+              <div className="form-row">
+                <label htmlFor="dn-name">Product name</label>
+                <input id="dn-name" value={form.name} onChange={(e) => update("name", e.target.value)} required />
+              </div>
+              <div className="form-row">
+                <label htmlFor="dn-batch">Batch number</label>
+                <input id="dn-batch" value={form.batchNumber} onChange={(e) => update("batchNumber", e.target.value)} placeholder="e.g. B-3001" />
+              </div>
+            </div>
+            <div className="form-grid-2">
+              <div className="form-row">
+                <label htmlFor="dn-qty">{isPortioned ? "Quantity (portions)" : "Quantity (kg)"}</label>
+                <input
+                  id="dn-qty"
+                  type="number"
+                  min={isPortioned ? 1 : undefined}
+                  step={isPortioned ? 1 : "any"}
+                  value={form.quantityKg}
+                  onChange={(e) => update("quantityKg", e.target.value)}
+                  placeholder={isPortioned ? "e.g. 25 meal packs" : undefined}
+                  required
+                />
+              </div>
+              <div className="form-row">
+                <label htmlFor="dn-expiry">Expiry date</label>
+                <input id="dn-expiry" type="date" value={form.expiryDate} onChange={(e) => update("expiryDate", e.target.value)} required />
+              </div>
+            </div>
+
             {/* Not an input: the backend stamps every listing with the donor's
                 registered location, so an editable field here would be a lie. */}
-            <p className="form-static">
-              {donorPickup || "No location on your profile yet"}
-              <Link to="/profile" className="form-static-link">
-                Change in Profile
-              </Link>
-            </p>
+            <div className="dn-pickup">
+              <MapPin size={16} />
+              <div>
+                <span>Pickup location</span>
+                <strong>{donorPickup || "No location on your profile yet"}</strong>
+              </div>
+              <Link to="/profile" className="dn-link">Change</Link>
+            </div>
+
+            {error && <p className="dn-error">{error}</p>}
           </div>
-        </div>
-        {error && <p style={{ color: "var(--danger)", fontSize: 13 }}>{error}</p>}
-        <button className="btn btn-primary" disabled={busy}>{busy ? "Adding…" : "Add Item"}</button>
-      </form>
+
+          <div className="rq-foot">
+            <div className="rq-actions">
+              <button type="button" className="btn btn-outline" onClick={onClose}>Cancel</button>
+              <button className="btn btn-primary" disabled={busy}>
+                {busy ? "Adding…" : <><Plus size={15} /> Add item</>}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
     </div>
+  );
+}
+
+function PublishSwitch({ item, onToggle }) {
+  const [busy, setBusy] = useState(false);
+  const toggle = async () => {
+    setBusy(true);
+    try {
+      await onToggle(item);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={!!item.published}
+      aria-label={`${item.published ? "Unpublish" : "Publish"} ${item.name}`}
+      className={item.published ? "dn-switch on" : "dn-switch"}
+      onClick={toggle}
+      disabled={busy}
+    >
+      <span className="dn-switch-track"><span className="dn-switch-thumb" /></span>
+      <span className="dn-switch-label">{item.published ? "Live" : "Hidden"}</span>
+    </button>
   );
 }
 
 export default function MyDonations() {
   const { user } = useAuth();
-  const [donations, setDonations] = useState([]);
+  const toast = useToast();
+  const [donations, setDonations] = useState(null);
   const [tab, setTab] = useState("all");
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState("expiry");
   const [showForm, setShowForm] = useState(false);
-  const [uploadMsg, setUploadMsg] = useState("");
-  // Which row has its progress timeline expanded. One at a time - the table is
-  // already wide, and two open timelines push the rows too far apart to scan.
+  const [upload, setUpload] = useState(null); // { tone, text } | { busy: true }
+  // Which row has its progress timeline expanded. One at a time - two open
+  // timelines push the rows too far apart to scan.
   const [trackingId, setTrackingId] = useState(null);
   const [page, setPage] = useState(1);
+  const fileRef = useRef(null);
 
-  const load = () => api.get(`/donations?donorId=${user.id}`).then((d) => setDonations(d.donations));
+  // A failed load falls back to an empty list so the skeleton never spins forever.
+  const load = () =>
+    api
+      .get(`/donations?donorId=${user.id}`)
+      .then((d) => setDonations(d.donations || []))
+      .catch((err) => {
+        toast.error(err.message);
+        setDonations((prev) => prev || []);
+      });
 
   useEffect(() => {
     load();
   }, [user.id]);
 
-  const filtered = tab === "all" ? donations : donations.filter((d) => d.status === tab);
+  const all = donations || [];
+  const loading = donations === null;
+
+  const counts = useMemo(() => {
+    const c = { all: all.length };
+    all.forEach((d) => { c[d.status] = (c[d.status] || 0) + 1; });
+    return c;
+  }, [all]);
+
+  const stats = useMemo(() => ({
+    published: all.filter((d) => d.published && d.status !== "expired" && d.status !== "collected").length,
+    liveKg: all
+      .filter((d) => d.status === "surplus" && d.category !== "Cooked Meals")
+      .reduce((s, d) => s + (Number(d.quantityKg) || 0), 0),
+  }), [all]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const sortDef = SORTS.find((s) => s.key === sort) || SORTS[0];
+    return all
+      .filter((d) => tab === "all" || d.status === tab)
+      .filter((d) => !q || [d.name, d.category, d.batchNumber].filter(Boolean).some((f) => f.toLowerCase().includes(q)))
+      .sort(sortDef.cmp);
+  }, [all, tab, query, sort]);
 
   // pageSafe clamps rather than the state itself, so deleting or filtering down
-  // to fewer pages can never strand the table on an empty one.
+  // to fewer pages can never strand the list on an empty one.
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageSafe = Math.min(page, totalPages);
   const paged = filtered.slice((pageSafe - 1) * PAGE_SIZE, pageSafe * PAGE_SIZE);
 
-  // Switching tab starts a different list, so go back to its first page, and
-  // drop any open timeline - the row it belonged to may not be on screen now.
-  const selectTab = (key) => {
-    setTab(key);
+  // Changing what is listed starts a different list, so go back to its first
+  // page, and drop any open timeline - its row may not be on screen now.
+  const resetView = (fn) => (v) => {
+    fn(v);
     setPage(1);
     setTrackingId(null);
   };
@@ -166,8 +291,13 @@ export default function MyDonations() {
   };
 
   const togglePublish = async (item) => {
-    await api.patch(`/donations/${item.id}`, { published: !item.published });
-    load();
+    try {
+      await api.patch(`/donations/${item.id}`, { published: !item.published });
+      toast.success(item.published ? `${item.name} is hidden from NGOs.` : `${item.name} is now live for NGOs.`);
+      await load();
+    } catch (err) {
+      toast.error(err.message);
+    }
   };
 
   const handleUpload = async (e) => {
@@ -176,129 +306,238 @@ export default function MyDonations() {
     const fd = new FormData();
     fd.append("file", file);
     fd.append("donorId", user.id);
+    setUpload({ busy: true, text: `Importing ${file.name}…` });
     try {
       const res = await api.upload("/donations/upload", fd);
-      setUploadMsg(`✅ ${res.message} (${res.surplusDetected} flagged as surplus, ${res.expiredDetected} expired)`);
+      setUpload({
+        tone: "ok",
+        text: res.message,
+        detail: `${res.surplusDetected} flagged as surplus · ${res.expiredDetected} expired`,
+      });
       load();
     } catch (err) {
-      setUploadMsg("❌ " + err.message);
+      setUpload({ tone: "danger", text: err.message });
     }
     e.target.value = "";
   };
 
+  const dash = (v) => (loading ? "—" : v);
+
   return (
     <>
-      <div className="page-header">
-        <h1>My Donations</h1>
-        <p>Upload inventory, and publish surplus food. Review requests on the Food Requests page.</p>
-      </div>
-
-      <div className="toolbar">
-        <div className="pill-tabs">
-          {TABS.map((t) => (
-            <div key={t.key} className={`pill-tab ${tab === t.key ? "active" : ""}`} onClick={() => selectTab(t.key)} style={{ cursor: "pointer" }}>
-              {t.label}
-            </div>
-          ))}
+      <div className="page-header dn-header">
+        <div>
+          <h1>My Donations</h1>
+          <p>Upload inventory and publish surplus food. Review requests on the Food Requests page.</p>
         </div>
-        <div style={{ display: "flex", gap: 10 }}>
-          <a
-            href="/sample_inventory.csv"
-            download="sample_inventory.csv"
-            className="btn btn-outline btn-sm"
-            style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
-          >
-            Download Sample CSV
+        <div className="dn-actions">
+          <a href="/sample_inventory.csv" download="sample_inventory.csv" className="dn-btn-ghost" title="Download sample CSV" aria-label="Download sample CSV">
+            <Download size={15} /> <span>Sample CSV</span>
           </a>
-          <label className="btn btn-outline btn-sm" style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <IconUpload size={15} />
-            Upload CSV
-            <input type="file" accept=".csv" onChange={handleUpload} style={{ display: "none" }} />
-          </label>
-          <button className="btn btn-primary btn-sm" onClick={() => setShowForm((s) => !s)} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <IconPlus size={15} />
-            Add Item
+          <button type="button" className="dn-btn-ghost" onClick={() => fileRef.current?.click()} disabled={upload?.busy} aria-label="Upload CSV">
+            {upload?.busy ? <Loader2 size={15} className="dn-spin" /> : <Upload size={15} />} <span>Upload CSV</span>
+          </button>
+          <input ref={fileRef} type="file" accept=".csv" onChange={handleUpload} hidden />
+          <button type="button" className="btn btn-primary dn-btn-add" onClick={() => setShowForm(true)}>
+            <Plus size={16} /> Add item
           </button>
         </div>
       </div>
 
-      {uploadMsg && (
-        <div className="card" style={{ marginBottom: 16, fontSize: 13 }}>
-          {uploadMsg}
-          <div style={{ marginTop: 6, color: "var(--text-light)" }}>
-            Expected CSV headers: <code>name,category,batchNumber,quantityKg,expiryDate</code>
-            <div style={{ marginTop: 4 }}>
-              Pickup location comes from your profile, so it is not needed in the file (a
-              <code> pickupLocation</code> column in an older template is ignored).
-            </div>
+      <Stagger className="grid-4 stats-grid">
+        <StatCard
+          icon={<IconDonations size={26} color="var(--primary)" />}
+          label="Total listings"
+          value={dash(counts.all || 0)}
+          sub="Everything you've added"
+        />
+        <StatCard
+          icon={<IconSparkle size={26} color="var(--status-warn-fg)" />}
+          iconBg="var(--status-warn-bg)"
+          label="Surplus"
+          value={dash(counts.surplus || 0)}
+          sub={`${stats.published} live for NGOs`}
+        />
+        <StatCard
+          icon={<IconWeight size={26} color="var(--primary)" />}
+          label="Surplus weight"
+          value={dash(Math.round(stats.liveKg * 10) / 10)}
+          unit="KG"
+          sub="Excludes cooked-meal portions"
+        />
+        <StatCard
+          icon={<IconShieldCheck size={26} color="var(--status-ok-fg)" />}
+          label="Collected"
+          value={dash(counts.collected || 0)}
+          sub={`${counts.expired || 0} expired → farms`}
+        />
+      </Stagger>
+
+      {upload && (
+        <div className={`dn-banner dn-banner-${upload.busy ? "info" : upload.tone}`} role="status">
+          <span className="dn-banner-icon">
+            {upload.busy ? <Loader2 size={18} className="dn-spin" /> : upload.tone === "ok" ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
+          </span>
+          <div className="dn-banner-text">
+            <strong>{upload.text}</strong>
+            {upload.detail && <span>{upload.detail}</span>}
+            {!upload.busy && (
+              <small>
+                Expected headers: <code>name,category,batchNumber,quantityKg,expiryDate</code>. Pickup location comes
+                from your profile, so a <code>pickupLocation</code> column is ignored.
+              </small>
+            )}
           </div>
+          {!upload.busy && (
+            <button type="button" className="dn-icon-btn" onClick={() => setUpload(null)} aria-label="Dismiss">
+              <X size={15} />
+            </button>
+          )}
         </div>
       )}
 
-      {showForm && <AddItemForm user={user} onCreated={load} onClose={() => setShowForm(false)} />}
-
-      <div className="card">
-        <table>
-          <thead>
-            <tr>
-              <th>Product</th>
-              <th>Category</th>
-              <th>Batch</th>
-              <th>Qty</th>
-              <th>Expiry</th>
-              <th>Status</th>
-              <th>Published</th>
-              <th>Progress</th>
-            </tr>
-          </thead>
-          <tbody>
-            {paged.map((d) => (
-              <React.Fragment key={d.id}>
-              <tr>
-                <td>{d.name}</td>
-                <td>{d.category}</td>
-                <td>{d.batchNumber}</td>
-                <td>{d.quantityKg} {d.category === "Cooked Meals" ? "portions" : "kg"}</td>
-                <td>
-                  {d.expiryDate}
-                  <div style={{ fontSize: 11, color: "var(--text-light)" }}>
-                    {d.daysUntilExpiry >= 0 ? `${d.daysUntilExpiry}d left` : "expired"}
-                  </div>
-                </td>
-                <td>
-                  <span className={`badge-status ${d.status}`}>{d.status}</span>
-                </td>
-                <td>
-                  <button className="btn btn-sm btn-outline" onClick={() => togglePublish(d)}>
-                    {d.published ? "Unpublish" : "Publish"}
-                  </button>
-                </td>
-                <td>
-                  <button
-                    className="btn btn-sm btn-outline"
-                    onClick={() => setTrackingId((id) => (id === d.id ? null : d.id))}
-                    aria-expanded={trackingId === d.id}
-                    style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
-                  >
-                    {trackingId === d.id ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                    Track
-                  </button>
-                </td>
-              </tr>
-              {trackingId === d.id && (
-                <tr className="timeline-row">
-                  <td colSpan={8}>
-                    <DonationTimeline item={d} donorId={user.id} />
-                  </td>
-                </tr>
-              )}
-              </React.Fragment>
+      <div className="card fr-panel">
+        <div className="fr-toolbar">
+          <div className="fr-tabs" role="tablist" aria-label="Filter by status">
+            {TABS.map((t) => (
+              <button
+                key={t.key}
+                type="button"
+                role="tab"
+                aria-selected={tab === t.key}
+                className={`fr-tab${tab === t.key ? " active" : ""}`}
+                onClick={() => resetView(setTab)(t.key)}
+              >
+                {t.label}
+                <span className="fr-count">{dash(counts[t.key] || 0)}</span>
+              </button>
             ))}
-          </tbody>
-        </table>
-        {filtered.length === 0 && <div className="empty-state">No items in this category yet.</div>}
-        <Pagination page={pageSafe} totalPages={totalPages} onChange={goToPage} />
+          </div>
+          <div className="fr-tools">
+            <select className="fr-select" aria-label="Sort" value={sort} onChange={(e) => resetView(setSort)(e.target.value)}>
+              {SORTS.map((s) => (
+                <option key={s.key} value={s.key}>{s.label}</option>
+              ))}
+            </select>
+            <label className="fr-search">
+              <Search size={16} />
+              <input
+                type="search"
+                placeholder="Search product, category or batch"
+                value={query}
+                onChange={(e) => resetView(setQuery)(e.target.value)}
+              />
+            </label>
+          </div>
+        </div>
+
+        <div className="dn-list" role="table" aria-label="Your donations">
+          <div className="dn-row dn-row-head" role="row">
+            <span role="columnheader">Product</span>
+            <span role="columnheader">Quantity</span>
+            <span role="columnheader">Expiry</span>
+            <span role="columnheader">Status</span>
+            <span role="columnheader">Visibility</span>
+            <span role="columnheader" className="dn-right">Progress</span>
+          </div>
+
+          {loading &&
+            Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="dn-row dn-row-skel" aria-hidden="true">
+                <span className="dn-skel dn-skel-wide" />
+                <span className="dn-skel" />
+                <span className="dn-skel" />
+                <span className="dn-skel" />
+                <span className="dn-skel" />
+                <span className="dn-skel" />
+              </div>
+            ))}
+
+          {!loading &&
+            paged.map((d) => {
+              const exp = expiryInfo(d);
+              const open = trackingId === d.id;
+              return (
+                <div key={d.id} className={open ? "dn-item open" : "dn-item"}>
+                  <div className="dn-row" role="row">
+                    <div className="dn-product" role="cell">
+                      <img src={imageFor(d.category)} alt="" loading="lazy" />
+                      <div>
+                        <strong>{d.name}</strong>
+                        <span>
+                          {d.category}
+                          {d.batchNumber && <> · <code>{d.batchNumber}</code></>}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="dn-qty" role="cell">
+                      <Package size={14} />
+                      <strong>{d.quantityKg}</strong> {unitOf(d)}
+                    </div>
+                    <div className="dn-expiry" role="cell">
+                      <strong>{formatDate(d.expiryDate)}</strong>
+                      <span className={`dn-tone-${exp.tone}`}>{exp.text}</span>
+                    </div>
+                    <div role="cell">
+                      <span className={`dn-status dn-status-${d.status}`}>
+                        <i />
+                        {STATUS_LABEL[d.status] || d.status}
+                      </span>
+                    </div>
+                    <div role="cell">
+                      <PublishSwitch item={d} onToggle={togglePublish} />
+                    </div>
+                    <div role="cell" className="dn-right">
+                      <button
+                        type="button"
+                        className={open ? "dn-track active" : "dn-track"}
+                        onClick={() => setTrackingId((id) => (id === d.id ? null : d.id))}
+                        aria-expanded={open}
+                      >
+                        Track <ChevronDown size={15} />
+                      </button>
+                    </div>
+                  </div>
+                  {open && (
+                    <div className="dn-timeline">
+                      <DonationTimeline item={d} donorId={user.id} />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+        </div>
+
+        {!loading && filtered.length === 0 && (
+          <div className="dn-empty">
+            <div className="dn-empty-icon"><PackageOpen size={26} /></div>
+            <strong>{all.length === 0 ? "No donations yet" : "Nothing here"}</strong>
+            <p>
+              {all.length === 0
+                ? "Add your first item or upload a CSV of your inventory to get started."
+                : query
+                  ? `No items match “${query}”.`
+                  : "No items in this category yet."}
+            </p>
+            {all.length === 0 && (
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => setShowForm(true)}>
+                <Plus size={14} /> Add item
+              </button>
+            )}
+          </div>
+        )}
+
+        <div className="dn-foot">
+          {!loading && filtered.length > 0 && (
+            <span className="dn-foot-count">
+              {(pageSafe - 1) * PAGE_SIZE + 1}–{Math.min(pageSafe * PAGE_SIZE, filtered.length)} of {filtered.length}
+            </span>
+          )}
+          <Pagination page={pageSafe} totalPages={totalPages} onChange={goToPage} />
+        </div>
       </div>
+
+      {showForm && <AddItemModal user={user} onCreated={load} onClose={() => setShowForm(false)} />}
     </>
   );
 }
