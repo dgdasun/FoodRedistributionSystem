@@ -1,9 +1,11 @@
 package com.foodshare.controller;
 
+import com.foodshare.dto.UploadConfirmRequestDTO;
 import com.foodshare.model.Donation;
 import com.foodshare.model.User;
 import com.foodshare.repository.DonationRepository;
 import com.foodshare.repository.UserRepository;
+import com.foodshare.service.CategoryMatcher;
 import com.foodshare.service.DonationService;
 import com.foodshare.service.SettingsService;
 import com.foodshare.util.ExpiryUtil;
@@ -14,6 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -25,15 +28,18 @@ public class DonationController {
     private final DonationRepository donationRepository;
     private final SettingsService settingsService;
     private final UserRepository userRepository;
+    private final CategoryMatcher categoryMatcher;
 
     public DonationController(DonationService donationService,
                               DonationRepository donationRepository,
                               SettingsService settingsService,
-                              UserRepository userRepository) {
+                              UserRepository userRepository,
+                              CategoryMatcher categoryMatcher) {
         this.donationService = donationService;
         this.donationRepository = donationRepository;
         this.settingsService = settingsService;
         this.userRepository = userRepository;
+        this.categoryMatcher = categoryMatcher;
     }
 
     @GetMapping
@@ -64,18 +70,35 @@ public class DonationController {
     @PostMapping(value = "/upload", consumes = "multipart/form-data")
     @ResponseStatus(HttpStatus.CREATED)
     public Map<String, Object> upload(@RequestParam String donorId, @RequestParam("file") MultipartFile file) throws IOException {
-        DonationService.UploadResult result = donationService.bulkUpload(donorId, file);
+        return uploadResponse(donationService.bulkUpload(donorId, file));
+    }
+
+    /** Imports rows an upload held back for category review, with the category the donor picked. */
+    @PostMapping("/upload/confirm")
+    @ResponseStatus(HttpStatus.CREATED)
+    public Map<String, Object> confirmUpload(@RequestBody UploadConfirmRequestDTO request) {
+        return uploadResponse(donationService.importReviewedRows(request.getDonorId(), request.getRows()));
+    }
+
+    private Map<String, Object> uploadResponse(DonationService.UploadResult result) {
         String message = result.items().size() + " item(s) imported and classified.";
         if (result.freshSkipped() > 0) {
             message += " " + result.freshSkipped() + " row(s) skipped — still fresh, not yet eligible for donation.";
         }
-        return Map.of(
-                "message", message,
-                "surplusDetected", result.surplusDetected(),
-                "expiredDetected", result.expiredDetected(),
-                "freshSkipped", result.freshSkipped(),
-                "items", result.items()
-        );
+        if (!result.reviewRequired().isEmpty()) {
+            message += " " + result.reviewRequired().size() + " row(s) not imported yet — check their category.";
+        }
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("message", message);
+        body.put("surplusDetected", result.surplusDetected());
+        body.put("expiredDetected", result.expiredDetected());
+        body.put("freshSkipped", result.freshSkipped());
+        body.put("items", result.items());
+        body.put("categoryCorrections", result.categoryCorrections());
+        body.put("reviewRequired", result.reviewRequired());
+        // The names a held-back row can be filed under, so the review list offers exactly these.
+        body.put("categories", categoryMatcher.categories());
+        return body;
     }
 
     @PatchMapping("/{id}")

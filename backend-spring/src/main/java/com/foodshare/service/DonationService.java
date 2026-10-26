@@ -1,5 +1,6 @@
 package com.foodshare.service;
 
+import com.foodshare.dto.UploadConfirmRequestDTO;
 import com.foodshare.model.Donation;
 import com.foodshare.repository.DonationRepository;
 import com.foodshare.util.ExpiryUtil;
@@ -20,7 +21,9 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class DonationService {
@@ -39,18 +42,24 @@ public class DonationService {
             DateTimeFormatter.ofPattern("d-M-yyyy"),  // 17-9-2026
     };
 
+    /** A row with no category at all - not one with an unrecognised category - is filed here, as it always has been. */
+    private static final String DEFAULT_UPLOAD_CATEGORY = "Other";
+
     private final DonationRepository donationRepository;
     private static final Sort NEWEST_FIRST = Sort.by(Sort.Direction.DESC, "createdAt");
 
     private final SettingsService settingsService;
     private final UserRepository userRepository;
+    private final CategoryMatcher categoryMatcher;
 
     public DonationService(DonationRepository donationRepository,
                            SettingsService settingsService,
-                           UserRepository userRepository) {
+                           UserRepository userRepository,
+                           CategoryMatcher categoryMatcher) {
         this.donationRepository = donationRepository;
         this.settingsService = settingsService;
         this.userRepository = userRepository;
+        this.categoryMatcher = categoryMatcher;
     }
 
     /**
@@ -174,19 +183,26 @@ public class DonationService {
      * A pickupLocation column is ignored if present: every row is stamped with
      * the donor's registered location, the same as a manually added item. Older
      * templates that still carry the column therefore keep working.
+     *
+     * Each row's category is resolved to a canonical one by CategoryMatcher, so
+     * "dary" is saved as "Dairy" (and picks up Dairy's expiry rule) rather than
+     * as a category of its own. A row whose category cannot be resolved with
+     * confidence is not saved: it comes back in reviewRequired with any
+     * suggestion, for the donor to confirm through importReviewedRows.
      */
     public UploadResult bulkUpload(String donorId, MultipartFile file) throws IOException {
         List<Donation> created = new ArrayList<>();
+        List<CategoryCorrection> corrections = new ArrayList<>();
+        List<CategoryReview> review = new ArrayList<>();
         long freshSkipped = 0;
 
         // Resolved once rather than per row - it is the same for the whole file,
         // and it fails before any parsing if the donor has no location on file.
-        Donation probe = new Donation();
-        probe.setDonorId(donorId);
-        applyDonorLocation(probe);
-        String pickupLocation = probe.getPickupLocation();
-        Double donorLatitude = probe.getLatitude();
-        Double donorLongitude = probe.getLongitude();
+        Donation donorLocation = donorLocation(donorId);
+
+        // An inventory export repeats the same few category spellings on every
+        // row, so each distinct spelling is matched once per file.
+        Map<String, CategoryMatcher.Match> matchesBySpelling = new HashMap<>();
 
         try (CSVParser parser = CSVFormat.DEFAULT.builder()
                 .setHeader()
@@ -201,40 +217,122 @@ public class DonationService {
                 if (name == null || name.isBlank() || expiryStr == null || expiryStr.isBlank()) continue;
 
                 LocalDate expiryDate = parseCsvDate(expiryStr);
-                String category = getOrDefault(row, "category", "Other");
-                int threshold = settingsService.resolveExpiryThresholdDays(category);
+                String batchNumber = getOrDefault(row, "batchNumber", "N/A");
+                double quantityKg = parseDoubleSafe(getOrDefault(row, "quantityKg", "0"));
+                // The line number a donor sees in their spreadsheet, header being line 1.
+                long line = row.getRecordNumber() + 1;
 
+                String typedCategory = getOrDefault(row, "category", null);
+                CategoryMatcher.Match match = null;
+                String category = DEFAULT_UPLOAD_CATEGORY;
+                if (typedCategory != null) {
+                    match = matchesBySpelling.computeIfAbsent(typedCategory, categoryMatcher::match);
+                    if (!match.isAccepted()) {
+                        review.add(new CategoryReview(line, typedCategory, match.category(), match.type(),
+                                match.editDistance(), match.similarity(), match.message(),
+                                new ReviewItem(name, batchNumber, quantityKg, expiryDate)));
+                        continue;
+                    }
+                    category = match.category();
+                }
+
+                Donation d = newUploadedDonation(donorId, donorLocation, name, category, typedCategory,
+                        batchNumber, quantityKg, expiryDate);
                 // Donors can only list surplus (near-expiry) or expired items, not still-fresh stock.
-                if (ExpiryUtil.isTooFresh(expiryDate, threshold)) {
+                if (d == null) {
                     freshSkipped++;
                     continue;
                 }
-                String status = ExpiryUtil.reListStatus(expiryDate, threshold);
-
-                Donation d = new Donation();
-                d.setDonorId(donorId);
-                d.setName(name);
-                d.setCategory(category);
-                d.setBatchNumber(getOrDefault(row, "batchNumber", "N/A"));
-                d.setQuantityKg(parseDoubleSafe(getOrDefault(row, "quantityKg", "0")));
-                d.setUnit("kg");
-                d.setExpiryDate(expiryDate);
-                d.setPickupLocation(pickupLocation);
-                d.setLatitude(donorLatitude);
-                d.setLongitude(donorLongitude);
-                d.setListingType("donation");
-                d.setStatus(status);
-                d.setPublished(false);
-                d.setCreatedAt(Instant.now());
                 created.add(d);
+                if (match != null && (match.type() == CategoryMatcher.MatchType.ALIAS_MATCH
+                        || match.type() == CategoryMatcher.MatchType.FUZZY_MATCH)) {
+                    corrections.add(new CategoryCorrection(line, typedCategory, category, match.type(),
+                            match.editDistance(), match.similarity(), match.message()));
+                }
             }
         }
 
+        return saveUploaded(created, freshSkipped, corrections, review);
+    }
+
+    /**
+     * Imports rows a bulk upload held back for review, once the donor has
+     * picked a category for each. The category must now be one of the
+     * canonical names exactly - this is the donor's decision, so nothing is
+     * guessed here. Every row is checked before any is saved.
+     */
+    public UploadResult importReviewedRows(String donorId, List<UploadConfirmRequestDTO.Row> rows) {
+        if (rows == null || rows.isEmpty()) throw new IllegalArgumentException("No rows to import.");
+        Donation donorLocation = donorLocation(donorId);
+        List<Donation> created = new ArrayList<>();
+        long freshSkipped = 0;
+
+        for (UploadConfirmRequestDTO.Row row : rows) {
+            String label = row.getRowNumber() != null ? "Row " + row.getRowNumber() : "A row";
+            if (row.getName() == null || row.getName().isBlank() || row.getExpiryDate() == null) {
+                throw new IllegalArgumentException(label + " is missing a name or expiry date.");
+            }
+            CategoryMatcher.Match match = categoryMatcher.match(row.getCategory());
+            if (match.type() != CategoryMatcher.MatchType.EXACT_MATCH) {
+                throw new IllegalArgumentException(label + ": choose one of the listed categories ("
+                        + String.join(", ", categoryMatcher.categories()) + ").");
+            }
+
+            String batchNumber = row.getBatchNumber() == null || row.getBatchNumber().isBlank() ? "N/A" : row.getBatchNumber();
+            double quantityKg = row.getQuantityKg() == null ? 0.0 : row.getQuantityKg();
+            Donation d = newUploadedDonation(donorId, donorLocation, row.getName(), match.category(),
+                    row.getOriginalCategory(), batchNumber, quantityKg, row.getExpiryDate());
+            if (d == null) {
+                freshSkipped++;
+            } else {
+                created.add(d);
+            }
+        }
+        return saveUploaded(created, freshSkipped, List.of(), List.of());
+    }
+
+    private Donation donorLocation(String donorId) {
+        Donation probe = new Donation();
+        probe.setDonorId(donorId);
+        applyDonorLocation(probe);
+        return probe;
+    }
+
+    /** Builds an uploaded row's listing, or returns null when the item is still too fresh to list. */
+    private Donation newUploadedDonation(String donorId, Donation donorLocation, String name, String category,
+                                         String typedCategory, String batchNumber, double quantityKg,
+                                         LocalDate expiryDate) {
+        int threshold = settingsService.resolveExpiryThresholdDays(category);
+        if (ExpiryUtil.isTooFresh(expiryDate, threshold)) return null;
+
+        Donation d = new Donation();
+        d.setDonorId(donorId);
+        d.setName(name);
+        d.setCategory(category);
+        if (typedCategory != null && !typedCategory.trim().equals(category)) {
+            d.setOriginalCategory(typedCategory.trim());
+        }
+        d.setBatchNumber(batchNumber);
+        d.setQuantityKg(quantityKg);
+        d.setUnit("kg");
+        d.setExpiryDate(expiryDate);
+        d.setPickupLocation(donorLocation.getPickupLocation());
+        d.setLatitude(donorLocation.getLatitude());
+        d.setLongitude(donorLocation.getLongitude());
+        d.setListingType("donation");
+        d.setStatus(ExpiryUtil.reListStatus(expiryDate, threshold));
+        d.setPublished(false);
+        d.setCreatedAt(Instant.now());
+        return d;
+    }
+
+    private UploadResult saveUploaded(List<Donation> created, long freshSkipped,
+                                      List<CategoryCorrection> corrections, List<CategoryReview> review) {
         donationRepository.saveAll(created);
 
         long surplus = created.stream().filter(d -> "surplus".equals(d.getStatus())).count();
         long expired = created.stream().filter(d -> "expired".equals(d.getStatus())).count();
-        return new UploadResult(created, surplus, expired, freshSkipped);
+        return new UploadResult(created, surplus, expired, freshSkipped, corrections, review);
     }
 
     private String getOrDefault(CSVRecord row, String header, String fallback) {
@@ -279,5 +377,19 @@ public class DonationService {
         donationRepository.deleteById(id);
     }
 
-    public record UploadResult(List<Donation> items, long surplusDetected, long expiredDetected, long freshSkipped) {}
+    public record UploadResult(List<Donation> items, long surplusDetected, long expiredDetected, long freshSkipped,
+                               List<CategoryCorrection> categoryCorrections, List<CategoryReview> reviewRequired) {}
+
+    /** A row saved under a different category than was typed, e.g. "veggies" or "Dary". */
+    public record CategoryCorrection(long row, String originalCategory, String category,
+                                     CategoryMatcher.MatchType matchType, Integer editDistance,
+                                     Double similarity, String message) {}
+
+    /** A row held back because its category could not be resolved with confidence. */
+    public record CategoryReview(long row, String originalCategory, String suggestedCategory,
+                                 CategoryMatcher.MatchType matchType, Integer editDistance,
+                                 Double similarity, String message, ReviewItem item) {}
+
+    /** The parsed row, so it can be imported without re-uploading the file. */
+    public record ReviewItem(String name, String batchNumber, double quantityKg, LocalDate expiryDate) {}
 }

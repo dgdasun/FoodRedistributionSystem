@@ -191,6 +191,87 @@ function AddItemModal({ user, onCreated, onClose }) {
   );
 }
 
+/**
+ * What the CSV upload did with each row's category: spellings it corrected on
+ * its own, and rows it held back because it could not tell which category was
+ * meant. A held-back row is imported from here once the donor picks one, so
+ * the file never needs uploading twice.
+ */
+function UploadCategoryReport({ corrections, review, categories, onImport, onSkip }) {
+  if (!corrections?.length && !review?.length) return null;
+  return (
+    <div className="dn-catfix">
+      {corrections?.length > 0 && (
+        <details className="dn-catfix-done">
+          <summary>
+            {corrections.length} {corrections.length === 1 ? "category was" : "categories were"} corrected automatically
+          </summary>
+          <ul>
+            {corrections.map((c) => (
+              <li key={c.row}>
+                Row {c.row}: <q>{c.originalCategory}</q> → <strong>{c.category}</strong>
+                <em>
+                  {c.matchType === "ALIAS_MATCH" ? " (other name)" : ` (spelling, ${c.editDistance} letter${c.editDistance === 1 ? "" : "s"})`}
+                </em>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+      {review?.length > 0 && (
+        <ul className="dn-catfix-review" aria-label="Rows that need a category">
+          {review.map((r) => (
+            <ReviewRow key={r.row} row={r} categories={categories} onImport={onImport} onSkip={onSkip} />
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function ReviewRow({ row, categories, onImport, onSkip }) {
+  const [choice, setChoice] = useState(row.suggestedCategory || "");
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    setBusy(true);
+    try {
+      await onImport(row, choice);
+    } catch {
+      setBusy(false); // onImport has already said what went wrong
+    }
+  };
+
+  return (
+    <li className="dn-catfix-row">
+      <div className="dn-catfix-info">
+        <strong>Row {row.row} · {row.item.name}</strong>
+        <span>{row.message}</span>
+      </div>
+      <div className="dn-catfix-actions">
+        <select
+          className="dn-catfix-select"
+          value={choice}
+          onChange={(e) => setChoice(e.target.value)}
+          disabled={busy}
+          aria-label={`Category for row ${row.row}`}
+        >
+          <option value="" disabled>Choose a category</option>
+          {categories.map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+        <button type="button" className="dn-btn-ghost dn-catfix-btn" onClick={submit} disabled={!choice || busy}>
+          {busy ? <Loader2 size={14} className="dn-spin" /> : <CheckCircle2 size={14} />} Import
+        </button>
+        <button type="button" className="dn-icon-btn" onClick={() => onSkip(row)} disabled={busy} aria-label={`Skip row ${row.row}`}>
+          <X size={15} />
+        </button>
+      </div>
+    </li>
+  );
+}
+
 function PublishSwitch({ item, onToggle }) {
   const [busy, setBusy] = useState(false);
   const toggle = async () => {
@@ -313,12 +394,37 @@ export default function MyDonations() {
         tone: "ok",
         text: res.message,
         detail: `${res.surplusDetected} flagged as surplus · ${res.expiredDetected} expired`,
+        corrections: res.categoryCorrections || [],
+        review: res.reviewRequired || [],
+        categories: res.categories || CATEGORIES,
       });
       load();
     } catch (err) {
       setUpload({ tone: "danger", text: err.message });
     }
     e.target.value = "";
+  };
+
+  const dropReviewRow = (row) =>
+    setUpload((prev) => prev && { ...prev, review: prev.review.filter((r) => r.row !== row.row) });
+
+  // Imports one held-back row with the category the donor chose. Rethrows so
+  // the row stays on screen, with its controls usable again, if it fails.
+  const importReviewRow = async (row, category) => {
+    try {
+      const res = await api.post("/donations/upload/confirm", {
+        donorId: user.id,
+        rows: [{ rowNumber: row.row, ...row.item, originalCategory: row.originalCategory, category }],
+      });
+      // No item back means it was still too fresh to list - the message says so.
+      if (res.items?.length) toast.success(`${row.item.name} imported under ${category}.`);
+      else toast.info(res.message);
+      dropReviewRow(row);
+      load();
+    } catch (err) {
+      toast.error(err.message);
+      throw err;
+    }
   };
 
   const dash = (v) => (loading ? "—" : v);
@@ -374,13 +480,25 @@ export default function MyDonations() {
       </Stagger>
 
       {upload && (
-        <div className={`dn-banner dn-banner-${upload.busy ? "info" : upload.tone}`} role="status">
+        <div
+          className={`dn-banner dn-banner-${upload.busy ? "info" : upload.tone === "ok" && upload.review?.length ? "warn" : upload.tone}`}
+          role="status"
+        >
           <span className="dn-banner-icon">
             {upload.busy ? <Loader2 size={18} className="dn-spin" /> : upload.tone === "ok" ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
           </span>
           <div className="dn-banner-text">
             <strong>{upload.text}</strong>
             {upload.detail && <span>{upload.detail}</span>}
+            {!upload.busy && (
+              <UploadCategoryReport
+                corrections={upload.corrections}
+                review={upload.review}
+                categories={upload.categories || CATEGORIES}
+                onImport={importReviewRow}
+                onSkip={dropReviewRow}
+              />
+            )}
             {!upload.busy && (
               <small>
                 Expected headers: <code>name,category,batchNumber,quantityKg,expiryDate</code>. Pickup location comes
