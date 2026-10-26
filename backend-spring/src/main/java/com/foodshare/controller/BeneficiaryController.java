@@ -47,8 +47,11 @@ public class BeneficiaryController {
     }
 
     @PostMapping(value = "/{id}/documents", consumes = "multipart/form-data")
-    public Map<String, Object> uploadDocument(@PathVariable String id, @RequestParam("file") MultipartFile file) throws IOException {
-        User user = verificationDocumentService.addDocument(id, file);
+    public Map<String, Object> uploadDocument(@PathVariable String id,
+                                              @RequestParam("file") MultipartFile file,
+                                              @RequestParam(required = false) String category,
+                                              @RequestParam(required = false) String documentType) throws IOException {
+        User user = verificationDocumentService.addDocument(id, file, category, documentType);
         return Map.of("user", user);
     }
 

@@ -28,12 +28,12 @@ String formatDuration(Duration d) {
 
 class User {
   final String id, role, name, email, verificationStatus;
-  final String? organizationName, location, orgType, phone, storageCapacity, rejectionReason;
+  final String? organizationName, location, orgType, phone, rejectionReason;
   final String? _avatar;
   final int organizationSize;
   final double handlingCapacityKg;
   final bool verified;
-  final List<String> verificationDocuments;
+  final List<String> verificationDocuments, storageTypes;
   final Map<String, dynamic> raw;
 
   User.fromJson(Map<String, dynamic> j)
@@ -45,7 +45,6 @@ class User {
         location = j['location'],
         orgType = j['orgType'],
         phone = j['phone'],
-        storageCapacity = j['storageCapacity'],
         rejectionReason = j['rejectionReason'],
         verificationStatus = j['verificationStatus'] ?? 'pending',
         _avatar = j['avatar'],
@@ -53,6 +52,7 @@ class User {
         handlingCapacityKg = _d(j['handlingCapacityKg']),
         verified = j['verified'] == true,
         verificationDocuments = [for (final d in j['verificationDocuments'] as List? ?? []) '$d'],
+        storageTypes = [for (final t in j['storageTypes'] as List? ?? []) '$t'],
         raw = j;
 
   bool get isDonor => role == 'donor';

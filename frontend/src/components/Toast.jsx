@@ -11,7 +11,7 @@ const TONES = {
 };
 
 /**
- * Short-lived confirmations, anchored bottom-right.
+ * Short-lived confirmations, anchored top-center.
  *
  * Toasts are announced politely to screen readers via the live region, and
  * they never carry information that exists nowhere else - a failed action
@@ -68,9 +68,9 @@ function ToastViewport({ toasts, onDismiss }) {
               key={t.id}
               className="toast"
               layout={!reduced}
-              initial={reduced ? false : { opacity: 0, y: 14, scale: 0.97 }}
+              initial={reduced ? false : { opacity: 0, y: -24, scale: 0.97 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={reduced ? { opacity: 0 } : { opacity: 0, x: 24, scale: 0.97 }}
+              exit={reduced ? { opacity: 0 } : { opacity: 0, y: -16, scale: 0.97 }}
               transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
             >
               <span className="toast-icon" style={{ background: tone.tint, color: tone.color }}>
