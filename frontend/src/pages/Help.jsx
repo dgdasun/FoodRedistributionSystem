@@ -63,7 +63,7 @@ const FAQS = [
   { topic: "start", roles: ["donor"], q: "How do I publish surplus food?", a: 'Go to My Donations, add an item manually or upload a CSV, then click "Publish" once it is flagged as surplus. Published items appear on the Available Food page straight away.' },
   { topic: "start", roles: RECEIVERS, q: "Can I browse before my account is verified?", a: "Yes. Anyone - even a guest - can browse listings. Sending requests and receiving collection tickets need your organization to be verified by an administrator first." },
   // Donations
-  { topic: "donations", roles: ["donor", "admin"], q: "What format does the CSV upload need?", a: "The file needs the headers name, category, batchNumber, quantityKg, expiryDate. You can download a ready-made sample CSV from the My Donations page." },
+  { topic: "donations", roles: ["donor", "admin"], q: "What format does the CSV upload need?", a: "The file needs the headers name, category, batchNumber, quantity, unit, expiryDate. Unit is kg, liters or items (kg if left out); for items, add packSize and packUnit to give one packet's size in kg or liters. You can download a ready-made sample CSV from the My Donations page." },
   { topic: "donations", roles: ["donor", "admin"], q: "When is an item treated as surplus?", a: "Each food category has an expiry window set by the administrator (for example, cooked food and bakery are tighter than packaged rations). Items inside that window are flagged as surplus and can be published." },
   { topic: "donations", roles: ALL, q: "What happens to expired food?", a: "Items past their expiry date are removed from the human-consumption listings and redirected to registered farms and composting facilities." },
   // Requests & pickup

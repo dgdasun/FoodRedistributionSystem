@@ -39,8 +39,10 @@ function Protected({ children, roles, requireVerified }) {
 
 function BrowseRoute() {
   const { user } = useAuth();
-  // Guests and beneficiaries/farms (verified or pending) can browse; other logged-in roles use their own dashboard.
-  if (user && user.role !== "beneficiary" && user.role !== "farm") {
+  // Guests, beneficiaries/farms (verified or pending) and admins (read-only
+  // oversight, from the dashboard's "Surplus listings live") can browse;
+  // donors use their own dashboard.
+  if (user && !["beneficiary", "farm", "admin"].includes(user.role)) {
     return <Navigate to="/dashboard" replace />;
   }
   return user ? (
@@ -65,7 +67,7 @@ function AppRoutes() {
 
       <Route path="/dashboard" element={<Protected><Dashboard /></Protected>} />
       <Route path="/profile" element={<Protected><Profile /></Protected>} />
-      <Route path="/help" element={<Protected><Help /></Protected>} />
+      <Route path="/help" element={<Protected roles={["donor", "beneficiary", "farm"]}><Help /></Protected>} />
       <Route path="/impact" element={<Protected><Impact /></Protected>} />
 
       {/* Donor-only */}

@@ -9,11 +9,11 @@ import {
   IconStatStore,
   IconStatBowl,
   IconStatPeople,
-  IconStatCO2,
   IconTicket,
   IconInbox,
-  IconForkKnife,
   IconTrashCan,
+  IconCommunity,
+  IconShieldCheck,
 } from "../components/Icons.jsx";
 import { imageFor } from "../foodImages.js";
 import "../styles/food-requests.css";
@@ -24,6 +24,12 @@ const toISO = (y, m, d) => `${y}-${pad(m)}-${pad(d)}`;
 const isoOf = (date) => toISO(date.getFullYear(), date.getMonth() + 1, date.getDate());
 const daysInMonth = (y, m) => new Date(y, m, 0).getDate();
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+// The dates picked here are local calendar days; the server runs on UTC, so it
+// needs the browser's zone to agree on what "today" is.
+const TIME_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+const reportQuery = (r) =>
+  new URLSearchParams({ startDate: r.startDate, endDate: r.endDate, tz: TIME_ZONE }).toString();
 
 function prettyDate(iso) {
   const d = new Date(`${iso}T00:00:00`);
@@ -68,6 +74,14 @@ function useNarrow(query = "(max-width: 640px)") {
 }
 
 const STATUS_TONE = { collected: "good", surplus: "warning", expired: "critical", reserved: "neutral", fresh: "neutral" };
+const REQUEST_OUTCOME = {
+  approved: { label: "Approved", tone: "good" },
+  pending: { label: "Pending", tone: "warning" },
+  rejected: { label: "Rejected", tone: "critical" },
+  cancelled: { label: "Cancelled", tone: "neutral" },
+};
+const ROLE_LABEL = { donor: "Donor", beneficiary: "Beneficiary", farm: "Farm" };
+const VERIFICATION_LABEL = { approved: "Verified", pending: "Awaiting review", rejected: "Rejected" };
 
 export default function AdminReports() {
   const toast = useToast();
@@ -100,6 +114,7 @@ export default function AdminReports() {
   const [generatedAt, setGeneratedAt] = useState(null);
   const [recordQuery, setRecordQuery] = useState("");
   const [recordStatus, setRecordStatus] = useState("");
+  const [memberRole, setMemberRole] = useState("");
 
   const monthOptions = useMemo(() => {
     if (!year) return [];
@@ -140,12 +155,13 @@ export default function AdminReports() {
     setLoading(true);
     setError("");
     try {
-      const data = await api.get(`/reports?startDate=${r.startDate}&endDate=${r.endDate}`);
+      const data = await api.get(`/reports?${reportQuery(r)}`);
       setReport(data);
       setRange(r);
       setGeneratedAt(new Date());
       setRecordQuery("");
       setRecordStatus("");
+      setMemberRole("");
     } catch (e) {
       setError(e.message || "Failed to generate report.");
     } finally {
@@ -169,7 +185,7 @@ export default function AdminReports() {
     setDownloading(true);
     try {
       await api.download(
-        `/reports/pdf?startDate=${range.startDate}&endDate=${range.endDate}`,
+        `/reports/pdf?${reportQuery(range)}`,
         `foodshare-report-${range.startDate}_to_${range.endDate}.pdf`
       );
       toast.success("PDF report downloaded.");
@@ -199,7 +215,15 @@ export default function AdminReports() {
       .filter((d) => !q || [d.name, d.category, d.pickupLocation].filter(Boolean).some((f) => f.toLowerCase().includes(q)));
   }, [report, recordQuery, recordStatus]);
   const visibleRecords = records.slice(0, 150);
-  const collectedShare = s && s.totalQuantityKg ? Math.round((s.collectedKg / s.totalQuantityKg) * 100) : 0;
+
+  const members = report?.members || [];
+  const visibleMembers = members.filter((m) => !memberRole || m.role === memberRole);
+  const requestSegments = Object.entries(report?.requestOutcomes || {}).map(([key, value]) => ({
+    key,
+    label: REQUEST_OUTCOME[key]?.label || key,
+    color: STATUS[REQUEST_OUTCOME[key]?.tone || "neutral"],
+    value,
+  }));
 
   return (
     <div className="dashboard-container">
@@ -322,18 +346,91 @@ export default function AdminReports() {
           </section>
 
           <Stagger className="grid-4 stats-grid" key={`${range.startDate}-${range.endDate}`}>
-            <StatCard icon={<IconStatStore size={28} color="var(--primary)" />} label="Donations" value={s.totalDonations} sub="Batches listed in this period" />
-            <StatCard icon={<IconStatBowl size={28} color="var(--primary)" />} label="Food donated" value={s.totalQuantityKg} unit="KG" sub={`${collectedShare}% collected so far`} />
-            <StatCard icon={<IconStatPeople size={28} color="var(--status-violet-fg)" />} iconBg="var(--status-violet-bg)" label="Organizations served" value={s.beneficiariesServed} sub="Unique NGOs & farms" />
-            <StatCard icon={<IconStatCO2 size={28} color="var(--status-ok-fg)" />} label="CO₂ saved" value={s.co2SavedKg} unit="KG" sub="Estimated from food diverted" />
+            <StatCard icon={<IconStatStore size={28} color="var(--primary)" />} label="Donors joined" value={s.donorsJoined} sub="New donor accounts" />
+            <StatCard icon={<IconCommunity size={28} color="var(--status-info-fg)" />} iconBg="var(--status-info-bg)" label="Beneficiaries joined" value={s.beneficiariesJoined} sub="New NGOs & charities" />
+            <StatCard icon={<IconStatBowl size={28} color="var(--status-ok-fg)" />} label="Farms joined" value={s.farmsJoined} sub="New farm / compost partners" />
+            <StatCard
+              icon={<IconStatPeople size={28} color="var(--status-violet-fg)" />}
+              iconBg="var(--status-violet-bg)"
+              label="New members"
+              value={s.membersJoined}
+              sub="Donors, beneficiaries & farms"
+            />
           </Stagger>
 
           <div className="rp-mini">
-            <div><span className="rp-mini-icon"><IconTicket size={17} color="currentColor" /></span><strong>{s.totalTickets}</strong><span>Tickets issued</span></div>
             <div><span className="rp-mini-icon"><IconInbox size={17} color="currentColor" /></span><strong>{s.totalRequests}</strong><span>Requests received</span></div>
-            <div><span className="rp-mini-icon"><IconForkKnife size={17} color="currentColor" /></span><strong>{Number(s.mealsProvided).toLocaleString()}</strong><span>Meals provided (est.)</span></div>
-            <div><span className="rp-mini-icon"><IconTrashCan size={17} color="currentColor" /></span><strong>{s.collectedKg} kg</strong><span>Collected</span></div>
+            <div><span className="rp-mini-icon"><IconShieldCheck size={17} color="currentColor" /></span><strong>{s.requestApprovalRate == null ? "—" : `${s.requestApprovalRate}%`}</strong><span>Request approval rate</span></div>
+            <div><span className="rp-mini-icon"><IconTicket size={17} color="currentColor" /></span><strong>{s.totalTickets}</strong><span>Pickup tickets issued</span></div>
+            {/* Kilograms and liters are different measures, so expired food sent
+                to farms gets one box for each instead of a single mixed total. */}
+            <div>
+              <span className="rp-mini-icon"><IconTrashCan size={17} color="currentColor" /></span>
+              <strong>{s.expiredKg ?? 0} kg</strong>
+              <span>
+                Expired to farms (kg)
+                {s.expiredUnsizedPackets > 0 && ` + ${s.expiredUnsizedPackets} packets`}
+              </span>
+            </div>
+            <div>
+              <span className="rp-mini-icon"><IconTrashCan size={17} color="currentColor" /></span>
+              <strong>{s.expiredLiters ?? 0} L</strong>
+              <span>Expired to farms (liters)</span>
+            </div>
           </div>
+
+          {/* ---------- New members ---------- */}
+          <section className="card rp-card">
+            <div className="rp-card-head rp-records-head">
+              <h3>New members joined <span className="rp-chip">{members.length}</span></h3>
+              <div className="fr-tools">
+                <select className="fr-select" value={memberRole} onChange={(e) => setMemberRole(e.target.value)} aria-label="Filter members by role">
+                  <option value="">All roles</option>
+                  <option value="donor">Donors</option>
+                  <option value="beneficiary">Beneficiaries</option>
+                  <option value="farm">Farms</option>
+                </select>
+              </div>
+            </div>
+
+            {visibleMembers.length === 0 ? (
+              <div className="rp-empty">
+                {members.length ? "No members match this role." : "No donors, beneficiaries or farms joined in this period."}
+              </div>
+            ) : (
+              <div className="rp-table-wrap">
+                <table className="rp-table">
+                  <thead>
+                    <tr>
+                      <th>Member</th>
+                      <th>Role</th>
+                      <th>Joined</th>
+                      <th>Location</th>
+                      <th>Verification</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visibleMembers.map((m) => (
+                      <tr key={m.id}>
+                        <td>
+                          <div className="rp-item">
+                            <div>
+                              <strong>{m.organizationName || m.name}</strong>
+                              {m.organizationName && <span>{m.name}</span>}
+                            </div>
+                          </div>
+                        </td>
+                        <td>{ROLE_LABEL[m.role] || m.role}</td>
+                        <td className="rp-muted">{prettyDate(m.joinedAt)}</td>
+                        <td className="rp-muted rp-loc" title={m.location}>{m.location || "—"}</td>
+                        <td><span className={`rp-status rp-status-${m.verificationStatus}`}><i />{VERIFICATION_LABEL[m.verificationStatus] || m.verificationStatus}</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
 
           <section className="card rp-card">
             <div className="rp-card-head">
@@ -376,6 +473,32 @@ export default function AdminReports() {
                 <StatusDonut segments={statusSegments} unit="donations" centerLabel="donations" height={280} />
               ) : (
                 <div className="rp-empty">No donations recorded for this period.</div>
+              )}
+            </section>
+          </div>
+
+          <div className="grid-2 cards-row">
+            <section className="card rp-card">
+              <div className="rp-card-head">
+                <h3>Request outcomes</h3>
+                <span className="rp-chip">{s.totalRequests} requests</span>
+              </div>
+              {s.totalRequests ? (
+                <StatusDonut segments={requestSegments} unit="requests" centerLabel="requests" height={280} />
+              ) : (
+                <div className="rp-empty">No food requests were made in this period.</div>
+              )}
+            </section>
+
+            <section className="card rp-card">
+              <div className="rp-card-head">
+                <h3>Top donors</h3>
+                <span className="rp-chip">{s.activeDonors} active donor{s.activeDonors === 1 ? "" : "s"}</span>
+              </div>
+              {Object.keys(report.topDonors || {}).length ? (
+                <HorizontalBarChart data={report.topDonors} height={280} unit="kg" labelWidth={140} />
+              ) : (
+                <div className="rp-empty">No donors listed food in this period.</div>
               )}
             </section>
           </div>

@@ -21,8 +21,31 @@ public class Donation {
      */
     private String originalCategory;
     private String batchNumber;
+    /**
+     * Quantity still available, in {@link #unit} - despite the legacy name it is
+     * not always kilograms. Requests reserve stock out of it, so it shrinks.
+     */
     private Double quantityKg;
+
+    /** kg | liters | items (see DonationUnits). Older records predate the field and read as kg. */
     private String unit = "kg";
+
+    /**
+     * What the donor originally listed, in {@link #unit}. Kept separately because
+     * quantityKg drops as requests reserve stock; null on records listed before
+     * this field existed.
+     */
+    private Double initialQuantity;
+
+    /**
+     * For unit "items" only: how much one packet holds, in {@link #packUnit}
+     * (kg or liters). Lets beneficiaries judge how far the packets go - "20
+     * items" alone says nothing about whether they feed 5 people or 50.
+     */
+    private Double packSize;
+
+    /** kg | liters - the unit of {@link #packSize}; null unless unit is "items". */
+    private String packUnit;
     private LocalDate expiryDate;
     private String pickupLocation;
     private Double latitude;
@@ -109,6 +132,30 @@ public class Donation {
 
     public void setUnit(String unit) {
         this.unit = unit;
+    }
+
+    public Double getInitialQuantity() {
+        return initialQuantity;
+    }
+
+    public void setInitialQuantity(Double initialQuantity) {
+        this.initialQuantity = initialQuantity;
+    }
+
+    public Double getPackSize() {
+        return packSize;
+    }
+
+    public void setPackSize(Double packSize) {
+        this.packSize = packSize;
+    }
+
+    public String getPackUnit() {
+        return packUnit;
+    }
+
+    public void setPackUnit(String packUnit) {
+        this.packUnit = packUnit;
     }
 
     public LocalDate getExpiryDate() {
