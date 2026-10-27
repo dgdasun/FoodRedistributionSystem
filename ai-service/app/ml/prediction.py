@@ -7,6 +7,7 @@ Use the saved (trained) surplus model inside FastAPI.  (version 2)
 - Fewer than 7 days of history -> missing days are filled with the average.
 """
 from datetime import date, datetime, timedelta, timezone
+import json
 from pathlib import Path
 import joblib
 import pandas as pd
@@ -24,6 +25,10 @@ def _get_bundle():
         if not MODEL_FILE.exists():
             raise RuntimeError(f"Trained model not found at {MODEL_FILE} - run app/ml/train.py")
         _bundle = joblib.load(MODEL_FILE)
+        # Training used every core (n_jobs=-1); for one-row predictions that only
+        # costs thread start-up on each call. Same trees, same answers.
+        if hasattr(_bundle["model"], "n_jobs"):
+            _bundle["model"].n_jobs = 1
     return _bundle
 
 ALIASES = {
@@ -42,8 +47,21 @@ def reload_model():
     _get_bundle()
 
 
+INFO_FILE = MODEL_FILE.parent / "model_info.json"
+
+
 def model_info() -> dict:
-    """What the dashboard shows about the serving model. Older bundles carry no scores."""
+    """
+    What the admin pages show about the serving model: models/model_info.json
+    when train.py wrote one, otherwise whatever the bundle carries (older
+    bundles have no scores).
+    """
+    if INFO_FILE.exists():
+        with open(INFO_FILE, encoding="utf-8") as f:
+            info = json.load(f)
+        # keep the shape older callers read ("compared": name -> MAE)
+        compared = {e["model"]: e["mae"] for e in info.get("evaluation", []) if not e["model"].startswith("Baseline")}
+        return {"available": True, "compared": compared, **info}
     bundle = _get_bundle()
     trained_at = bundle.get("trained_at") or datetime.fromtimestamp(
         MODEL_FILE.stat().st_mtime, timezone.utc).isoformat(timespec="seconds")
@@ -51,7 +69,8 @@ def model_info() -> dict:
             "mae": bundle.get("mae"), "rmse": bundle.get("rmse"),
             "baselineMae": bundle.get("baseline_mae"), "compared": bundle.get("compared"),
             "trainRows": bundle.get("train_rows"), "testRows": bundle.get("test_rows"),
-            "categories": bundle["categories"], "trainedAt": trained_at}
+            "categories": bundle["categories"], "features": bundle.get("features"),
+            "evaluation": bundle.get("evaluation"), "dataset": bundle.get("dataset"), "trainedAt": trained_at}
 
 
 def _match_category(category: str):

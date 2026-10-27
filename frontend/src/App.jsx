@@ -16,11 +16,13 @@ import MyRequests from "./pages/MyRequests.jsx";
 import Tickets from "./pages/Tickets.jsx";
 import Impact from "./pages/Impact.jsx";
 import PickupHistory from "./pages/PickupHistory.jsx";
+import FoodForecast from "./pages/FoodForecast.jsx";
 import Profile from "./pages/Profile.jsx";
 import AdminUsers from "./pages/AdminUsers.jsx";
 import AdminVerifications from "./pages/AdminVerifications.jsx";
 import AdminSettings from "./pages/AdminSettings.jsx";
 import AdminReports from "./pages/AdminReports.jsx";
+import AdminAIInsights from "./pages/AdminAIInsights.jsx";
 import Help from "./pages/Help.jsx";
 import ScanQRPage from "./pages/ScanQRPage.jsx";
 import Home from "./pages/Home.jsx";
@@ -76,6 +78,7 @@ function AppRoutes() {
       <Route path="/requests/beneficiary" element={<Navigate to="/requests" replace />} />
       <Route path="/requests/farm" element={<Navigate to="/requests" replace />} />
       <Route path="/pickups" element={<Protected roles={["donor"]}><PickupHistory /></Protected>} />
+      <Route path="/forecast" element={<Protected roles={["donor"]}><FoodForecast /></Protected>} />
 
       {/* Beneficiary / farm — also public: guests and pending accounts can browse read-only */}
       <Route path="/browse" element={<BrowseRoute />} />
@@ -87,6 +90,7 @@ function AppRoutes() {
       <Route path="/admin/beneficiaries" element={<Protected roles={["admin"]}><AdminVerifications /></Protected>} />
       <Route path="/admin/settings" element={<Protected roles={["admin"]}><AdminSettings /></Protected>} />
       <Route path="/admin/reports" element={<Protected roles={["admin"]}><AdminReports /></Protected>} />
+      <Route path="/admin/ai-insights" element={<Protected roles={["admin"]}><AdminAIInsights /></Protected>} />
 
       <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Home />} />
       <Route path="*" element={<Navigate to={user ? "/dashboard" : "/login"} replace />} />

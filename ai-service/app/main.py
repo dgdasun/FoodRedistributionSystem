@@ -116,6 +116,7 @@ SERVICE_ROOT = Path(__file__).resolve().parents[1]   # train.py reads data/ and 
 
 @app.get("/model/info")
 def model_info():
+    """models/model_info.json (falls back to the bundle); never a 404 or 500 when the model is missing."""
     try:
         return ml_model_info()
     except RuntimeError as e:
@@ -124,8 +125,8 @@ def model_info():
 
 @app.post("/model/retrain")
 def model_retrain():
-    """Re-runs app/ml/train.py on data/surplus_data.csv, then serves the new model."""
-    run = subprocess.run([sys.executable, "app/ml/train.py"], cwd=SERVICE_ROOT,
+    """Re-runs app/ml/train.py on data/surplus_data.csv, then serves the new model (reload_model)."""
+    run = subprocess.run([sys.executable, "-m", "app.ml.train"], cwd=SERVICE_ROOT,
                          capture_output=True, text=True, timeout=600)
     if run.returncode != 0:
         raise HTTPException(status_code=500, detail=(run.stderr or run.stdout)[-800:])

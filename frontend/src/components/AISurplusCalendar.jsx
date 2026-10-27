@@ -25,7 +25,7 @@ const VIEWS = [
  *
  * Built from that donor's own inventory history only (/ai/predict?donorId=),
  * so a shop sees its own pattern rather than the platform's. Admins get the
- * combined view in AdminSurplusPlanner.
+ * combined view on the AI Insights page (AdminAIInsights).
  */
 export default function AISurplusCalendar({ donorId }) {
   const [days, setDays] = useState(7);

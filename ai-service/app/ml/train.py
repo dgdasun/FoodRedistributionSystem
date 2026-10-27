@@ -8,6 +8,7 @@ So a small shop (40 kg/day) and a big supermarket (700 kg/day) can both use it.
 Input:  data/surplus_data.csv  (category, date, quantityKg)
 Output: models/surplus_model.joblib  + printed MAE / RMSE table (in kg)
 """
+import json
 import os
 from datetime import datetime, timezone
 import joblib
@@ -18,6 +19,8 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 DATA_FILE = "data/surplus_data.csv"
 MODEL_FILE = "models/surplus_model.joblib"
+INFO_FILE = "models/model_info.json"   # same facts as the bundle, readable without loading the model
+DATASET = "Kaggle Store Item Demand Forecasting dataset"
 FEATURES = ["dow", "month", "r_lag1", "r_lag7", "cat_code"]
 
 # ---------- 1. read data ----------
@@ -55,8 +58,8 @@ results = {}
 print("\nModel                 MAE(kg)   RMSE(kg)")
 base = test["roll7"]
 baseline_mae = mean_absolute_error(test.quantityKg, base)
-print(f"{'Baseline (7-day avg)':<20} {baseline_mae:9.2f} "
-      f"{mean_squared_error(test.quantityKg, base) ** 0.5:9.2f}")
+baseline_rmse = mean_squared_error(test.quantityKg, base) ** 0.5
+print(f"{'Baseline (7-day avg)':<20} {baseline_mae:9.2f} {baseline_rmse:9.2f}")
 for name, model in models.items():
     model.fit(train[FEATURES], train["target"])
     pred_kg = (model.predict(test[FEATURES]) * test["roll7"]).clip(lower=0)
@@ -68,12 +71,21 @@ for name, model in models.items():
 # ---------- 5. save the best one ----------
 best = min(results, key=lambda k: results[k][1])
 os.makedirs("models", exist_ok=True)
-# the scores travel with the model so the admin dashboard can show them
+# the scores travel with the model so the admin pages can show them
+evaluation = [{"model": "Baseline (7-day average)", "mae": round(baseline_mae, 2), "rmse": round(baseline_rmse, 2)}]
+evaluation += [{"model": k, "mae": round(v[1], 2), "rmse": round(v[2], 2)} for k, v in results.items()]
+info = {"model": best, "version": 2, "dataset": DATASET, "features": FEATURES, "categories": categories,
+        "mae": round(results[best][1], 2), "rmse": round(results[best][2], 2),
+        "baselineMae": round(baseline_mae, 2), "evaluation": evaluation,
+        "trainRows": len(train), "testRows": len(test),
+        "trainedAt": datetime.now(timezone.utc).isoformat(timespec="seconds")}
 joblib.dump({"model": results[best][0], "features": FEATURES,
              "categories": categories, "model_name": best, "version": 2,
-             "mae": round(results[best][1], 2), "rmse": round(results[best][2], 2),
-             "baseline_mae": round(baseline_mae, 2),
+             "mae": info["mae"], "rmse": info["rmse"], "baseline_mae": info["baselineMae"],
              "compared": {k: round(v[1], 2) for k, v in results.items()},
+             "evaluation": evaluation, "dataset": DATASET,
              "train_rows": len(train), "test_rows": len(test),
-             "trained_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}, MODEL_FILE)
+             "trained_at": info["trainedAt"]}, MODEL_FILE)
+with open(INFO_FILE, "w", encoding="utf-8") as f:
+    json.dump(info, f, indent=2)
 print(f"\nBest model = {best}  -> saved to {MODEL_FILE}")

@@ -19,6 +19,22 @@ export const fmtLong = (iso) =>
   new Date(`${iso}T00:00:00`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
 export const fmtKg = (kg) => `${Math.round(kg).toLocaleString()} kg`;
 
+/** Local calendar date as YYYY-MM-DD (toISOString would shift it to UTC). */
+export const isoLocal = (d) => d.toLocaleDateString("en-CA");
+
+/** "Monday" when it falls in the coming week, "Monday, Nov 9" further out - so a name is never ambiguous. */
+export function dayName(iso) {
+  const ahead = (new Date(`${iso}T00:00:00`) - new Date(`${isoLocal(new Date())}T00:00:00`)) / 86_400_000;
+  return ahead < 7 ? new Date(`${iso}T00:00:00`).toLocaleDateString("en-US", { weekday: "long" }) : fmtLong(iso);
+}
+
+/** Plain-words summary of a forecast, shared by the Food Forecast page and its dashboard card. */
+export function forecastSentence(forecast, days) {
+  if (!forecast.rows.length) return null;
+  const peak = forecast.dayTotals.reduce((a, b) => (b.kg > a.kg ? b : a));
+  return `In the next ${days} days about ${fmtKg(forecast.total)} of your food may go unsold. ${dayName(peak.date)} is likely to be the busiest day.`;
+}
+
 /**
  * Colour follows the category, never its rank, so a category keeps its hue
  * when the horizon changes and the sort order shifts. Six known categories
@@ -386,7 +402,7 @@ export function fmtHours(h) {
  * How little slack a category's near-expiry window leaves. Status colour
  * always ships with an icon and a word, never alone.
  */
-function urgencyFor(hours) {
+export function urgencyFor(hours) {
   if (hours < 24) return { tone: "urgent", label: "List same day", Icon: AlarmClock };
   if (hours <= 72) return { tone: "soon", label: "List within days", Icon: Clock };
   return { tone: "calm", label: "Flexible", Icon: CalendarCheck };
