@@ -11,17 +11,19 @@ import com.foodshare.model.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.TreeSet;
 
 /**
  * This is the integration point between the Java/Spring Boot backend and the
@@ -43,12 +45,18 @@ public class AIClientService {
     private static final Logger log = LoggerFactory.getLogger(AIClientService.class);
 
     private final RestTemplate restTemplate;
+    /** Retraining fits several models on the full dataset, well past the shared 10s read timeout. */
+    private final RestTemplate trainingRestTemplate;
     private final String aiServiceBaseUrl;
 
     public AIClientService(RestTemplate restTemplate,
                             @Value("${foodshare.ai-service.base-url}") String aiServiceBaseUrl) {
         this.restTemplate = restTemplate;
         this.aiServiceBaseUrl = aiServiceBaseUrl;
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(5_000);
+        factory.setReadTimeout(180_000);
+        this.trainingRestTemplate = new RestTemplate(factory);
     }
 
     /**
@@ -133,12 +141,53 @@ public class AIClientService {
      * the frontend dashboard does not need any change.
      */
     public PredictionResponseDTO predictSurplus(List<HistoryPoint> history, int daysAhead) {
+        PredictionResponseDTO result;
         try {
-            return predictSurplusWithTrainedModel(history, daysAhead);
+            result = predictSurplusWithTrainedModel(history, daysAhead);
         } catch (Exception e) {
             log.warn("Trained ML model unavailable, using simple trend model instead: {}", e.getMessage());
-            return predictSurplusSimpleTrend(history, daysAhead);
+            result = predictSurplusSimpleTrend(history, daysAhead);
         }
+        if (result != null) result.setPreviousPeriodKg(previousPeriodKg(history, daysAhead));
+        return result;
+    }
+
+    /**
+     * Surplus actually recorded over the last {@code days} days of history, so
+     * the forecast can be shown as up or down against it. Counts the most
+     * recent recorded days rather than the calendar days before today, so a
+     * history that stopped a while ago still compares like with like. Null
+     * when there are not enough days to compare.
+     */
+    private static Double previousPeriodKg(List<HistoryPoint> history, int days) {
+        TreeSet<LocalDate> dates = new TreeSet<>();
+        for (HistoryPoint h : history) dates.add(h.getDate());
+        if (dates.size() < days) return null;
+        LocalDate from = dates.descendingSet().stream().skip(days - 1L).findFirst().orElseThrow();
+        double total = 0;
+        for (HistoryPoint h : history) {
+            if (!h.getDate().isBefore(from) && h.getQuantityKg() != null) total += h.getQuantityKg();
+        }
+        return Math.round(total * 100) / 100.0;
+    }
+
+    /** Which model is serving forecasts, its test error and when it was trained. */
+    public Map<String, Object> modelInfo() {
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> info = restTemplate.getForObject(aiServiceBaseUrl + "/model/info", Map.class);
+            return info != null ? info : Map.of("available", false);
+        } catch (RestClientException e) {
+            log.warn("AI service unreachable for model info: {}", e.getMessage());
+            return Map.of("available", false, "error", "AI service unavailable");
+        }
+    }
+
+    /** Retrains the surplus model on the AI service's dataset and returns the new model info. */
+    public Map<String, Object> retrainModel() {
+        @SuppressWarnings("unchecked")
+        Map<String, Object> info = trainingRestTemplate.postForObject(aiServiceBaseUrl + "/model/retrain", null, Map.class);
+        return info != null ? info : Map.of("available", false);
     }
 
     /** Calls the trained RandomForest model once per food category. */
@@ -150,17 +199,19 @@ public class AIClientService {
         }
 
         Map<String, Double> predictions = new LinkedHashMap<>();
+        Map<String, List<Map<String, Object>>> daily = new LinkedHashMap<>();
         double total = 0;
-        String modelName = "ML model";
+        String modelName = "ML";
 
         for (Map.Entry<String, List<HistoryPoint>> entry : byCategory.entrySet()) {
-            // 2) oldest -> newest daily quantities
-            List<HistoryPoint> points = entry.getValue();
-            points.sort(Comparator.comparing(h -> h.getDate().toString()));
-            List<Double> quantities = new ArrayList<>();
-            for (HistoryPoint h : points) {
-                quantities.add(h.getQuantityKg());
+            // 2) oldest -> newest daily quantities; several donors can record
+            //    the same day, and the model expects one value per day
+            Map<LocalDate, Double> perDay = new TreeMap<>();
+            for (HistoryPoint h : entry.getValue()) {
+                if (h.getQuantityKg() != null) perDay.merge(h.getDate(), h.getQuantityKg(), Double::sum);
             }
+            if (perDay.isEmpty()) continue;
+            List<Double> quantities = new ArrayList<>(perDay.values());
 
             // 3) ask the Python service
             Map<String, Object> body = new HashMap<>();
@@ -181,10 +232,25 @@ public class AIClientService {
             double kg = Math.round(totalKg.doubleValue() * 100) / 100.0;
             predictions.put(entry.getKey(), kg);
             total += kg;
+
+            // 5) keep the day-by-day breakdown so donors can see WHEN surplus lands
+            List<Map<String, Object>> days = new ArrayList<>();
+            if (response.get("daily") instanceof List<?> rows) {
+                for (Object row : rows) {
+                    if (row instanceof Map<?, ?> r && r.get("quantityKg") instanceof Number q) {
+                        Map<String, Object> day = new LinkedHashMap<>();
+                        day.put("date", String.valueOf(r.get("date")));
+                        day.put("quantityKg", q.doubleValue());
+                        days.add(day);
+                    }
+                }
+            }
+            daily.put(entry.getKey(), days);
         }
 
         PredictionResponseDTO result = new PredictionResponseDTO();
         result.setPredictions(predictions);
+        result.setDaily(daily);
         result.setTotalPredictedKg(Math.round(total * 100) / 100.0);
         result.setDaysAhead(daysAhead);
         result.setNote("Forecast by trained " + modelName + " model (Kaggle Store Item Demand dataset).");

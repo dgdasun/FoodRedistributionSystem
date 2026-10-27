@@ -6,7 +6,7 @@ Use the saved (trained) surplus model inside FastAPI.  (version 2)
 - Unknown category -> uses the general pattern of all categories.
 - Fewer than 7 days of history -> missing days are filled with the average.
 """
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 import joblib
 import pandas as pd
@@ -40,6 +40,18 @@ def reload_model():
     global _bundle
     _bundle = None
     _get_bundle()
+
+
+def model_info() -> dict:
+    """What the dashboard shows about the serving model. Older bundles carry no scores."""
+    bundle = _get_bundle()
+    trained_at = bundle.get("trained_at") or datetime.fromtimestamp(
+        MODEL_FILE.stat().st_mtime, timezone.utc).isoformat(timespec="seconds")
+    return {"available": True, "model": bundle["model_name"], "version": bundle.get("version"),
+            "mae": bundle.get("mae"), "rmse": bundle.get("rmse"),
+            "baselineMae": bundle.get("baseline_mae"), "compared": bundle.get("compared"),
+            "trainRows": bundle.get("train_rows"), "testRows": bundle.get("test_rows"),
+            "categories": bundle["categories"], "trainedAt": trained_at}
 
 
 def _match_category(category: str):

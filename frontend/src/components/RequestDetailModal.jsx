@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { X, Package, Gauge, MapPin, CircleDot, ShieldCheck, Clock, Minus, Plus, Check, Ban, ArrowLeft } from "lucide-react";
+import { X, Package, Gauge, MapPin, CircleDot, ShieldCheck, Clock, Minus, Plus, Check, Ban, ArrowLeft, Sparkles } from "lucide-react";
 import { avatarUrl } from "../avatar.js";
 import { AIInsightCard } from "./AIRecommendations.jsx";
 
@@ -19,7 +19,7 @@ const round1 = (n) => Math.round(n * 10) / 10;
  * Detail popup for one food request. Pending requests can be accepted in full,
  * partly (which sends a counter-offer), or declined with a reason.
  */
-export default function RequestDetailModal({ request, onClose, onAct, aiInsight }) {
+export default function RequestDetailModal({ request, onClose, onAct, aiInsight, onOpenAI }) {
   const reduce = useReducedMotion();
   const beneficiary = request.beneficiary;
   const requested = request.quantityKg;
@@ -136,6 +136,15 @@ export default function RequestDetailModal({ request, onClose, onAct, aiInsight 
             <button className="btn btn-outline rq-btn-full" onClick={onClose}>
               Close
             </button>
+          ) : onOpenAI ? (
+            <div className="rq-ai-only">
+              <p>
+                Other requesters want this item too, so it is allocated through <strong>AI Smart Match</strong>.
+              </p>
+              <button className="btn btn-primary rq-btn-full" onClick={onOpenAI}>
+                <Sparkles size={15} /> Open AI Smart Match
+              </button>
+            </div>
           ) : showReject ? (
             <div className="rq-reject">
               <label htmlFor="rq-reason">Reason for declining (shown to the requester)</label>

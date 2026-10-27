@@ -52,43 +52,108 @@ body {
   border-bottom: 1px dashed var(--border);
 }
 
-.nav-list { margin: 10px 0; }
+/* ---------- Sidebar navigation ----------
+   Sections are labelled, each icon sits in its own tile, and the current page
+   is marked three ways (accent bar, filled tile, tinted row) so it never
+   depends on colour alone. Logout is a separate red button at the foot. */
+.nav-section {
+  display: block;
+  padding: 14px 12px 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-light);
+}
+
+.nav-list { margin: 0; flex: none; }
 
 .nav-item {
-  padding: 11px 14px;
-  border-radius: 14px;
+  position: relative;
+  gap: 11px;
+  padding: 7px 10px;
+  border-radius: 12px;
+  font-size: 13.5px;
   font-weight: 600;
-  margin-bottom: 4px;
-  transition: background 0.18s ease, color 0.18s ease, transform 0.18s var(--ease-out);
+  color: var(--text-mid);
+  margin-bottom: 3px;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.nav-item .ico {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: var(--surface-muted);
+  color: var(--text-mid);
+  transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .nav-item:hover {
   background: var(--surface-muted);
   color: var(--text-dark);
-  transform: translateX(2px);
+}
+.nav-item:hover .ico {
+  background: var(--surface);
+  color: var(--primary);
 }
 
 .nav-item.active {
+  background: var(--primary-light);
+  color: var(--text-dark);
+  font-weight: 700;
+  box-shadow: none;
+}
+.nav-item.active .ico {
   background: var(--primary-strong);
   color: #fff;
+  box-shadow: 0 6px 14px -6px rgba(56, 126, 1, 0.6);
+}
+.nav-item.active::before {
+  content: "";
+  position: absolute;
+  left: -14px;
+  top: 10px;
+  bottom: 10px;
+  width: 4px;
+  border-radius: 0 4px 4px 0;
+  background: var(--primary-strong);
+}
+
+.sidebar-foot {
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px dashed var(--border);
+}
+
+.nav-logout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  padding: 11px 14px;
+  border: none;
+  border-radius: 12px;
+  background: var(--logout-bg);
+  color: #fff;
+  font-size: 14px;
   font-weight: 700;
-  box-shadow: 0 8px 20px -8px rgba(56, 126, 1, 0.55);
+  cursor: pointer;
+  box-shadow: 0 8px 18px -10px var(--logout-bg);
+  transition: background 0.18s ease, box-shadow 0.18s ease, transform 0.18s var(--ease-out);
 }
-.nav-item.active:hover { transform: none; color: #fff; }
-
 .nav-logout:hover {
-  background: var(--status-danger-bg);
-  color: var(--status-danger-fg);
+  background: var(--logout-bg-hover);
+  box-shadow: 0 10px 22px -10px var(--logout-bg);
+}
+.nav-logout:active { transform: scale(0.98); }
+.nav-logout:focus-visible {
+  outline: 3px solid var(--status-danger-border);
+  outline-offset: 2px;
 }
 
-/* The salad illustration becomes a soft promo plate at the foot of the rail. */
-.sidebar-illustration {
-  background: linear-gradient(160deg, var(--primary-light), var(--sand-light));
-  border-radius: 20px;
-  padding: 14px 10px 4px;
-  margin-top: 18px;
-}
-.sidebar-illustration svg { max-height: 120px; }
 
 .main-content {
   padding: 0 6px 50px;

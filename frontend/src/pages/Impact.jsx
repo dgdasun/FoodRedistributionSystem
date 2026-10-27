@@ -160,7 +160,7 @@ export default function Impact() {
                 </p>
               </div>
             </div>
-            <div className="impact-mini-grid">
+            <div className="impact-mini-grid impact-mini-grid--2">
               <div className="impact-mini-card">
                 <div className="impact-icon-badge">
                   <IconForkKnife size={17} color="var(--primary)" />
@@ -168,15 +168,6 @@ export default function Impact() {
                 <div className="impact-mini-info">
                   <div className="val">{dash.impact.mealsProvided || 1040}</div>
                   <div className="lbl">Meals Provided</div>
-                </div>
-              </div>
-              <div className="impact-mini-card">
-                <div className="impact-icon-badge">
-                  <IconStatCO2 size={20} color="var(--primary)" />
-                </div>
-                <div className="impact-mini-info">
-                  <div className="val">{dash.stats.co2SavedKg || 128} kg</div>
-                  <div className="lbl">CO₂ Saved</div>
                 </div>
               </div>
               <div className="impact-mini-card">

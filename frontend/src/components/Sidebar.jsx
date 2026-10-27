@@ -8,7 +8,6 @@ import {
   IconHelp,
   IconLogout,
   IconScan,
-  GraphicSidebarSalad,
 } from "./Icons.jsx";
 
 export default function Sidebar() {
@@ -42,6 +41,7 @@ export default function Sidebar() {
         <span className="brand-tagline">Smart Food Redistribution</span>
       </div>
 
+      <span className="nav-section">Menu</span>
       <ul className="nav-list">
         {items.map((item) => {
           const ItemIcon = item.Icon;
@@ -72,33 +72,32 @@ export default function Sidebar() {
             </React.Fragment>
           );
         })}
-        {/* Help & Support is for the people using the platform - donors,
-            beneficiaries and farms - not for admins, who run it. */}
-        {user?.role !== "admin" && (
-          <li>
-            <NavLink to="/help" className={({ isActive }) => "nav-item" + (isActive ? " active" : "")}>
-              <span className="ico">
-                <IconHelp size={19} />
-              </span>
-              <span className="nav-label">Help &amp; Support</span>
-            </NavLink>
-          </li>
-        )}
-        <li>
-          <button
-            className="nav-item nav-logout"
-            onClick={logout}
-          >
-            <span className="ico">
-              <IconLogout size={19} />
-            </span>
-            <span className="nav-label">Logout</span>
-          </button>
-        </li>
       </ul>
 
-      <div className="sidebar-illustration">
-        <GraphicSidebarSalad />
+      {/* Help & Support is for the people using the platform - donors,
+          beneficiaries and farms - not for admins, who run it. */}
+      {user?.role !== "admin" && (
+        <>
+          <span className="nav-section">Support</span>
+          <ul className="nav-list">
+            <li>
+              <NavLink to="/help" className={({ isActive }) => "nav-item" + (isActive ? " active" : "")}>
+                <span className="ico">
+                  <IconHelp size={19} />
+                </span>
+                <span className="nav-label">Help &amp; Support</span>
+              </NavLink>
+            </li>
+          </ul>
+        </>
+      )}
+
+      {/* Pinned to the foot of the rail, apart from navigation, so it is never hit by accident. */}
+      <div className="sidebar-foot">
+        <button type="button" className="nav-logout" onClick={logout}>
+          <IconLogout size={18} />
+          <span>Logout</span>
+        </button>
       </div>
 
       {toastMsg && (
