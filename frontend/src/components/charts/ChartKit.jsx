@@ -414,7 +414,7 @@ function Legend({ rows, total, unit }) {
             <strong style={{ color: "var(--text-dark)" }}>{pct}%</strong>
             <span style={{ color: "var(--text-light)", fontSize: 12 }}>
               ({s.value}
-              {unit ? ` ${unit}` : ""})
+              {unit ? ` ${Number(s.value) === 1 && unit.endsWith("s") ? unit.slice(0, -1) : unit}` : ""})
             </span>
           </div>
         );

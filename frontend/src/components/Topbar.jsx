@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { AlertTriangle, Bell, CheckCheck, Clock, HandHeart, Sprout, Ticket } from "lucide-react";
+import { AlertTriangle, Bell, CheckCheck, Clock, HandHeart, ShieldCheck, Sprout, Ticket } from "lucide-react";
 import { useAuth } from "../AuthContext.jsx";
 import { useFoodAlerts } from "../FoodAlertContext.jsx";
 import { api } from "../api.js";
@@ -11,8 +11,9 @@ import { navItemsFor } from "../nav.js";
 import { avatarUrl } from "../avatar.js";
 import "../styles/notifications.css";
 
-const EXTRA_TITLES = { "/help": "Help & Support", "/profile": "Profile" };
+const EXTRA_TITLES = { "/help": "Help & Support", "/profile": "Profile", "/browse": "Available Food" };
 const MAX_SHOWN = 20;
+const POLL_INTERVAL_MS = 30_000;
 
 // Icon tile per notification type. Urgent gets the alarm red, warning amber,
 // and the composting reroute ("info") a calm green — it's a status update, not
@@ -24,6 +25,7 @@ const TYPE_META = {
   info: { Icon: Sprout, title: "Update" },
   request: { Icon: HandHeart, title: "Food request" },
   ticket: { Icon: Ticket, title: "Pickup ticket" },
+  verification: { Icon: ShieldCheck, title: "Verification" },
   system: { Icon: Bell, title: "Notification" },
 };
 
@@ -48,15 +50,21 @@ export default function Topbar() {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
 
+  // Poll so notifications created while the page is open (a new registration,
+  // a request on your listing) reach the bell without a reload.
   useEffect(() => {
     if (!user) return;
-    api
-      .get(`/notifications/${user.id}`)
-      .then((d) => {
-        setUnread(d.unreadCount !== undefined ? d.unreadCount : 0);
-        setNotifications(d.notifications || []);
-      })
-      .catch(() => {});
+    const load = () =>
+      api
+        .get(`/notifications/${user.id}`)
+        .then((d) => {
+          setUnread(d.unreadCount !== undefined ? d.unreadCount : 0);
+          setNotifications(d.notifications || []);
+        })
+        .catch(() => {});
+    load();
+    const id = setInterval(load, POLL_INTERVAL_MS);
+    return () => clearInterval(id);
   }, [user]);
 
   // Merge the backend's account notifications (request/ticket/system messages)
@@ -105,20 +113,10 @@ export default function Topbar() {
     api.patch(`/notifications/${item.id}/read`, {}).catch(() => {});
   };
 
-  // Opening the dropdown counts as "viewing" the notifications, so clear the
-  // unread badge then — not only when the user explicitly hits "Mark all read".
-  // The ids that were unread at that moment stay highlighted as "new" while the
-  // panel is open, otherwise the highlight would vanish before it's seen.
-  const [freshIds, setFreshIds] = useState(() => new Set());
+  // Opening the panel only shows the notifications; they stay unread until the
+  // user clicks one or hits "Mark all read" (which is why that button exists).
   const wrapRef = useRef(null);
-
-  const toggleOpen = () => {
-    if (!open) {
-      setFreshIds(new Set(combined.filter((n) => !n.read).map((n) => n.id)));
-      if (totalUnread > 0) markAllRead();
-    }
-    setOpen(!open);
-  };
+  const toggleOpen = () => setOpen((o) => !o);
 
   useEffect(() => {
     if (!open) return;
@@ -141,7 +139,7 @@ export default function Topbar() {
   const renderItem = (n) => {
     const meta = metaFor(n.type);
     const title = n.title || meta.title;
-    const isNew = freshIds.has(n.id) || !n.read;
+    const isNew = !n.read;
     return (
       <button key={n.id} type="button" className={`notif-item${isNew ? " is-new" : ""}`} onClick={() => markOneRead(n)}>
         <span className={`notif-icon t-${meta.key}`}>
@@ -190,20 +188,21 @@ export default function Topbar() {
               <div className="notif-head">
                 <span className="notif-head-title">
                   Notifications
-                  {freshIds.size > 0 && <span className="notif-count">{freshIds.size} new</span>}
+                  {totalUnread > 0 && <span className="notif-count">{totalUnread} new</span>}
                 </span>
-                <button
-                  type="button"
-                  className="notif-mark-all"
-                  onClick={() => {
-                    markAllRead();
-                    setFreshIds(new Set());
-                  }}
-                  disabled={freshIds.size === 0 && totalUnread === 0}
-                >
-                  <CheckCheck size={15} />
-                  Mark all read
-                </button>
+                {totalUnread > 0 ? (
+                  <button type="button" className="notif-mark-all" onClick={markAllRead}>
+                    <CheckCheck size={15} />
+                    Mark all read
+                  </button>
+                ) : (
+                  combined.length > 0 && (
+                    <span className="notif-all-read">
+                      <CheckCheck size={15} />
+                      All caught up
+                    </span>
+                  )
+                )}
               </div>
 
               {combined.length === 0 ? (

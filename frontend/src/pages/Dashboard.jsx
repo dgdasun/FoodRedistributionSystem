@@ -12,8 +12,8 @@ import { HorizontalBarChart, ProportionBar, StatusDonut, useChartPalette } from 
 import { CountUp, FadeIn, GrowBar, Stagger, StaggerItem } from "../components/motion/Motion.jsx";
 import { useLiveData } from "../hooks/useLiveData.js";
 import LiveBadge from "../components/LiveBadge.jsx";
-import AIForecastPanel from "../components/AIForecastPanel.jsx";
 import Section from "../components/Section.jsx";
+import { UNITS } from "../units.js";
 import {
   IconLeafBullet,
   IconFloatingLeaf,
@@ -496,6 +496,20 @@ function greeting() {
 }
 
 const formatKg = (n) => (Number.isInteger(n) ? n : Math.round(n * 10) / 10);
+const fmt = (n) => formatKg(Number(n) || 0);
+
+/** One headline tile in "All food listed to donate". */
+function ListedTile({ unitKey, label, value, short, note }) {
+  return (
+    <div className={`ad-donated-stat ad-donated-${unitKey}`}>
+      <span>{label}</span>
+      <strong>
+        <CountUp value={value} decimals={Number.isInteger(value) ? 0 : 1} /> <small>{short}</small>
+      </strong>
+      <em>{note}</em>
+    </div>
+  );
+}
 
 function AdminDashboard({ user }) {
   const { data, error, lastUpdated, isRefreshing, refresh } = useLiveData("/dashboard/admin/overview");
@@ -514,17 +528,17 @@ function AdminDashboard({ user }) {
   const pendingCount = data.requestStatusBreakdown?.pending || 0;
   const approvedCount = data.requestStatusBreakdown?.approved || 0;
   const rejectedCount = data.requestStatusBreakdown?.rejected || 0;
-  const decided = approvedCount + rejectedCount;
-  const approvalRate = decided ? Math.round((approvedCount / decided) * 100) : null;
 
   // Status hues come from the validated reserved palette, never from the
   // categorical set - and every segment is labelled, which is what lets the
   // green/amber pair sit in the 6-8 CVD band legally. Read through the hook so
   // the segments repaint when the theme flips.
-  const approvalSegments = [
-    { key: "approved", label: "Approved", color: STATUS.good, value: approvedCount },
-    { key: "pending", label: "Pending Approval", color: STATUS.warning, value: pendingCount },
-    { key: "rejected", label: "Rejected", color: STATUS.critical, value: rejectedCount },
+  const userStatuses = data.userStatusBreakdown || {};
+  const userStatusSegments = [
+    { key: "verified", label: "Verified", color: STATUS.good, value: userStatuses.verified || 0 },
+    { key: "pending", label: "Pending review", color: STATUS.warning, value: userStatuses.pending || 0 },
+    { key: "rejected", label: "Rejected", color: STATUS.critical, value: userStatuses.rejected || 0 },
+    { key: "active", label: "Active (admins)", color: STATUS.neutral, value: userStatuses.active || 0 },
   ];
   const surplusSegments = [
     { key: "saved", label: "Saved", color: STATUS.good, value: savedKg },
@@ -539,13 +553,13 @@ function AdminDashboard({ user }) {
   // so the admin can see at a glance that nothing is waiting.
   const attention = [
     { key: "verify", to: "/admin/beneficiaries", Icon: IconShieldCheck, count: data.pendingVerifications, label: "Organizations to verify", clear: "No organizations waiting", tone: "violet" },
-    { key: "requests", to: "/admin/reports", Icon: IconInbox, count: data.pendingRequests, label: "Requests awaiting donors", clear: "No requests waiting", tone: "warn" },
-    { key: "surplus", to: "/admin/reports", Icon: IconFoodPlate, count: data.surplusItems, label: "Surplus listings live", clear: "No live surplus right now", tone: "info" },
-    { key: "expired", to: "/admin/reports", Icon: IconTrashCan, count: data.expiredItems, label: "Expired, routed to farms", clear: "Nothing has expired", tone: "danger" },
+    { key: "requests", to: "/admin/users?role=donor", Icon: IconInbox, count: data.pendingRequests, label: "Requests awaiting donors", clear: "No requests waiting", tone: "warn" },
+    { key: "surplus", to: "/browse", Icon: IconFoodPlate, count: data.surplusItems, label: "Surplus listings live", clear: "No live surplus right now", tone: "info" },
+    { key: "expired", to: "/browse?show=expired", Icon: IconTrashCan, count: data.expiredItems, label: "Expired, routed to farms", clear: "Nothing has expired", tone: "danger" },
   ];
 
   const today = new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
-  const categoryMax = Math.max(...Object.values(categories), 1);
+  const totals = data.donatedTotals || {};
 
   return (
     <div className="dashboard-container ad-page">
@@ -565,29 +579,6 @@ function AdminDashboard({ user }) {
             <p>Here is how food is moving through the network right now.</p>
           </div>
           <LiveBadge lastUpdated={lastUpdated} isRefreshing={isRefreshing} error={error} onRefresh={refresh} />
-        </div>
-
-        <div className="ad-hero-kpis">
-          <div>
-            <span>Food listed</span>
-            <strong><CountUp value={formatKg(totalDonatedKg)} /> <small>kg</small></strong>
-            <em>across {Object.keys(categories).length} categories</em>
-          </div>
-          <div>
-            <span>Diverted to farms</span>
-            <strong><CountUp value={formatKg(expiredKg)} /> <small>kg</small></strong>
-            <em>kept out of landfill</em>
-          </div>
-          <div>
-            <span>Approval rate</span>
-            <strong>{approvalRate == null ? "—" : <><CountUp value={approvalRate} /><small>%</small></>}</strong>
-            <em>{approvedCount} approved · {rejectedCount} rejected</em>
-          </div>
-          <div>
-            <span>Tickets issued</span>
-            <strong><CountUp value={data.totalTickets} /></strong>
-            <em>{data.collectedItems} collected so far</em>
-          </div>
         </div>
 
         <div className="ad-quick">
@@ -646,26 +637,58 @@ function AdminDashboard({ user }) {
         />
       </Stagger>
 
-      <div className="ad-split">
-        <Section title="Forecast" hint="What the model expects to come through next.">
-          <AIForecastPanel showLive={false} />
-        </Section>
-
-        <Section title="Needs attention" hint="Queues across the platform.">
-          <div className="card ad-attention">
-            {attention.map(({ key, to, Icon, count, label, clear, tone }) => (
-              <Link key={key} to={to} className={`ad-att-row${count ? ` ad-att-${tone}` : " ad-att-clear"}`}>
-                <span className="ad-att-icon"><Icon size={18} color="currentColor" /></span>
-                <span className="ad-att-text">
-                  <strong>{count ? label : clear}</strong>
-                  <span>{count ? "Open to review" : "All clear"}</span>
-                </span>
-                <span className="ad-att-count">{count || "✓"}</span>
-              </Link>
-            ))}
+      {/* Every listing since launch. The kg and liter totals include what is
+          inside packets, so food listed as packets is never left out; kg and
+          liters are still never added to each other. */}
+      <Section title="All food listed to donate" hint="Everything donors have listed and made visible, packets included. Hidden listings are left out.">
+        <div className="card ad-card">
+          <div className="ad-card-head">
+            <h3><span className="ad-card-icon"><IconDonations size={17} color="currentColor" /></span> Total food listed to donate</h3>
+            <span className="ad-chip">{totals.totalListings ?? 0} listings</span>
           </div>
-        </Section>
-      </div>
+          <div className="ad-donated">
+            <ListedTile
+              unitKey="kg"
+              label="Kilograms (kg)"
+              value={totals.totalWithPackets?.kg ?? 0}
+              short="kg"
+              note={`${fmt(totals.quantity?.kg)} kg loose · ${fmt(totals.packContents?.kg)} kg in packets`}
+            />
+            <ListedTile
+              unitKey="liters"
+              label="Liters (L)"
+              value={totals.totalWithPackets?.liters ?? 0}
+              short="L"
+              note={`${fmt(totals.quantity?.liters)} L loose · ${fmt(totals.packContents?.liters)} L in packets`}
+            />
+            <ListedTile
+              unitKey="items"
+              label="Items / packets"
+              value={totals.quantity?.items ?? 0}
+              short="packets"
+              note={
+                `Holding ${fmt(totals.packContents?.kg)} kg + ${fmt(totals.packContents?.liters)} L` +
+                (totals.packetsWithoutSize ? ` · ${totals.packetsWithoutSize} without a size` : "")
+              }
+            />
+          </div>
+        </div>
+      </Section>
+
+      <Section title="Needs attention" hint="Queues across the platform.">
+        <div className="card ad-attention">
+          {attention.map(({ key, to, Icon, count, label, clear, tone }) => (
+            <Link key={key} to={to} className={`ad-att-row${count ? ` ad-att-${tone}` : " ad-att-clear"}`}>
+              <span className="ad-att-icon"><Icon size={18} color="currentColor" /></span>
+              <span className="ad-att-text">
+                <strong>{count ? label : clear}</strong>
+                <span>{count ? "Open to review" : "All clear"}</span>
+              </span>
+              <span className="ad-att-count">{count || "✓"}</span>
+            </Link>
+          ))}
+        </div>
+      </Section>
 
       <Section title="Distribution" className="grid-2 cards-row" style={{ marginBottom: 0 }}>
         <div className="card ad-card">
@@ -680,36 +703,40 @@ function AdminDashboard({ user }) {
 
         <div className="card ad-card">
           <div className="ad-card-head">
-            <h3><span className="ad-card-icon"><IconShieldCheck size={17} color="currentColor" /></span> Request approval status</h3>
-            <span className="ad-chip">{approvedCount + pendingCount + rejectedCount} total</span>
+            <h3><span className="ad-card-icon"><IconShieldCheck size={17} color="currentColor" /></span> User verification status</h3>
+            <span className="ad-chip">{data.totalUsers} total</span>
           </div>
-          <StatusDonut segments={approvalSegments} unit="requests" centerLabel="total requests" />
+          <StatusDonut segments={userStatusSegments} unit="users" centerLabel="total users" />
         </div>
       </Section>
 
-      <Section title="Food by category" hint="Kilograms listed per category.">
-        <div className="card ad-card">
-          {Object.keys(categories).length === 0 ? (
-            <LottieState title="No listings yet" message="Category totals appear once donors add stock." size={110} />
-          ) : (
-            <div className="ad-cats">
-              {Object.entries(categories)
-                .sort(([, a], [, b]) => b - a)
-                .map(([cat, kg]) => (
-                  <div key={cat} className="ad-cat">
-                    <img src={CATEGORY_IMAGE[cat] || CATEGORY_IMAGE.Other} alt="" loading="lazy" />
-                    <div className="ad-cat-main">
-                      <div className="ad-cat-head">
-                        <span>{cat}</span>
-                        <strong>{formatKg(kg)} kg</strong>
-                      </div>
-                      <GrowBar percent={(kg / categoryMax) * 100} height={6} />
-                      <em>{Math.round((kg / (totalDonatedKg || 1)) * 100)}% of all food listed</em>
-                    </div>
-                  </div>
-                ))}
-            </div>
-          )}
+      {/* One chart per unit - a kilogram bar next to a liter bar would invite
+          a comparison the numbers can't support. */}
+      <Section title="Food by category" hint="Visible listings in each category, charted separately for kg, liters and packets.">
+        <div className="ad-unit-charts">
+          {UNITS.map((u) => {
+            const series = totals.byCategory?.[u.key] || {};
+            const n = Object.keys(series).length;
+            const unitWord = u.key === "items" ? "packets" : u.short;
+            return (
+              <div key={u.key} className={`card ad-card ad-unit-chart ad-donated-${u.key}`}>
+                <div className="ad-card-head">
+                  <h3>{u.key === "items" ? "Packets / items" : u.label}</h3>
+                  <span className="ad-chip">{n} categor{n === 1 ? "y" : "ies"}</span>
+                </div>
+                {n ? (
+                  <HorizontalBarChart
+                    data={series}
+                    height={Math.max(160, n * 44)}
+                    unit={unitWord}
+                    labelWidth={112}
+                  />
+                ) : (
+                  <p className="ad-unit-empty">Nothing listed in {unitWord} yet.</p>
+                )}
+              </div>
+            );
+          })}
         </div>
       </Section>
 

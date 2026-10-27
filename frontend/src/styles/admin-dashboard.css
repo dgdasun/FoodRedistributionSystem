@@ -292,6 +292,46 @@
 .ad-warn { border-left-color: var(--status-warn-fg); }
 .ad-danger { border-left-color: var(--status-danger-fg); }
 .ad-outcome-bars { display: grid; gap: 22px; }
+
+/* All food donated - one tile per unit. */
+.ad-donated {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.ad-donated-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  border-top: 4px solid var(--primary);
+  background: var(--surface-sunken);
+}
+.ad-donated-stat > span { font-size: 12px; font-weight: 600; color: var(--text-mid); }
+.ad-donated-stat strong { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; color: var(--text-dark); line-height: 1.15; }
+.ad-donated-stat small { font-size: 14px; font-weight: 700; color: var(--text-mid); }
+.ad-donated-stat em { font-style: normal; font-size: 12px; color: var(--text-light); }
+.ad-donated-liters { border-top-color: var(--status-info-fg); }
+.ad-donated-items { border-top-color: var(--status-violet-fg); }
+@media (max-width: 640px) {
+  .ad-donated { grid-template-columns: 1fr; }
+}
+
+/* Food by category - one chart per unit, side by side on wide screens. */
+.ad-unit-charts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.ad-unit-chart { border-top: 4px solid var(--primary); }
+.ad-unit-chart.ad-donated-liters { border-top-color: var(--status-info-fg); }
+.ad-unit-chart.ad-donated-items { border-top-color: var(--status-violet-fg); }
+.ad-unit-empty { margin: 8px 0 4px; font-size: 13px; color: var(--text-light); }
+@media (max-width: 1100px) {
+  .ad-unit-charts { grid-template-columns: 1fr; }
+}
 .ad-outcome-label { margin-bottom: 8px; font-size: 13px; font-weight: 600; color: var(--text-mid); }
 
 /* ---------- Responsive ---------- */

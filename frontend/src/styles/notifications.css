@@ -71,6 +71,15 @@
 
 .notif-mark-all:hover { background: var(--surface-muted); }
 .notif-mark-all:disabled { color: var(--text-light); cursor: default; background: transparent; }
+.notif-all-read {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-light);
+}
 
 .notif-list {
   max-height: 420px;
@@ -125,6 +134,7 @@
 .notif-icon.t-request { background: var(--status-info-bg);   color: var(--status-info-fg); }
 .notif-icon.t-ticket  { background: var(--status-violet-bg); color: var(--status-violet-fg); }
 .notif-icon.t-system  { background: var(--surface-muted);    color: var(--text-mid); }
+.notif-icon.t-verification { background: var(--status-violet-bg); color: var(--status-violet-fg); }
 
 .notif-body { flex: 1; min-width: 0; }
 

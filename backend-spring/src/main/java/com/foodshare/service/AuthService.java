@@ -17,10 +17,13 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final NotificationService notificationService;
 
-    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder,
+                       NotificationService notificationService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.notificationService = notificationService;
     }
 
     public Optional<User> login(String email, String password) {
@@ -82,6 +85,16 @@ public class AuthService {
         user.setVerified(false); // Beneficiary Registration & Verification module
         user.setAvatar(req.getName().substring(0, 1).toUpperCase());
 
-        return userRepository.save(user);
+        User saved = userRepository.save(user);
+        if (!"admin".equals(saved.getRole())) {
+            notificationService.notifyAdmins("verification",
+                    displayName(saved) + " registered as a " + saved.getRole() + " and is awaiting verification.");
+        }
+        return saved;
+    }
+
+    private static String displayName(User u) {
+        String org = u.getOrganizationName();
+        return org != null && !org.isBlank() ? org : u.getName();
     }
 }

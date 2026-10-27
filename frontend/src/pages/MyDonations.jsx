@@ -13,6 +13,7 @@ import StatCard from "../components/StatCard.jsx";
 import { Stagger } from "../components/motion/Motion.jsx";
 import { IconDonations, IconSparkle, IconShieldCheck, IconWeight } from "../components/Icons.jsx";
 import { imageFor } from "../foodImages.js";
+import { UNITS, PACK_UNITS, unitOf, packText, packTotal } from "../units.js";
 import "../styles/food-requests.css";
 import "../styles/donations.css";
 
@@ -32,14 +33,15 @@ const SORTS = [
   { key: "name", label: "Name: A-Z", cmp: (a, b) => String(a.name).localeCompare(String(b.name)) },
 ];
 
-const CATEGORIES = ["Vegetables", "Dairy", "Bakery", "Cooked Meals", "Fruits", "Packaged Goods", "Other"];
+// "Packaged Goods" is no longer offered: packaged food is listed under its own
+// food type with the Items / packets unit instead. Older listings keep it.
+const CATEGORIES = ["Vegetables", "Dairy", "Bakery", "Cooked Meals", "Fruits", "Other"];
 
 const STATUS_LABEL = { surplus: "Surplus", expired: "Expired", collected: "Collected", reserved: "Reserved", fresh: "Fresh" };
 
 // Matches the other table pages (Requests, My Requests, Admin Users).
 const PAGE_SIZE = 8;
 
-const unitOf = (d) => (d.category === "Cooked Meals" ? "portions" : "kg");
 
 function expiryInfo(d) {
   const days = Number(d.daysUntilExpiry);
@@ -64,7 +66,10 @@ function AddItemModal({ user, onCreated, onClose }) {
     name: "",
     category: "Vegetables",
     batchNumber: "",
+    unit: "",
     quantityKg: "",
+    packSize: "",
+    packUnit: "kg",
     expiryDate: "",
   });
   const [error, setError] = useState("");
@@ -72,18 +77,31 @@ function AddItemModal({ user, onCreated, onClose }) {
   const [busy, setBusy] = useState(false);
   const toast = useToast();
   const update = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-  // Cooked meals are handed out as individually packed meals, not weighed, so
-  // the donor counts portions instead of kilograms.
-  const isPortioned = form.category === "Cooked Meals";
-  const unit = isPortioned ? "portions" : "kg";
+  // The quantity means nothing until its unit is known, so it stays locked
+  // until one is picked; switching unit clears it rather than silently turning
+  // "5 kg" into "5 liters".
+  const unit = UNITS.find((u) => u.key === form.unit);
+  const pickUnit = (key) => setForm((f) => ({ ...f, unit: key, quantityKg: key === f.unit ? f.quantityKg : "" }));
+  const isCount = form.unit === "items";
 
   const submit = async (e) => {
     e.preventDefault();
+    if (!unit) {
+      setError("Select a unit before entering the quantity.");
+      return;
+    }
     setError("");
     setBusy(true);
     try {
-      await api.post("/donations", { ...form, donorId: user.id, quantityKg: Number(form.quantityKg) });
-      toast.success(`${form.name || "Item"} listed - ${form.quantityKg} ${unit} added to your inventory.`);
+      const body = { ...form, donorId: user.id, quantityKg: Number(form.quantityKg) };
+      if (isCount) body.packSize = Number(form.packSize);
+      else {
+        delete body.packSize;
+        delete body.packUnit;
+      }
+      await api.post("/donations", body);
+      const each = isCount ? ` (${packText(body)})` : "";
+      toast.success(`${form.name || "Item"} listed - ${form.quantityKg} ${unit.short}${each} added to your inventory.`);
       onCreated();
       onClose();
     } catch (e2) {
@@ -143,25 +161,89 @@ function AddItemModal({ user, onCreated, onClose }) {
                 <input id="dn-batch" value={form.batchNumber} onChange={(e) => update("batchNumber", e.target.value)} placeholder="e.g. B-3001" />
               </div>
             </div>
+            <div className="dn-unit-picker">
+              <span className="dn-label" id="dn-unit-label">Unit</span>
+              <div className="dn-units" role="radiogroup" aria-labelledby="dn-unit-label">
+                {UNITS.map((u) => (
+                  <button
+                    key={u.key}
+                    type="button"
+                    role="radio"
+                    aria-checked={form.unit === u.key}
+                    className={form.unit === u.key ? "dn-unit active" : "dn-unit"}
+                    onClick={() => pickUnit(u.key)}
+                  >
+                    {u.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="form-grid-2">
               <div className="form-row">
-                <label htmlFor="dn-qty">{isPortioned ? "Quantity (portions)" : "Quantity (kg)"}</label>
+                <label htmlFor="dn-qty">{unit ? `Quantity (${unit.short})` : "Quantity"}</label>
                 <input
                   id="dn-qty"
                   type="number"
-                  min={isPortioned ? 1 : undefined}
-                  step={isPortioned ? 1 : "any"}
+                  min={isCount ? 1 : 0.1}
+                  step={isCount ? 1 : "any"}
                   value={form.quantityKg}
                   onChange={(e) => update("quantityKg", e.target.value)}
-                  placeholder={isPortioned ? "e.g. 25 meal packs" : undefined}
+                  placeholder={
+                    !unit ? "Select a unit first"
+                      : isCount ? "e.g. 25 packets"
+                      : form.unit === "liters" ? "e.g. 12.5" : "e.g. 20"
+                  }
+                  disabled={!unit}
+                  aria-describedby={!unit ? "dn-qty-hint" : undefined}
                   required
                 />
+                {!unit && <small id="dn-qty-hint" className="dn-hint">Choose kg, liters or items/packets to enter a quantity.</small>}
               </div>
               <div className="form-row">
                 <label htmlFor="dn-expiry">Expiry date</label>
                 <input id="dn-expiry" type="date" value={form.expiryDate} onChange={(e) => update("expiryDate", e.target.value)} required />
               </div>
             </div>
+
+            {/* A packet count alone doesn't tell a charity how many people it
+                feeds, so packets also carry their size. */}
+            {isCount && (
+              <div className="dn-pack">
+                <label htmlFor="dn-pack-size">Amount in one packet</label>
+                <div className="dn-pack-row">
+                  <input
+                    id="dn-pack-size"
+                    type="number"
+                    min={0.01}
+                    step="any"
+                    value={form.packSize}
+                    onChange={(e) => update("packSize", e.target.value)}
+                    placeholder={form.packUnit === "liters" ? "e.g. 0.5" : "e.g. 0.4"}
+                    required
+                  />
+                  <div className="dn-units" role="radiogroup" aria-label="Packet size unit">
+                    {PACK_UNITS.map((u) => (
+                      <button
+                        key={u.key}
+                        type="button"
+                        role="radio"
+                        aria-checked={form.packUnit === u.key}
+                        className={form.packUnit === u.key ? "dn-unit active" : "dn-unit"}
+                        onClick={() => update("packUnit", u.key)}
+                      >
+                        {u.short}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <small className="dn-hint">
+                  {Number(form.packSize) > 0 && Number(form.quantityKg) > 0
+                    ? `${form.quantityKg} packets × ${packText({ ...form, packSize: Number(form.packSize) })} = ${packTotal(form.quantityKg, { ...form, packSize: Number(form.packSize) })} in total`
+                    : "Helps organizations work out how many people the packets can feed."}
+                </small>
+              </div>
+            )}
 
             {/* Not an input: the backend stamps every listing with the donor's
                 registered location, so an editable field here would be a lie. */}
@@ -338,9 +420,13 @@ export default function MyDonations() {
 
   const stats = useMemo(() => ({
     published: all.filter((d) => d.published && d.status !== "expired" && d.status !== "collected").length,
-    liveKg: all
-      .filter((d) => d.status === "surplus" && d.category !== "Cooked Meals")
-      .reduce((s, d) => s + (Number(d.quantityKg) || 0), 0),
+    // One total per unit: kilograms, liters and packets don't add up together.
+    live: UNITS.reduce((acc, u) => {
+      acc[u.key] = all
+        .filter((d) => d.status === "surplus" && unitOf(d).key === u.key)
+        .reduce((s, d) => s + (Number(d.quantityKg) || 0), 0);
+      return acc;
+    }, {}),
   }), [all]);
 
   const filtered = useMemo(() => {
@@ -466,10 +552,10 @@ export default function MyDonations() {
         />
         <StatCard
           icon={<IconWeight size={26} color="var(--primary)" />}
-          label="Surplus weight"
-          value={dash(Math.round(stats.liveKg * 10) / 10)}
+          label="Surplus in stock"
+          value={dash(Math.round(stats.live.kg * 10) / 10)}
           unit="KG"
-          sub="Excludes cooked-meal portions"
+          sub={`${Math.round(stats.live.liters * 10) / 10} L · ${stats.live.items} items/packets`}
         />
         <StatCard
           icon={<IconShieldCheck size={26} color="var(--status-ok-fg)" />}
@@ -501,7 +587,9 @@ export default function MyDonations() {
             )}
             {!upload.busy && (
               <small>
-                Expected headers: <code>name,category,batchNumber,quantityKg,expiryDate</code>. Pickup location comes
+                Expected headers: <code>name,category,batchNumber,quantity,unit,packSize,packUnit,expiryDate</code> - unit is{" "}
+                <code>kg</code>, <code>liters</code> or <code>items</code> (kg if left out); for items, packSize/packUnit give
+                one packet's size in kg or liters. Pickup location comes
                 from your profile, so a <code>pickupLocation</code> column is ignored.
               </small>
             )}
@@ -590,7 +678,8 @@ export default function MyDonations() {
                     </div>
                     <div className="dn-qty" role="cell">
                       <Package size={14} />
-                      <strong>{d.quantityKg}</strong> {unitOf(d)}
+                      <strong>{d.quantityKg}</strong> {unitOf(d).short}
+                      {packText(d) && <small className="dn-pack-each">{packText(d)}</small>}
                     </div>
                     <div className="dn-expiry" role="cell">
                       <strong>{formatDate(d.expiryDate)}</strong>

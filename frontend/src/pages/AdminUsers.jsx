@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   Search, X, Mail, Phone, MapPin, Building2, CalendarDays, ShieldCheck, FileText, Copy, Check, ChevronRight, Users,
 } from "lucide-react";
@@ -204,7 +204,13 @@ function UserDrawer({ user, onClose }) {
 }
 
 export default function AdminUsers() {
-  const [role, setRole] = useState("");
+  // Other pages deep-link a tab with ?role=donor (e.g. the dashboard's
+  // "Requests awaiting donors" row); anything unknown falls back to All.
+  const [searchParams] = useSearchParams();
+  const [role, setRole] = useState(() => {
+    const r = searchParams.get("role") || "";
+    return ROLE_TABS.some((t) => t.key === r) ? r : "";
+  });
   const [status, setStatus] = useState("");
   const [sort, setSort] = useState("newest");
   const [query, setQuery] = useState("");
