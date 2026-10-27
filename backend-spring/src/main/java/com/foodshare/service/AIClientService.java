@@ -16,9 +16,12 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 /**
  * This is the integration point between the Java/Spring Boot backend and the
@@ -120,11 +123,76 @@ public class AIClientService {
 
     /**
      * AI-Based Surplus Prediction Module.
-     * Sends recent (dummy) inventory history to the Python service, which
-     * fits a lightweight per-category trend model (see ai-service/app/ml)
-     * and returns forecasted surplus quantities for the requested horizon.
+     *
+     * Step 1: try the TRAINED machine-learning model (RandomForest, trained on
+     *         the Kaggle Store Item Demand dataset) via /predict/surplus-ml.
+     * Step 2: if that is not available, fall back to the simple per-category
+     *         Linear Regression trend model via /predict/surplus.
+     *
+     * The response format (PredictionResponseDTO) is the same either way, so
+     * the frontend dashboard does not need any change.
      */
     public PredictionResponseDTO predictSurplus(List<HistoryPoint> history, int daysAhead) {
+        try {
+            return predictSurplusWithTrainedModel(history, daysAhead);
+        } catch (Exception e) {
+            log.warn("Trained ML model unavailable, using simple trend model instead: {}", e.getMessage());
+            return predictSurplusSimpleTrend(history, daysAhead);
+        }
+    }
+
+    /** Calls the trained RandomForest model once per food category. */
+    private PredictionResponseDTO predictSurplusWithTrainedModel(List<HistoryPoint> history, int daysAhead) {
+        // 1) group the MongoDB history by category
+        Map<String, List<HistoryPoint>> byCategory = new TreeMap<>();
+        for (HistoryPoint h : history) {
+            byCategory.computeIfAbsent(h.getCategory(), k -> new ArrayList<>()).add(h);
+        }
+
+        Map<String, Double> predictions = new LinkedHashMap<>();
+        double total = 0;
+        String modelName = "ML model";
+
+        for (Map.Entry<String, List<HistoryPoint>> entry : byCategory.entrySet()) {
+            // 2) oldest -> newest daily quantities
+            List<HistoryPoint> points = entry.getValue();
+            points.sort(Comparator.comparing(h -> h.getDate().toString()));
+            List<Double> quantities = new ArrayList<>();
+            for (HistoryPoint h : points) {
+                quantities.add(h.getQuantityKg());
+            }
+
+            // 3) ask the Python service
+            Map<String, Object> body = new HashMap<>();
+            body.put("category", entry.getKey());
+            body.put("history", quantities);
+            body.put("daysAhead", daysAhead);
+
+            Map<?, ?> response = restTemplate.postForObject(
+                    aiServiceBaseUrl + "/predict/surplus-ml", body, Map.class);
+            if (response == null || !(response.get("totalKg") instanceof Number totalKg)) {
+                throw new IllegalStateException("Empty response from /predict/surplus-ml");
+            }
+            if (response.get("model") != null) {
+                modelName = String.valueOf(response.get("model"));
+            }
+
+            // 4) collect the result
+            double kg = Math.round(totalKg.doubleValue() * 100) / 100.0;
+            predictions.put(entry.getKey(), kg);
+            total += kg;
+        }
+
+        PredictionResponseDTO result = new PredictionResponseDTO();
+        result.setPredictions(predictions);
+        result.setTotalPredictedKg(Math.round(total * 100) / 100.0);
+        result.setDaysAhead(daysAhead);
+        result.setNote("Forecast by trained " + modelName + " model (Kaggle Store Item Demand dataset).");
+        return result;
+    }
+
+    /** Original simple Linear Regression trend model - used as a backup. */
+    private PredictionResponseDTO predictSurplusSimpleTrend(List<HistoryPoint> history, int daysAhead) {
         List<Map<String, Object>> historyPayload = new ArrayList<>();
         for (HistoryPoint h : history) {
             Map<String, Object> m = new HashMap<>();

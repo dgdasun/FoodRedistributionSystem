@@ -29,7 +29,7 @@ from app.schemas import (
     PredictionRequest, PredictionResponse,
 )
 from app.ml.priority import rank_requests
-from app.ml.prediction import predict_surplus
+from app.ml.prediction_old import predict_surplus
 
 app = FastAPI(
     title="Zero Waste AI/ML Service",
@@ -81,3 +81,26 @@ def predict(payload: PredictionRequest):
             f"model fit over {len(payload.history)} historical data points."
         ),
     )
+
+
+# ================= NEW: Trained ML surplus model =================
+from pydantic import BaseModel
+from fastapi import HTTPException
+from app.ml.prediction import predict_surplus as ml_predict_surplus
+from app.ml.prediction import reload_model as ml_reload_model
+
+
+class MLSurplusRequest(BaseModel):
+    category: str
+    history: list[float]
+    daysAhead: int = 7
+
+
+@app.post("/predict/surplus-ml")
+def surplus_ml(req: MLSurplusRequest):
+    try:
+        return ml_predict_surplus(req.category, req.history, req.daysAhead)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
