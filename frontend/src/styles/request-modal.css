@@ -267,3 +267,7 @@
   .rq-qty-row { flex-direction: column; align-items: stretch; }
   .rq-actions { grid-template-columns: 1fr; }
 }
+
+/* Competing request opened outside the AI ranking: view-only, points to AI Smart Match. */
+.rq-ai-only { display: flex; flex-direction: column; gap: 10px; }
+.rq-ai-only p { margin: 0; font-size: 13px; color: var(--text-mid); text-align: center; }

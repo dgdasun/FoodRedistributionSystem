@@ -24,6 +24,9 @@ public class DataSeeder implements CommandLineRunner {
     /** Default sign-in password for every seeded demo account. */
     private static final String DEMO_PASSWORD = "password123";
 
+    /** The seeded supermarket; the demo inventory history belongs to it. */
+    private static final String SEED_DONOR_ID = "u-donor-1";
+
     /** Stamp used for demo accounts and for records that predate createdAt. */
     private static final Instant SEED_CREATED_AT = Instant.parse("2024-01-01T00:00:00Z");
 
@@ -55,11 +58,12 @@ public class DataSeeder implements CommandLineRunner {
         backfillMissingPasswords();
         backfillMissingCreatedAt();
         backfillCollectedStatuses();
+        backfillHistoryDonor();
         if (userRepository.count() > 0) return; // already seeded
 
         if (settingsRepository.count() == 0) settingsRepository.save(new Settings());
 
-        User donor = user("u-donor-1", "donor", null, "R. Perera", "perera@abcsupermarket.lk",
+        User donor = user(SEED_DONOR_ID, "donor", null, "R. Perera", "perera@abcsupermarket.lk",
                 "ABC Supermarket Hub", "Colombo 05", 6.8845, 79.8578, 0, 0.0, 0, true, "R");
         User admin = user("u-admin-1", "admin", null, "S. Fernando", "admin@foodshare.lk",
                 null, null, null, null, 0, 0.0, 0, true, "S");
@@ -220,6 +224,18 @@ public class DataSeeder implements CommandLineRunner {
         if (!items.isEmpty()) donationRepository.saveAll(items);
     }
 
+    /**
+     * History seeded before HistoryPoint had a donorId belongs to the seeded
+     * supermarket, the only donor at the time. Without an owner those points
+     * would drop out of every per-donor forecast.
+     */
+    private void backfillHistoryDonor() {
+        List<HistoryPoint> orphans = historyPointRepository.findByDonorIdIsNull();
+        if (orphans.isEmpty()) return;
+        orphans.forEach(h -> h.setDonorId(SEED_DONOR_ID));
+        historyPointRepository.saveAll(orphans);
+    }
+
     /** 20 days x 6 categories of dummy historical inventory data for the AI prediction model. */
     private void seedHistory() {
         String[] categories = {"Vegetables", "Dairy", "Bakery", "Cooked Meals", "Fruits", "Packaged Goods"};
@@ -236,6 +252,7 @@ public class DataSeeder implements CommandLineRunner {
                 double qty = Math.max(1, Math.round((bases[c] + trends[c] * (20 - i) + noise) * 10) / 10.0);
 
                 HistoryPoint hp = new HistoryPoint();
+                hp.setDonorId(SEED_DONOR_ID);
                 hp.setCategory(categories[c]);
                 hp.setDate(date);
                 hp.setQuantityKg(qty);

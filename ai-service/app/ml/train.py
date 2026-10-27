@@ -9,6 +9,7 @@ Input:  data/surplus_data.csv  (category, date, quantityKg)
 Output: models/surplus_model.joblib  + printed MAE / RMSE table (in kg)
 """
 import os
+from datetime import datetime, timezone
 import joblib
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
@@ -53,19 +54,26 @@ models = {
 results = {}
 print("\nModel                 MAE(kg)   RMSE(kg)")
 base = test["roll7"]
-print(f"{'Baseline (7-day avg)':<20} {mean_absolute_error(test.quantityKg, base):9.2f} "
+baseline_mae = mean_absolute_error(test.quantityKg, base)
+print(f"{'Baseline (7-day avg)':<20} {baseline_mae:9.2f} "
       f"{mean_squared_error(test.quantityKg, base) ** 0.5:9.2f}")
 for name, model in models.items():
     model.fit(train[FEATURES], train["target"])
     pred_kg = (model.predict(test[FEATURES]) * test["roll7"]).clip(lower=0)
     mae = mean_absolute_error(test["quantityKg"], pred_kg)
     rmse = mean_squared_error(test["quantityKg"], pred_kg) ** 0.5
-    results[name] = (model, mae)
+    results[name] = (model, mae, rmse)
     print(f"{name:<20} {mae:9.2f} {rmse:9.2f}")
 
 # ---------- 5. save the best one ----------
 best = min(results, key=lambda k: results[k][1])
 os.makedirs("models", exist_ok=True)
+# the scores travel with the model so the admin dashboard can show them
 joblib.dump({"model": results[best][0], "features": FEATURES,
-             "categories": categories, "model_name": best, "version": 2}, MODEL_FILE)
+             "categories": categories, "model_name": best, "version": 2,
+             "mae": round(results[best][1], 2), "rmse": round(results[best][2], 2),
+             "baseline_mae": round(baseline_mae, 2),
+             "compared": {k: round(v[1], 2) for k, v in results.items()},
+             "train_rows": len(train), "test_rows": len(test),
+             "trained_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}, MODEL_FILE)
 print(f"\nBest model = {best}  -> saved to {MODEL_FILE}")

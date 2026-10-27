@@ -75,6 +75,10 @@
   --status-danger-border: #FECACA;
   --status-warn-border: #FED7AA;
 
+  /* Solid red for the sidebar Logout button; white text passes AA on both. */
+  --logout-bg: #DC2626;
+  --logout-bg-hover: #B91C1C;
+
   /* Decorative green ring (icon circles, scrollbar thumb). Needs to stay
      visible against --surface in both themes, so it cannot just be
      --primary-light - that tint disappears on a dark card. */
@@ -200,6 +204,8 @@
   --status-rose-bg: #2F161B;    --status-rose-fg: #F291A4;
   --status-danger-border: #4E251E;
   --status-warn-border: #4A3718;
+  --logout-bg: #C2302A;
+  --logout-bg-hover: #D9443D;
 
   --ring-primary: #3F6A1A;
   --icon-chip: #1F2E14;
@@ -422,13 +428,6 @@ p { margin: 0; line-height: 1.55; }
   flex: 1;
 }
 
-.sidebar-illustration {
-  margin-top: auto;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding-top: 10px;
-}
 
 /* ---------- Main Content & Topbar ---------- */
 .main-content {
@@ -762,9 +761,10 @@ p { margin: 0; line-height: 1.55; }
   gap: 10px;
   margin-top: 12px;
 }
+.impact-mini-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .impact-card-custom { min-width: 0; }
 @media (max-width: 620px) {
-  .impact-mini-grid { grid-template-columns: 1fr; }
+  .impact-mini-grid, .impact-mini-grid--2 { grid-template-columns: 1fr; }
 }
 
 .impact-mini-card {
