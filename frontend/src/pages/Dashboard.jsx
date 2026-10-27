@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../AuthContext.jsx";
 import { api } from "../api.js";
 import StatCard from "../components/StatCard.jsx";
 import ProgressRing from "../components/ProgressRing.jsx";
 import VerificationUpload from "../components/VerificationUpload.jsx";
+import BeneficiaryVerificationUpload from "../components/BeneficiaryVerificationUpload.jsx";
 import VerificationApprovedBanner from "../components/VerificationApprovedBanner.jsx";
 import LottieState from "../components/LottieState.jsx";
 import { HorizontalBarChart, ProportionBar, StatusDonut, useChartPalette } from "../components/charts/ChartKit.jsx";
@@ -30,7 +32,10 @@ import {
   IconInbox,
   IconTicket,
   IconShieldCheck,
+  IconReport,
+  IconSettings,
 } from "../components/Icons.jsx";
+import "../styles/admin-dashboard.css";
 
 const CATEGORY_IMAGE = {
   "Cooked Meals": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=100&auto=format&fit=crop&q=80",
@@ -329,7 +334,9 @@ function BeneficiaryDashboard({ user }) {
 
       <VerificationApprovedBanner user={user} />
 
-      {!user.verified && user.verificationStatus === "rejected" ? (
+      {!user.verified && user.role === "beneficiary" ? (
+        <BeneficiaryVerificationUpload user={user} />
+      ) : !user.verified && user.verificationStatus === "rejected" ? (
         <div className="banner" style={{ background: "var(--status-danger-bg)", border: "1px solid var(--status-danger-border)", borderRadius: 14, padding: "14px 20px", marginBottom: 20 }}>
           <strong style={{ color: "var(--status-danger-fg)" }}>Verification rejected</strong>
           <p style={{ margin: "2px 0 0", color: "var(--status-danger-fg)", fontSize: 13.5 }}>
@@ -448,29 +455,47 @@ function BeneficiaryDashboard({ user }) {
 }
 
 /** Ranked list of totals - one hue, since the name beside each bar carries identity. */
-function RankedBarList({ data }) {
-  const entries = Object.entries(data || {});
+/** Ranked list with rank, initials avatar, share of total and a growing bar. */
+function RankedBarList({ data, unit = "kg" }) {
+  const entries = Object.entries(data || {}).sort(([, a], [, b]) => b - a);
   if (entries.length === 0) {
     return <LottieState title="Nothing ranked yet" message="Totals appear here once donations start moving." size={110} />;
   }
   const max = Math.max(...entries.map(([, v]) => v), 1);
+  const total = entries.reduce((s, [, v]) => s + v, 0) || 1;
 
   return (
-    <Stagger gap={0.06}>
-      {entries.map(([label, kg]) => (
-        <StaggerItem key={label} style={{ marginBottom: 14 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5, marginBottom: 6 }}>
-            <span style={{ fontWeight: 500 }}>{label}</span>
-            <strong>
-              <CountUp value={kg} decimals={Number.isInteger(kg) ? 0 : 1} /> kg
-            </strong>
+    <Stagger gap={0.06} className="ad-rank">
+      {entries.map(([label, kg], i) => (
+        <StaggerItem key={label} className="ad-rank-row">
+          <span className={`ad-rank-no${i < 3 ? ` ad-rank-top${i + 1}` : ""}`}>{i + 1}</span>
+          <span className="ad-rank-avatar" aria-hidden="true">
+            {label.split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase()}
+          </span>
+          <div className="ad-rank-main">
+            <div className="ad-rank-head">
+              <span title={label}>{label}</span>
+              <strong>
+                <CountUp value={kg} decimals={Number.isInteger(kg) ? 0 : 1} /> {unit}
+                <em>{Math.round((kg / total) * 100)}%</em>
+              </strong>
+            </div>
+            <GrowBar percent={(kg / max) * 100} height={7} />
           </div>
-          <GrowBar percent={(kg / max) * 100} />
         </StaggerItem>
       ))}
     </Stagger>
   );
 }
+
+function greeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+const formatKg = (n) => (Number.isInteger(n) ? n : Math.round(n * 10) / 10);
 
 function AdminDashboard({ user }) {
   const { data, error, lastUpdated, isRefreshing, refresh } = useLiveData("/dashboard/admin/overview");
@@ -482,12 +507,15 @@ function AdminDashboard({ user }) {
   const savedKg = foodOutcome["Saved (Collected)"] || 0;
   const wastedKg = foodOutcome["Wasted (Unclaimed Surplus)"] || 0;
   const expiredKg = foodOutcome["Expired (Redirected to Compost/Farms)"] || 0;
-  const totalDonatedKg = Object.values(data.categoryBreakdown || {}).reduce((a, b) => a + b, 0);
+  const categories = data.categoryBreakdown || {};
+  const totalDonatedKg = Object.values(categories).reduce((a, b) => a + b, 0);
   const activeKg = Math.max(0, Math.round((totalDonatedKg - expiredKg) * 10) / 10);
 
   const pendingCount = data.requestStatusBreakdown?.pending || 0;
   const approvedCount = data.requestStatusBreakdown?.approved || 0;
   const rejectedCount = data.requestStatusBreakdown?.rejected || 0;
+  const decided = approvedCount + rejectedCount;
+  const approvalRate = decided ? Math.round((approvedCount / decided) * 100) : null;
 
   // Status hues come from the validated reserved palette, never from the
   // categorical set - and every segment is labelled, which is what lets the
@@ -507,22 +535,77 @@ function AdminDashboard({ user }) {
     { key: "expired", label: "Expired", color: STATUS.warning, value: expiredKg },
   ];
 
+  // Each row is a queue someone has to work through; empty queues still show,
+  // so the admin can see at a glance that nothing is waiting.
+  const attention = [
+    { key: "verify", to: "/admin/beneficiaries", Icon: IconShieldCheck, count: data.pendingVerifications, label: "Organizations to verify", clear: "No organizations waiting", tone: "violet" },
+    { key: "requests", to: "/admin/reports", Icon: IconInbox, count: data.pendingRequests, label: "Requests awaiting donors", clear: "No requests waiting", tone: "warn" },
+    { key: "surplus", to: "/admin/reports", Icon: IconFoodPlate, count: data.surplusItems, label: "Surplus listings live", clear: "No live surplus right now", tone: "info" },
+    { key: "expired", to: "/admin/reports", Icon: IconTrashCan, count: data.expiredItems, label: "Expired, routed to farms", clear: "Nothing has expired", tone: "danger" },
+  ];
+
+  const today = new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+  const categoryMax = Math.max(...Object.values(categories), 1);
+
   return (
-    <div className="dashboard-container">
-      {/* Toolbar: identity on the left, system state on the right. One live
-          badge for the whole page - the panels below no longer each carry one. */}
-      <div
-        className="page-header dashboard-hero"
-        style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}
-      >
-        <div>
-          <h1 className="welcome-title">
-            System Overview <IconFloatingLeaf size={26} color="#85B840" />
-          </h1>
-          <p className="welcome-sub">Welcome back, {user.name}.</p>
+    <div className="dashboard-container ad-page">
+      <section className="ad-hero">
+        <svg className="ad-hero-art" viewBox="0 0 600 260" preserveAspectRatio="xMaxYMid slice" aria-hidden="true">
+          <circle cx="540" cy="20" r="140" />
+          <circle cx="410" cy="250" r="80" />
+          <circle cx="620" cy="220" r="60" />
+        </svg>
+
+        <div className="ad-hero-top">
+          <div>
+            <span className="ad-eyebrow">Admin console · {today}</span>
+            <h1>
+              {greeting()}, {user.name} <IconFloatingLeaf size={24} color="#A9E05A" />
+            </h1>
+            <p>Here is how food is moving through the network right now.</p>
+          </div>
+          <LiveBadge lastUpdated={lastUpdated} isRefreshing={isRefreshing} error={error} onRefresh={refresh} />
         </div>
-        <LiveBadge lastUpdated={lastUpdated} isRefreshing={isRefreshing} error={error} onRefresh={refresh} />
-      </div>
+
+        <div className="ad-hero-kpis">
+          <div>
+            <span>Food listed</span>
+            <strong><CountUp value={formatKg(totalDonatedKg)} /> <small>kg</small></strong>
+            <em>across {Object.keys(categories).length} categories</em>
+          </div>
+          <div>
+            <span>Diverted to farms</span>
+            <strong><CountUp value={formatKg(expiredKg)} /> <small>kg</small></strong>
+            <em>kept out of landfill</em>
+          </div>
+          <div>
+            <span>Approval rate</span>
+            <strong>{approvalRate == null ? "—" : <><CountUp value={approvalRate} /><small>%</small></>}</strong>
+            <em>{approvedCount} approved · {rejectedCount} rejected</em>
+          </div>
+          <div>
+            <span>Tickets issued</span>
+            <strong><CountUp value={data.totalTickets} /></strong>
+            <em>{data.collectedItems} collected so far</em>
+          </div>
+        </div>
+
+        <div className="ad-quick">
+          <Link to="/admin/beneficiaries" className="ad-quick-btn primary">
+            <IconShieldCheck size={16} color="currentColor" /> Review verifications
+            {data.pendingVerifications > 0 && <span className="ad-quick-badge">{data.pendingVerifications}</span>}
+          </Link>
+          <Link to="/admin/users" className="ad-quick-btn">
+            <IconStatPeople size={16} color="currentColor" /> Manage users
+          </Link>
+          <Link to="/admin/reports" className="ad-quick-btn">
+            <IconReport size={16} color="currentColor" /> Generate report
+          </Link>
+          <Link to="/admin/settings" className="ad-quick-btn">
+            <IconSettings size={16} color="currentColor" /> Expiry rules
+          </Link>
+        </div>
+      </section>
 
       <Stagger className="grid-4 stats-grid">
         <StatCard
@@ -537,13 +620,15 @@ function AdminDashboard({ user }) {
           ])}
         />
         <StatCard
-          icon={<IconShieldCheck size={28} color="var(--primary)" />}
+          icon={<IconShieldCheck size={28} color="var(--status-violet-fg)" />}
+          iconBg="var(--status-violet-bg)"
           label="Pending Verifications"
           value={data.pendingVerifications}
-          sub="Awaiting review"
+          sub={data.pendingVerifications ? "Awaiting review" : "All caught up"}
         />
         <StatCard
-          icon={<IconFoodPlate size={28} color="var(--primary)" />}
+          icon={<IconFoodPlate size={28} color="var(--status-warn-fg)" />}
+          iconBg="var(--status-warn-bg)"
           label="Active Listings"
           value={data.totalListings}
           sub={breakdown([
@@ -554,58 +639,93 @@ function AdminDashboard({ user }) {
           ])}
         />
         <StatCard
-          icon={<IconTicket size={28} color="var(--primary)" />}
+          icon={<IconTicket size={28} color="var(--status-ok-fg)" />}
           label="Tickets Issued"
           value={data.totalTickets}
           sub={`${data.pendingRequests} requests pending`}
         />
       </Stagger>
 
-      <Section title="Forecast" hint="What the model expects to come through next.">
-        <AIForecastPanel showLive={false} />
-      </Section>
+      <div className="ad-split">
+        <Section title="Forecast" hint="What the model expects to come through next.">
+          <AIForecastPanel showLive={false} />
+        </Section>
+
+        <Section title="Needs attention" hint="Queues across the platform.">
+          <div className="card ad-attention">
+            {attention.map(({ key, to, Icon, count, label, clear, tone }) => (
+              <Link key={key} to={to} className={`ad-att-row${count ? ` ad-att-${tone}` : " ad-att-clear"}`}>
+                <span className="ad-att-icon"><Icon size={18} color="currentColor" /></span>
+                <span className="ad-att-text">
+                  <strong>{count ? label : clear}</strong>
+                  <span>{count ? "Open to review" : "All clear"}</span>
+                </span>
+                <span className="ad-att-count">{count || "✓"}</span>
+              </Link>
+            ))}
+          </div>
+        </Section>
+      </div>
 
       <Section title="Distribution" className="grid-2 cards-row" style={{ marginBottom: 0 }}>
-        <div className="card">
-          <div className="card-title">
-            <h3 className="section-title-with-leaf">
-              <IconLeafBullet size={19} color="var(--primary)" />
-              Most Donated Items
-            </h3>
+        <div className="card ad-card">
+          <div className="ad-card-head">
+            <h3><span className="ad-card-icon"><IconLeafBullet size={17} color="currentColor" /></span> Most donated items</h3>
+            <span className="ad-chip">Top {Object.keys(data.topItems || {}).length}</span>
           </div>
           {/* Horizontal: item names are long, and reading them straight across
               beats rotating them under a vertical axis. */}
           <HorizontalBarChart data={data.topItems} height={300} unit="kg" labelWidth={132} />
         </div>
 
-        <div className="card">
-          <div className="card-title">
-            <h3 className="section-title-with-leaf">
-              <IconShieldCheck size={19} color="var(--primary)" />
-              Request Approval Status
-            </h3>
+        <div className="card ad-card">
+          <div className="ad-card-head">
+            <h3><span className="ad-card-icon"><IconShieldCheck size={17} color="currentColor" /></span> Request approval status</h3>
+            <span className="ad-chip">{approvedCount + pendingCount + rejectedCount} total</span>
           </div>
           <StatusDonut segments={approvalSegments} unit="requests" centerLabel="total requests" />
         </div>
       </Section>
 
+      <Section title="Food by category" hint="Kilograms listed per category.">
+        <div className="card ad-card">
+          {Object.keys(categories).length === 0 ? (
+            <LottieState title="No listings yet" message="Category totals appear once donors add stock." size={110} />
+          ) : (
+            <div className="ad-cats">
+              {Object.entries(categories)
+                .sort(([, a], [, b]) => b - a)
+                .map(([cat, kg]) => (
+                  <div key={cat} className="ad-cat">
+                    <img src={CATEGORY_IMAGE[cat] || CATEGORY_IMAGE.Other} alt="" loading="lazy" />
+                    <div className="ad-cat-main">
+                      <div className="ad-cat-head">
+                        <span>{cat}</span>
+                        <strong>{formatKg(kg)} kg</strong>
+                      </div>
+                      <GrowBar percent={(kg / categoryMax) * 100} height={6} />
+                      <em>{Math.round((kg / (totalDonatedKg || 1)) * 100)}% of all food listed</em>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
+      </Section>
+
       <Section title="Network" className="grid-2 cards-row" style={{ marginBottom: 0 }}>
-        <div className="card">
-          <div className="card-title">
-            <h3 className="section-title-with-leaf">
-              <IconDonations size={19} color="var(--primary)" />
-              Top Donors (kg Donated)
-            </h3>
+        <div className="card ad-card">
+          <div className="ad-card-head">
+            <h3><span className="ad-card-icon"><IconDonations size={17} color="currentColor" /></span> Top donors</h3>
+            <span className="ad-chip">kg donated</span>
           </div>
           <RankedBarList data={data.topDonors} />
         </div>
 
-        <div className="card">
-          <div className="card-title">
-            <h3 className="section-title-with-leaf">
-              <IconCommunity size={19} color="var(--primary)" />
-              Top Receiving Organizations (kg)
-            </h3>
+        <div className="card ad-card">
+          <div className="ad-card-head">
+            <h3><span className="ad-card-icon"><IconCommunity size={17} color="currentColor" /></span> Top receiving organizations</h3>
+            <span className="ad-chip">kg received</span>
           </div>
           <RankedBarList data={data.topOrganizations} />
         </div>
@@ -614,30 +734,26 @@ function AdminDashboard({ user }) {
       {/* Both splits answer "where did the food end up", so they live in one
           card as two labelled rows instead of two half-empty ones. */}
       <Section title="Waste outcome">
-        <div className="card">
-          <div className="card-title">
-            <h3 className="section-title-with-leaf">
-              <IconTrashCan size={19} color="var(--primary)" />
-              Where the food ended up
-            </h3>
+        <div className="card ad-card">
+          <div className="ad-card-head">
+            <h3><span className="ad-card-icon"><IconTrashCan size={17} color="currentColor" /></span> Where the food ended up</h3>
           </div>
 
-          <div style={{ marginBottom: 22 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-mid)", marginBottom: 8 }}>
-              Surplus outcome
-            </div>
-            <ProportionBar
-              segments={surplusSegments}
-              unit="kg"
-              emptyText="No surplus has been collected or written off yet."
-            />
+          <div className="ad-outcome">
+            <div className="ad-outcome-stat ad-ok"><span>Saved (collected)</span><strong>{formatKg(savedKg)} kg</strong></div>
+            <div className="ad-outcome-stat ad-warn"><span>Redirected to farms</span><strong>{formatKg(expiredKg)} kg</strong></div>
+            <div className="ad-outcome-stat ad-danger"><span>Wasted (unclaimed)</span><strong>{formatKg(wastedKg)} kg</strong></div>
           </div>
 
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-mid)", marginBottom: 8 }}>
-              Expired share of all donations
+          <div className="ad-outcome-bars">
+            <div>
+              <div className="ad-outcome-label">Surplus outcome</div>
+              <ProportionBar segments={surplusSegments} unit="kg" emptyText="No surplus has been collected or written off yet." />
             </div>
-            <ProportionBar segments={expiredSegments} unit="kg" />
+            <div>
+              <div className="ad-outcome-label">Expired share of all donations</div>
+              <ProportionBar segments={expiredSegments} unit="kg" />
+            </div>
           </div>
         </div>
       </Section>

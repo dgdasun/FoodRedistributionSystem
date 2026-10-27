@@ -1,11 +1,13 @@
 package com.foodshare.dto;
 
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+
+import static com.foodshare.dto.RegisterRequestDTO.EMAIL_REGEX;
 
 public class LoginRequestDTO {
-    @NotBlank
-    @Email
+    @NotBlank(message = "Email is required")
+    @Pattern(regexp = EMAIL_REGEX, message = "Please enter a valid email address")
     private String email;
 
     @NotBlank

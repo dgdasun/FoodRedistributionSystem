@@ -9,6 +9,7 @@ import {
   IconStepDistribute,
 } from "../components/Icons.jsx";
 import BeneficiaryRegistrationForm from "../components/BeneficiaryRegistrationForm.jsx";
+import { sanitizePhone, validateEmail, validatePassword, validatePhone, PHONE_LENGTH } from "../utils/validation.js";
 
 const TOP_ROLES = [
   {
@@ -74,11 +75,13 @@ export default function Register() {
     confirmPassword: "",
   });
   const [beneficiaryValues, setBeneficiaryValues] = useState(null);
-  const [beneficiaryFile, setBeneficiaryFile] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [stage, setStage] = useState("form"); // form | agreement
   const [error, setError] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [phoneError, setPhoneError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const roleConfig = getRoleConfig(form.role);
@@ -86,6 +89,24 @@ export default function Register() {
     form.role === "donor" ? AGREEMENTS.donor : form.role === "farm" ? FARM_AGREEMENT : AGREEMENTS.beneficiary;
 
   const update = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  const handleEmailChange = (value) => {
+    update("email", value);
+    // Once an error is showing, clear it as soon as the input becomes valid.
+    if (emailError) setEmailError(validateEmail(value));
+  };
+
+  const handlePhoneChange = (value) => {
+    const phone = sanitizePhone(value);
+    update("phone", phone);
+    // Validate while typing so a short number is flagged immediately.
+    setPhoneError(phone ? validatePhone(phone) : "");
+  };
+
+  const handlePasswordChange = (value) => {
+    update("password", value);
+    if (passwordError) setPasswordError(validatePassword(value));
+  };
 
   const selectTopRole = (key) => {
     setError("");
@@ -99,6 +120,24 @@ export default function Register() {
   const proceedToAgreement = (e) => {
     e.preventDefault();
     setError("");
+    const emailMsg = validateEmail(form.email);
+    setEmailError(emailMsg);
+    if (emailMsg) {
+      document.getElementById("reg-email")?.focus();
+      return;
+    }
+    const phoneMsg = validatePhone(form.phone);
+    setPhoneError(phoneMsg);
+    if (phoneMsg) {
+      document.getElementById("reg-phone")?.focus();
+      return;
+    }
+    const passwordMsg = validatePassword(form.password);
+    setPasswordError(passwordMsg);
+    if (passwordMsg) {
+      document.getElementById("reg-pass")?.focus();
+      return;
+    }
     if (form.password && form.confirmPassword && form.password !== form.confirmPassword) {
       setError("Passwords do not match.");
       return;
@@ -106,10 +145,9 @@ export default function Register() {
     setStage("agreement");
   };
 
-  const handleBeneficiarySubmit = (values, file) => {
+  const handleBeneficiarySubmit = (values) => {
     setError("");
     setBeneficiaryValues(values);
-    setBeneficiaryFile(file);
     setForm((f) => ({ ...f, role: values.organizationCategory }));
     setStage("agreement");
   };
@@ -125,32 +163,26 @@ export default function Register() {
           role: v.organizationCategory,
           orgType: v.organizationCategory === "farm" ? "Farm" : "Beneficiary Organization",
           name: v.contactPersonName,
-          email: v.email,
+          email: v.email.trim(),
           password: v.password,
           organizationName: v.organizationName,
           organizationSize: Number(v.capacity) || 0,
           location: v.location,
           phone: v.phone,
-          storageCapacity: v.storageFacility,
+          storageTypes: v.organizationCategory === "beneficiary" ? v.storageTypes : [],
         };
       } else {
         payload = {
           ...form,
+          email: form.email.trim(),
           organizationSize: Number(form.organizationSize) || 0,
           handlingCapacityKg: Number(form.handlingCapacityKg) || 0,
         };
       }
 
+      // Verification documents are uploaded after sign-in, from the dashboard / profile.
       const { user } = await api.post("/auth/register", payload);
-
-      if (form.role === "beneficiary" && beneficiaryFile) {
-        const formData = new FormData();
-        formData.append("file", beneficiaryFile);
-        const { user: updated } = await api.upload(`/beneficiaries/${user.id}/documents`, formData);
-        login(updated);
-      } else {
-        login(user);
-      }
+      login(user);
       navigate("/dashboard");
     } catch (e2) {
       setError(e2.message || "Failed to register. Please try again.");
@@ -162,6 +194,13 @@ export default function Register() {
 
   const rejectAgreement = () => {
     navigate("/");
+  };
+
+  // All entered values live in this component's state (or beneficiaryValues for
+  // the organization form), so switching stage back keeps them intact.
+  const backToForm = () => {
+    setError("");
+    setStage("form");
   };
 
   const isOrganizationMode = form.role !== "donor";
@@ -239,6 +278,15 @@ export default function Register() {
           <div className="w-full">
             {stage === "agreement" ? (
               <div className="flex flex-col gap-4">
+                <button
+                  type="button"
+                  className="self-start text-sm font-medium text-emerald-700 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={backToForm}
+                  disabled={loading}
+                >
+                  ← Back to edit details
+                </button>
+
                 <div className="max-h-64 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5">
                   <h3 className="mb-2 text-[14px] font-bold text-slate-900">{agreement.title}</h3>
                   <p className="text-[13px] leading-6 text-slate-700">{agreement.body}</p>
@@ -274,6 +322,7 @@ export default function Register() {
                 {roleSelector}
                 <BeneficiaryRegistrationForm
                   onSubmit={handleBeneficiarySubmit}
+                  initialValues={beneficiaryValues}
                   submitError={error}
                   wrapperClassName="w-full space-y-4"
                 />
@@ -298,15 +347,28 @@ export default function Register() {
 
                   <div className="auth-input-group">
                     <label htmlFor="reg-email">Email Address</label>
+                    {/* type="text" so the browser's lax native email check doesn't
+                        pre-empt our stricter inline validation. */}
                     <input
                       id="reg-email"
-                      type="email"
+                      type="text"
+                      inputMode="email"
+                      autoComplete="email"
                       className="auth-input"
                       placeholder="name@organization.lk"
                       value={form.email}
-                      onChange={(e) => update("email", e.target.value)}
+                      onChange={(e) => handleEmailChange(e.target.value)}
+                      onBlur={() => form.email && setEmailError(validateEmail(form.email))}
+                      aria-invalid={!!emailError}
+                      aria-describedby={emailError ? "reg-email-error" : undefined}
+                      style={emailError ? { borderColor: "var(--danger)" } : undefined}
                       required
                     />
+                    {emailError && (
+                      <p id="reg-email-error" role="alert" style={{ color: "var(--danger)", fontSize: 12, marginTop: 4 }}>
+                        {emailError}
+                      </p>
+                    )}
                   </div>
 
                   <div className="auth-input-group">
@@ -314,12 +376,24 @@ export default function Register() {
                     <input
                       id="reg-phone"
                       type="tel"
+                      inputMode="numeric"
+                      maxLength={PHONE_LENGTH}
+                      autoComplete="tel"
                       className="auth-input"
-                      placeholder="077 123 4567"
+                      placeholder="0771234567"
                       value={form.phone}
-                      onChange={(e) => update("phone", e.target.value)}
+                      onChange={(e) => handlePhoneChange(e.target.value)}
+                      onBlur={() => form.phone && setPhoneError(validatePhone(form.phone))}
+                      aria-invalid={!!phoneError}
+                      aria-describedby={phoneError ? "reg-phone-error" : undefined}
+                      style={phoneError ? { borderColor: "var(--danger)" } : undefined}
                       required
                     />
+                    {phoneError && (
+                      <p id="reg-phone-error" role="alert" style={{ color: "var(--danger)", fontSize: 12, marginTop: 4 }}>
+                        {phoneError}
+                      </p>
+                    )}
                   </div>
 
                   <div className="auth-input-group">
@@ -356,7 +430,12 @@ export default function Register() {
                         className="auth-input"
                         placeholder="Create password"
                         value={form.password}
-                        onChange={(e) => update("password", e.target.value)}
+                        onChange={(e) => handlePasswordChange(e.target.value)}
+                        onBlur={() => form.password && setPasswordError(validatePassword(form.password))}
+                        aria-invalid={!!passwordError}
+                        aria-describedby={passwordError ? "reg-pass-error" : undefined}
+                        style={passwordError ? { borderColor: "var(--danger)" } : undefined}
+                        autoComplete="new-password"
                         required
                       />
                       <button
@@ -368,6 +447,11 @@ export default function Register() {
                         {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                       </button>
                     </div>
+                    {passwordError && (
+                      <p id="reg-pass-error" role="alert" style={{ color: "var(--danger)", fontSize: 12, marginTop: 4 }}>
+                        {passwordError}
+                      </p>
+                    )}
                   </div>
 
                   <div className="auth-input-group">

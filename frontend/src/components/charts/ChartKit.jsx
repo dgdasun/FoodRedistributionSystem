@@ -242,13 +242,13 @@ export function CategoryBarChart({ data, height = 360, xLabel = "Item", unit = "
  * Preferred when category names are long: they read straight across instead
  * of being rotated or truncated on the x-axis.
  */
-export function HorizontalBarChart({ data, height = 300, unit = "kg", labelWidth = 118 }) {
+export function HorizontalBarChart({ data, height = 300, unit = "kg", labelWidth = 118, sorted = true }) {
   const reduced = useReducedMotion();
   const palette = useChartPalette();
   const axisTick = axisTickFor(palette.inkMuted);
-  const rows = Object.entries(data || {})
-    .map(([label, value]) => ({ label, value: Number(value) || 0 }))
-    .sort((a, b) => b.value - a.value);
+  // Ranked by size by default; pass sorted={false} for ordered data such as a time series.
+  const rows = Object.entries(data || {}).map(([label, value]) => ({ label, value: Number(value) || 0 }));
+  if (sorted) rows.sort((a, b) => b.value - a.value);
   if (!rows.length) return <EmptyPlot />;
 
   return (

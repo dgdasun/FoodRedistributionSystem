@@ -1,39 +1,30 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import QRCode from "qrcode";
-import { Package, MapPin, Calendar, Clock, Download, Ticket as TicketIcon } from "lucide-react";
+import {
+  Package, MapPin, CalendarDays, Clock, Download, Ticket as TicketIcon, Maximize2, X, Copy, Check, Timer,
+} from "lucide-react";
 import { useAuth } from "../AuthContext.jsx";
 import { api } from "../api.js";
+import StatCard from "../components/StatCard.jsx";
+import { Stagger } from "../components/motion/Motion.jsx";
+import { IconTicket, IconShieldCheck, IconWeight, IconClock } from "../components/Icons.jsx";
+import { imageFor } from "../foodImages.js";
+import "../styles/food-requests.css";
+import "../styles/tickets.css";
 
-const STATUS_STYLES = {
-  pending: "bg-amber-50 text-amber-700 border border-amber-200",
-  collected: "bg-emerald-50 text-emerald-700 border border-emerald-200",
-  expired: "bg-rose-50 text-rose-700 border border-rose-200",
+const STATUS = {
+  pending: { label: "Ready to collect", tone: "ok" },
+  collected: { label: "Collected", tone: "done" },
+  expired: { label: "Expired", tone: "danger" },
 };
 
-const STATUS_LABELS = {
-  pending: "Pending",
-  collected: "Collected",
-  expired: "Expired",
-};
-
-function StatusBadge({ status }) {
-  const style = STATUS_STYLES[status] || "bg-slate-100 text-slate-600 border border-slate-200";
-  const label = STATUS_LABELS[status] || status;
-  return (
-    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${style}`}>
-      {label}
-    </span>
-  );
-}
-
-function DetailRow({ icon: Icon, children }) {
-  return (
-    <div className="flex items-center gap-2 text-sm text-slate-700">
-      <Icon size={16} className="text-emerald-600 shrink-0" />
-      <span className="truncate">{children}</span>
-    </div>
-  );
-}
+const TABS = [
+  { key: "active", label: "Active" },
+  { key: "collected", label: "Collected" },
+  { key: "expired", label: "Expired" },
+  { key: "all", label: "All" },
+];
 
 const HOUR_MS = 60 * 60 * 1000;
 
@@ -51,45 +42,79 @@ function formatDuration(ms) {
   return `${hours}h ${minutes}m`;
 }
 
-/**
- * Derives the Admin-configured QR collection window state for a ticket: the
- * deadline, whether it has lapsed, and copy for the pill badge / time column.
- */
-function useCollectionWindow(ticket, now) {
-  const expiresAt = ticket.expiresAt ? new Date(ticket.expiresAt) : null;
-  const isSettled = ticket.status === "collected";
-
-  if (!expiresAt) return { expiresAt: null, isExpired: false, isSettled, badgeText: null, validUntilText: null };
-
-  const msLeft = expiresAt.getTime() - now;
-  const isExpired = !isSettled && msLeft <= 0;
-  const validUntilText = `Valid until ${formatClockTime(expiresAt)}`;
-
-  let badgeText;
-  if (isSettled) {
-    badgeText = null;
-  } else if (isExpired) {
-    badgeText = "⏱️ Window Expired";
-  } else if (msLeft <= HOUR_MS) {
-    badgeText = `⏱️ ${formatDuration(msLeft)} left`;
-  } else if (ticket.collectionWindowHours) {
-    badgeText = `⏱️ ${ticket.collectionWindowHours} hr Collection Window`;
-  } else {
-    badgeText = `⏱️ ${formatDuration(msLeft)} left`;
-  }
-
-  return { expiresAt, isExpired, isSettled, badgeText, validUntilText };
+function formatDate(iso) {
+  if (!iso) return "—";
+  const d = new Date(`${iso}T00:00:00`);
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
 }
 
-function CollectionWindowBadge({ text, isExpired }) {
-  if (!text) return null;
-  const style = isExpired
-    ? "bg-rose-50 text-rose-700 border border-rose-200"
-    : "bg-amber-50 text-amber-700 border border-amber-200";
+/**
+ * Derives the Admin-configured QR collection window state for a ticket: the
+ * deadline, whether it has lapsed, how much of the window is left, and copy.
+ */
+function collectionWindow(ticket, now) {
+  const expiresAt = ticket.expiresAt ? new Date(ticket.expiresAt) : null;
+  const isSettled = ticket.status === "collected";
+  if (!expiresAt) return { expiresAt: null, isExpired: ticket.status === "expired", isSettled, percent: null, leftText: null };
+
+  const msLeft = expiresAt.getTime() - now;
+  const isExpired = ticket.status === "expired" || (!isSettled && msLeft <= 0);
+  const windowMs = (ticket.collectionWindowHours || 0) * HOUR_MS;
+  const percent = !isSettled && !isExpired && windowMs > 0 ? Math.max(3, Math.min(100, (msLeft / windowMs) * 100)) : null;
+  const leftText = isSettled ? null : isExpired ? "Window closed" : `${formatDuration(msLeft)} left`;
+  return { expiresAt, isExpired, isSettled, percent, leftText, urgent: !isExpired && msLeft <= HOUR_MS };
+}
+
+const displayStatusOf = (ticket, now) => (collectionWindow(ticket, now).isExpired ? "expired" : ticket.status);
+
+function useNow(active) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!active) return undefined;
+    const id = setInterval(() => setNow(Date.now()), 30 * 1000);
+    return () => clearInterval(id);
+  }, [active]);
+  return now;
+}
+
+function useQr(value, width = 220) {
+  const [url, setUrl] = useState(null);
+  useEffect(() => {
+    if (!value) return undefined;
+    let cancelled = false;
+    QRCode.toDataURL(value, { margin: 1, width })
+      .then((u) => !cancelled && setUrl(u))
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [value, width]);
+  return url;
+}
+
+/** Full-screen, high-contrast QR for the donor to scan at the counter. */
+function QrModal({ ticket, onClose }) {
+  const url = useQr(ticket.qrCode, 520);
+  useEffect(() => {
+    const onKey = (e) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   return (
-    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${style}`}>
-      {text}
-    </span>
+    <div className="tk-qr-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-label="Pickup QR code">
+      <div className="tk-qr-sheet" onClick={(e) => e.stopPropagation()}>
+        <button type="button" className="tk-qr-close" onClick={onClose} aria-label="Close"><X size={18} /></button>
+        <span className="tk-qr-eyebrow">Show this to the donor</span>
+        <h3>{ticket.item?.name || "Food item"}</h3>
+        <p>{ticket.quantityKg} kg · {ticket.pickupLocation}</p>
+        <div className="tk-qr-big">
+          {url ? <img src={url} alt="Pickup QR code" /> : <div className="tk-qr-loading" />}
+        </div>
+        <code className="tk-qr-id">{ticket.id}</code>
+        <span className="tk-qr-hint">Turn your screen brightness up if the scan doesn't pick it up.</span>
+      </div>
+    </div>
   );
 }
 
@@ -97,30 +122,15 @@ function CollectionWindowBadge({ text, isExpired }) {
  * Reusable ticket-pass card used across the beneficiary "My Collection Tickets"
  * page and the donor "Pickup Tickets" page.
  */
-export function CollectionTicketCard({ ticket, isDonor = false, onAction }) {
-  const [qrDataUrl, setQrDataUrl] = useState(null);
-  const [now, setNow] = useState(() => Date.now());
+export function CollectionTicketCard({ ticket, isDonor = false, forFeed = false, onAction, onShowQr }) {
+  const qrDataUrl = useQr(isDonor ? null : ticket.qrCode);
+  const now = useNow(ticket.status === "pending" && !!ticket.expiresAt);
+  const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    if (isDonor || !ticket.qrCode) return;
-    let cancelled = false;
-    QRCode.toDataURL(ticket.qrCode, { margin: 1, width: 220 })
-      .then((url) => !cancelled && setQrDataUrl(url))
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [ticket.qrCode, isDonor]);
-
-  // Keep the collection-window countdown live without a page refresh.
-  useEffect(() => {
-    if (ticket.status !== "pending" || !ticket.expiresAt) return;
-    const interval = setInterval(() => setNow(Date.now()), 60 * 1000);
-    return () => clearInterval(interval);
-  }, [ticket.status, ticket.expiresAt]);
-
-  const { isExpired, badgeText, validUntilText } = useCollectionWindow(ticket, now);
-  const displayStatus = isExpired ? "expired" : ticket.status;
+  const win = collectionWindow(ticket, now);
+  const status = win.isExpired ? "expired" : ticket.status;
+  const st = STATUS[status] || { label: status, tone: "muted" };
+  const live = status === "pending";
 
   const handleDownload = () => {
     onAction?.("download", ticket);
@@ -131,106 +141,243 @@ export function CollectionTicketCard({ ticket, isDonor = false, onAction }) {
     link.click();
   };
 
+  const copyId = async () => {
+    try {
+      await navigator.clipboard.writeText(ticket.id);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* clipboard blocked - the ID is still visible to read out */
+    }
+  };
+
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all duration-200 p-6 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+    <article className={`tk-card tk-${st.tone}`}>
       {!isDonor && (
-        <>
-          <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex flex-col items-center justify-center shrink-0">
-            {qrDataUrl ? (
-              <img src={qrDataUrl} alt="Pickup QR code" className="w-28 h-28 rounded-md" />
-            ) : (
-              <div className="w-28 h-28 flex items-center justify-center text-slate-400 text-xs">Loading…</div>
-            )}
-            <span className="text-[11px] font-medium text-slate-500 mt-1.5">Scan at Donor Hub</span>
-          </div>
-          <div className="hidden lg:block w-px self-stretch bg-slate-200" />
-        </>
+        <div className="tk-stub">
+          <button
+            type="button"
+            className="tk-qr"
+            onClick={() => live && onShowQr?.(ticket)}
+            disabled={!live}
+            aria-label={live ? "Show QR code full screen" : `QR code (${st.label})`}
+          >
+            {qrDataUrl ? <img src={qrDataUrl} alt="" /> : <span className="tk-qr-loading" />}
+            {!live && <span className="tk-stamp">{st.label}</span>}
+            {live && <span className="tk-qr-zoom"><Maximize2 size={13} /></span>}
+          </button>
+          <span className="tk-stub-label">{live ? "Scan at donor hub" : "No longer valid"}</span>
+        </div>
       )}
 
-      <div className="flex-1 min-w-0 w-full">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mb-3">
-          <h3 className="text-xl font-bold text-slate-900">{ticket.item?.name || "Food Item"}</h3>
-          <span className="bg-slate-100 text-slate-600 font-mono text-xs px-2.5 py-1 rounded-md">
-            #{ticket.id}
-          </span>
-          <StatusBadge status={displayStatus} />
-          <CollectionWindowBadge text={badgeText} isExpired={isExpired} />
+      <div className="tk-body">
+        <div className="tk-head">
+          <img className="tk-thumb" src={imageFor(ticket.item?.category)} alt="" loading="lazy" />
+          <div className="tk-head-text">
+            <h3>{ticket.item?.name || "Food item"}</h3>
+            <div className="tk-head-meta">
+              <span className={`tk-badge tk-badge-${st.tone}`}>
+                {status === "collected" && <Check size={12} strokeWidth={3} />}
+                {st.label}
+              </span>
+              <button type="button" className="tk-id" onClick={copyId} title="Copy ticket ID">
+                #{ticket.id} {copied ? <Check size={12} /> : <Copy size={12} />}
+              </button>
+            </div>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5">
-          <DetailRow icon={Package}>{ticket.quantityKg} kg Surplus</DetailRow>
-          <DetailRow icon={MapPin}>{ticket.pickupLocation}</DetailRow>
-          <DetailRow icon={Calendar}>{ticket.pickupDate}</DetailRow>
-          <DetailRow icon={Clock}>
-            {ticket.collectionWindowHours ? `${ticket.collectionWindowHours}h pickup window` : "Pickup window"}
-            {validUntilText && <span className="text-slate-400"> ({validUntilText})</span>}
-          </DetailRow>
-        </div>
+        <dl className="tk-details">
+          <div><dt><Package size={14} /> Quantity</dt><dd>{ticket.quantityKg} kg {forFeed ? "for feed / compost" : "surplus"}</dd></div>
+          <div><dt><MapPin size={14} /> Pickup at</dt><dd title={ticket.pickupLocation}>{ticket.pickupLocation}</dd></div>
+          <div><dt><CalendarDays size={14} /> Date</dt><dd>{formatDate(ticket.pickupDate)}{ticket.pickupTime ? ` · ${ticket.pickupTime}` : ""}</dd></div>
+          <div>
+            <dt><Clock size={14} /> Window</dt>
+            <dd>
+              {ticket.collectionWindowHours ? `${ticket.collectionWindowHours}h` : "—"}
+              {win.expiresAt && !win.isSettled && <span className="tk-muted"> · until {formatClockTime(win.expiresAt)}</span>}
+            </dd>
+          </div>
+        </dl>
+
+        {win.percent != null && (
+          <div className={win.urgent ? "tk-window urgent" : "tk-window"}>
+            <div className="tk-window-head">
+              <span><Timer size={13} /> Collection window</span>
+              <strong>{win.leftText}</strong>
+            </div>
+            <div className="tk-window-bar"><span style={{ width: `${win.percent}%` }} /></div>
+          </div>
+        )}
       </div>
 
       {!isDonor && (
-        <div className="flex flex-row lg:flex-col gap-2 w-full sm:w-auto shrink-0">
-          <button
-            type="button"
-            onClick={handleDownload}
-            disabled={!qrDataUrl}
-            className="flex-1 lg:flex-none inline-flex items-center justify-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-          >
-            <Download size={16} />
-            Download Ticket
+        <div className="tk-actions">
+          {live && (
+            <button type="button" className="tk-btn tk-btn-primary" onClick={() => onShowQr?.(ticket)}>
+              <Maximize2 size={15} /> Show QR
+            </button>
+          )}
+          <button type="button" className="tk-btn tk-btn-ghost" onClick={handleDownload} disabled={!qrDataUrl}>
+            <Download size={15} /> Download
           </button>
         </div>
       )}
-    </div>
+    </article>
   );
 }
 
-function EmptyTicketsState({ isDonor }) {
+function EmptyTicketsState({ isDonor, filtered }) {
   return (
-    <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-12 flex flex-col items-center justify-center text-center">
-      <div className="w-14 h-14 rounded-full bg-emerald-50 flex items-center justify-center mb-4">
-        <TicketIcon size={24} className="text-emerald-600" />
-      </div>
-      <h3 className="text-base font-semibold text-slate-900 mb-1">No tickets yet</h3>
-      <p className="text-sm text-slate-500 max-w-sm">
-        {isDonor
-          ? "Confirmed pickup tickets from beneficiaries will show up here."
-          : "Once your request is approved, your pickup ticket will appear here."}
+    <div className="tk-empty">
+      <div className="tk-empty-icon"><TicketIcon size={26} /></div>
+      <strong>{filtered ? "No tickets here" : "No tickets yet"}</strong>
+      <p>
+        {filtered
+          ? "No tickets with this status."
+          : isDonor
+            ? "Confirmed pickup tickets from beneficiaries will show up here."
+            : "Once a donor approves your request, its pickup ticket and QR code appear here."}
       </p>
+      {!filtered && !isDonor && (
+        <Link to="/my-requests" className="btn btn-outline btn-sm">View my requests</Link>
+      )}
     </div>
   );
 }
 
 export default function Tickets() {
   const { user } = useAuth();
-  const [tickets, setTickets] = useState([]);
+  const [tickets, setTickets] = useState(null);
+  // null = not chosen yet: open on Active when something is collectable, else All.
+  const [chosenTab, setTab] = useState(null);
+  const [qrTicket, setQrTicket] = useState(null);
   const isDonor = user.role === "donor";
+  const now = useNow(true);
 
   const load = () => {
     const query = isDonor ? `donorId=${user.id}` : `beneficiaryId=${user.id}`;
-    api.get(`/tickets?${query}`).then((d) => setTickets(d.tickets));
+    api.get(`/tickets?${query}`).then((d) => setTickets(d.tickets || [])).catch(() => setTickets((p) => p || []));
   };
 
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user.id]);
+
+  const all = tickets || [];
+  const loading = tickets === null;
+
+  const withStatus = useMemo(() => all.map((t) => ({ t, s: displayStatusOf(t, now) })), [all, now]);
+  const counts = useMemo(() => {
+    const c = { all: all.length, active: 0, collected: 0, expired: 0 };
+    withStatus.forEach(({ s }) => {
+      if (s === "pending") c.active += 1;
+      else if (s in c) c[s] += 1;
+    });
+    return c;
+  }, [withStatus, all.length]);
+
+  const collectedKg = Math.round(
+    withStatus.filter(({ s }) => s === "collected").reduce((sum, { t }) => sum + Number(t.quantityKg || 0), 0) * 10
+  ) / 10;
+
+  const next = useMemo(
+    () => withStatus.filter(({ s }) => s === "pending").map(({ t }) => t)
+      .sort((a, b) => String(a.expiresAt || a.pickupDate).localeCompare(String(b.expiresAt || b.pickupDate)))[0],
+    [withStatus]
+  );
+
+  const tab = chosenTab ?? (counts.active > 0 ? "active" : "all");
+
+  // Live tickets first, soonest deadline on top.
+  const rank = { pending: 0, collected: 1, expired: 2 };
+  const visible = withStatus
+    .filter(({ s }) => tab === "all" || (tab === "active" ? s === "pending" : s === tab))
+    .sort(
+      (a, b) =>
+        (rank[a.s] ?? 3) - (rank[b.s] ?? 3) ||
+        new Date(a.t.expiresAt || 0).getTime() - new Date(b.t.expiresAt || 0).getTime()
+    )
+    .map(({ t }) => t);
+
+  const dash = (v) => (loading ? "—" : v);
 
   return (
     <>
       <div className="page-header">
         <h1>{isDonor ? "Pickup Tickets" : "My Collection Tickets"}</h1>
-        <p>{isDonor ? "Scan a beneficiary's QR code (in the sidebar) at pickup to confirm and complete the donation." : "Show this QR code to the donor at pickup for verification."}</p>
+        <p>
+          {isDonor
+            ? "Scan a beneficiary's QR code (in the sidebar) at pickup to confirm and complete the donation."
+            : "Show the QR code to the donor at pickup - they scan it to confirm the hand-over."}
+        </p>
       </div>
 
-      {tickets.length > 0 ? (
-        <div className="flex flex-col gap-4">
-          {tickets.map((t) => (
-            <CollectionTicketCard key={t.id} ticket={t} isDonor={isDonor} />
-          ))}
+      <Stagger className="grid-4 stats-grid">
+        <StatCard
+          icon={<IconTicket size={26} color="var(--primary)" />}
+          label="Ready to collect"
+          value={dash(counts.active)}
+          sub="Active tickets"
+        />
+        <StatCard
+          icon={<IconClock size={26} color="var(--status-warn-fg)" />}
+          iconBg="var(--status-warn-bg)"
+          label="Next pickup"
+          value={loading ? "—" : next ? formatDate(next.pickupDate) : "None"}
+          sub={next ? (next.item?.name || "Food item") : "No pickups scheduled"}
+        />
+        <StatCard
+          icon={<IconShieldCheck size={26} color="var(--status-ok-fg)" />}
+          label="Collected"
+          value={dash(counts.collected)}
+          sub="Completed pickups"
+        />
+        <StatCard
+          icon={<IconWeight size={26} color="var(--primary)" />}
+          label="Picked up"
+          value={dash(collectedKg)}
+          unit="KG"
+          sub="Across collected tickets"
+        />
+      </Stagger>
+
+      <div className="card fr-panel">
+        <div className="fr-toolbar">
+          <div className="fr-tabs" role="tablist" aria-label="Filter tickets">
+            {TABS.map((t) => (
+              <button
+                key={t.key}
+                type="button"
+                role="tab"
+                aria-selected={tab === t.key}
+                className={`fr-tab${tab === t.key ? " active" : ""}`}
+                onClick={() => setTab(t.key)}
+              >
+                {t.label}
+                <span className="fr-count">{dash(counts[t.key])}</span>
+              </button>
+            ))}
+          </div>
         </div>
-      ) : (
-        <EmptyTicketsState isDonor={isDonor} />
-      )}
+
+        {loading ? (
+          <div className="tk-list">
+            {Array.from({ length: 2 }).map((_, i) => <div key={i} className="tk-card tk-skel" aria-hidden="true" />)}
+          </div>
+        ) : visible.length > 0 ? (
+          <div className="tk-list">
+            {visible.map((t) => (
+              <CollectionTicketCard key={t.id} ticket={t} isDonor={isDonor} forFeed={user.role === "farm"} onShowQr={setQrTicket} />
+            ))}
+          </div>
+        ) : (
+          <EmptyTicketsState isDonor={isDonor} filtered={all.length > 0} />
+        )}
+      </div>
+
+      {qrTicket && <QrModal ticket={qrTicket} onClose={() => setQrTicket(null)} />}
     </>
   );
 }

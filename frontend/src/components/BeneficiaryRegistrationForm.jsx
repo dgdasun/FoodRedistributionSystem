@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Eye, EyeOff, HeartHandshake, Tractor } from "lucide-react";
+import { sanitizePhone, validateEmail, validatePassword, validatePhone, PHONE_LENGTH } from "../utils/validation.js";
 
 /**
  * Organization Registration Form.
@@ -8,7 +9,8 @@ import { Eye, EyeOff, HeartHandshake, Tractor } from "lucide-react";
  * Single-page, single-card registration for the two non-donor partner
  * types on the platform. The only "organization type" choice is made via
  * two toggle cards (Beneficiary / Farm Partner) — no dropdowns, no
- * multi-step wizard. Document verification happens later, post-signup.
+ * multi-step wizard. No verification documents are collected here: both
+ * types upload them after signing in (dashboard / profile verification card).
  */
 
 const ORG_TYPES = [
@@ -26,21 +28,16 @@ const ORG_TYPES = [
   },
 ];
 
-const STORAGE_OPTIONS = [
-  { value: "", label: "Select storage type" },
-  { value: "Ambient / Dry", label: "Ambient / Dry" },
-  { value: "Refrigerated / Cold", label: "Refrigerated / Cold" },
-  { value: "Deep Freezer", label: "Deep Freezer" },
-];
+const STORAGE_OPTIONS = ["Ambient / Dry", "Refrigerated / Cold", "Deep Freezer"];
 
-const initialValues = {
+const emptyValues = {
   contactPersonName: "",
   email: "",
   organizationName: "",
   phone: "",
   location: "",
   capacity: "",
-  storageFacility: "",
+  storageTypes: [],
   password: "",
   confirmPassword: "",
 };
@@ -99,9 +96,16 @@ export default function BeneficiaryRegistrationForm({
   submitting = false,
   submitError = "",
   wrapperClassName = "w-full space-y-4",
+  // Previously submitted values, so returning from the agreement step
+  // repopulates the form instead of starting blank.
+  initialValues = null,
 }) {
-  const [orgType, setOrgType] = useState("beneficiary");
-  const [values, setValues] = useState(initialValues);
+  const [orgType, setOrgType] = useState(initialValues?.organizationCategory || "beneficiary");
+  const [values, setValues] = useState(() => {
+    if (!initialValues) return emptyValues;
+    const { organizationCategory: _category, ...rest } = initialValues;
+    return { ...emptyValues, ...rest };
+  });
   const [touched, setTouched] = useState({});
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -110,19 +114,29 @@ export default function BeneficiaryRegistrationForm({
 
   const update = (key, val) => setValues((v) => ({ ...v, [key]: val }));
   const markTouched = (key) => setTouched((t) => ({ ...t, [key]: true }));
+  const toggleStorageType = (type) => {
+    setValues((v) => ({
+      ...v,
+      storageTypes: v.storageTypes.includes(type)
+        ? v.storageTypes.filter((t) => t !== type)
+        : [...v.storageTypes, type],
+    }));
+    markTouched("storageTypes");
+  };
 
   const errors = useMemo(() => {
     const e = {};
     if (!values.contactPersonName.trim()) e.contactPersonName = "Contact name is required.";
-    if (!values.email.trim()) e.email = "Email address is required.";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)) e.email = "Enter a valid email address.";
+    const emailMsg = validateEmail(values.email);
+    if (emailMsg) e.email = emailMsg;
     if (!values.organizationName.trim()) e.organizationName = "Organization name is required.";
-    if (!values.phone.trim()) e.phone = "Phone number is required.";
+    const phoneMsg = validatePhone(values.phone);
+    if (phoneMsg) e.phone = phoneMsg;
     if (!values.location.trim()) e.location = "City / location is required.";
     if (isBeneficiary && !values.capacity.trim()) e.capacity = "This field is required.";
-    if (isBeneficiary && !values.storageFacility.trim()) e.storageFacility = "Please select a storage type.";
-    if (!values.password) e.password = "Password is required.";
-    else if (values.password.length < 8) e.password = "Password must be at least 8 characters.";
+    if (isBeneficiary && values.storageTypes.length === 0) e.storageTypes = "Please select at least one storage type.";
+    const passwordMsg = validatePassword(values.password);
+    if (passwordMsg) e.password = passwordMsg;
     if (!values.confirmPassword) e.confirmPassword = "Please confirm your password.";
     else if (values.password && values.confirmPassword !== values.password) e.confirmPassword = "Passwords do not match.";
     return e;
@@ -133,13 +147,13 @@ export default function BeneficiaryRegistrationForm({
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    setTouched(Object.fromEntries(Object.keys(initialValues).map((k) => [k, true])));
+    setTouched(Object.fromEntries(Object.keys(emptyValues).map((k) => [k, true])));
     if (!allValid) return;
-    onSubmit({ ...values, organizationCategory: orgType }, null);
+    onSubmit({ ...values, organizationCategory: orgType });
   };
 
   return (
-    <form onSubmit={handleSubmit} className={wrapperClassName}>
+    <form onSubmit={handleSubmit} className={wrapperClassName} noValidate>
       <div>
         <FieldLabel required>Organization Type</FieldLabel>
         <div className="grid grid-cols-2 gap-2.5 w-full">
@@ -196,9 +210,17 @@ export default function BeneficiaryRegistrationForm({
           <input
             type="tel"
             className={fieldClass(!!showError("phone"))}
-            placeholder="077 123 4567"
+            inputMode="numeric"
+            maxLength={PHONE_LENGTH}
+            autoComplete="tel"
+            placeholder="0771234567"
             value={values.phone}
-            onChange={(e) => update("phone", e.target.value)}
+            onChange={(e) => {
+              // Digits only; show the error while typing rather than waiting for blur.
+              const phone = sanitizePhone(e.target.value);
+              update("phone", phone);
+              if (phone) markTouched("phone");
+            }}
             onBlur={() => markTouched("phone")}
           />
           <ErrorText>{showError("phone")}</ErrorText>
@@ -238,20 +260,34 @@ export default function BeneficiaryRegistrationForm({
 
       {isBeneficiary && (
         <div className="auth-input-group">
-          <FieldLabel required>Storage Type</FieldLabel>
-          <select
-            className={fieldClass(!!showError("storageFacility"))}
-            value={values.storageFacility}
-            onChange={(e) => update("storageFacility", e.target.value)}
-            onBlur={() => markTouched("storageFacility")}
-          >
-            {STORAGE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value} disabled={opt.value === ""}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          <ErrorText>{showError("storageFacility")}</ErrorText>
+          <FieldLabel required>Storage Types</FieldLabel>
+          <div role="group" aria-label="Storage types" className="flex flex-wrap gap-2">
+            {STORAGE_OPTIONS.map((opt) => {
+              const checked = values.storageTypes.includes(opt);
+              return (
+                <label
+                  key={opt}
+                  className={[
+                    "flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium cursor-pointer transition-all",
+                    checked
+                      ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                      : showError("storageTypes")
+                        ? "border-rose-300 bg-white text-slate-700"
+                        : "border-slate-200 bg-white text-slate-700 hover:border-emerald-300",
+                  ].join(" ")}
+                >
+                  <input
+                    type="checkbox"
+                    className="accent-emerald-600"
+                    checked={checked}
+                    onChange={() => toggleStorageType(opt)}
+                  />
+                  {opt}
+                </label>
+              );
+            })}
+          </div>
+          <ErrorText>{showError("storageTypes")}</ErrorText>
         </div>
       )}
 
