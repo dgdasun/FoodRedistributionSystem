@@ -599,6 +599,26 @@
   color: var(--text-mid);
 }
 .bf-card-location svg { flex-shrink: 0; margin-top: 2px; color: var(--text-light); }
+.bf-card-pack {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 6px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--text-dark);
+}
+.bf-card-pack svg { flex-shrink: 0; margin-top: 2px; color: var(--primary); }
+.bf-pack-total {
+  margin: 10px 0 0;
+  padding: 9px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  color: var(--text-mid);
+  background: var(--surface-sunken);
+}
+.bf-pack-total strong { color: var(--text-dark); }
 
 .bf-card-meter {
   margin: 14px 0 16px;

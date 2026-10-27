@@ -2,6 +2,7 @@ package com.foodshare.service;
 
 import com.foodshare.dto.RecommendationDTO;
 import com.foodshare.model.Donation;
+import com.foodshare.util.DonationUnits;
 import com.foodshare.util.ExpiryUtil;
 import com.foodshare.model.FoodRequest;
 import com.foodshare.model.Ticket;
@@ -72,7 +73,8 @@ public class RequestService {
         FoodRequest saved = requestRepository.save(request);
 
         notificationService.notify(item.getDonorId(), "request",
-                "New request received for \"" + item.getName() + "\" (" + request.getQuantityKg() + "kg).");
+                "New request received for \"" + item.getName() + "\" (" + request.getQuantityKg() + " "
+                        + DonationUnits.shortLabel(item.getUnit()) + ").");
 
         return saved;
     }

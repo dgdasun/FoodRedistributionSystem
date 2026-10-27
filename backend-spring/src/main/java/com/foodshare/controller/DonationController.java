@@ -121,6 +121,8 @@ public class DonationController {
         map.put("batchNumber", d.getBatchNumber());
         map.put("quantityKg", d.getQuantityKg());
         map.put("unit", d.getUnit());
+        map.put("packSize", d.getPackSize());
+        map.put("packUnit", d.getPackUnit());
         map.put("expiryDate", d.getExpiryDate());
         map.put("pickupLocation", d.getPickupLocation());
         map.put("latitude", d.getLatitude());

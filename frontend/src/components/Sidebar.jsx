@@ -72,14 +72,18 @@ export default function Sidebar() {
             </React.Fragment>
           );
         })}
-        <li>
-          <NavLink to="/help" className={({ isActive }) => "nav-item" + (isActive ? " active" : "")}>
-            <span className="ico">
-              <IconHelp size={19} />
-            </span>
-            <span className="nav-label">Help &amp; Support</span>
-          </NavLink>
-        </li>
+        {/* Help & Support is for the people using the platform - donors,
+            beneficiaries and farms - not for admins, who run it. */}
+        {user?.role !== "admin" && (
+          <li>
+            <NavLink to="/help" className={({ isActive }) => "nav-item" + (isActive ? " active" : "")}>
+              <span className="ico">
+                <IconHelp size={19} />
+              </span>
+              <span className="nav-label">Help &amp; Support</span>
+            </NavLink>
+          </li>
+        )}
         <li>
           <button
             className="nav-item nav-logout"

@@ -28,10 +28,12 @@ public class VerificationDocumentService {
 
     private final UserRepository userRepository;
     private final Path baseDir;
+    private final NotificationService notificationService;
 
-    public VerificationDocumentService(UserRepository userRepository,
+    public VerificationDocumentService(UserRepository userRepository, NotificationService notificationService,
                                         @Value("${foodshare.uploads.dir:uploads/verification}") String uploadsDir) {
         this.userRepository = userRepository;
+        this.notificationService = notificationService;
         this.baseDir = Paths.get(uploadsDir).toAbsolutePath().normalize();
     }
 
@@ -115,7 +117,12 @@ public class VerificationDocumentService {
             user.setVerificationReviewedAt(null);
         }
 
-        return userRepository.save(user);
+        User saved = userRepository.save(user);
+        String org = saved.getOrganizationName();
+        String who = org != null && !org.isBlank() ? org : saved.getName();
+        notificationService.notifyAdmins("verification",
+                who + " uploaded a verification document (" + original + ") for review.");
+        return saved;
     }
 
     /**
