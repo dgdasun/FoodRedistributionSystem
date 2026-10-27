@@ -6,11 +6,14 @@ import com.foodshare.model.User;
 import com.foodshare.repository.HistoryPointRepository;
 import com.foodshare.repository.UserRepository;
 import com.foodshare.service.AIClientService;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.RestClientException;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -121,11 +124,47 @@ public class AIController {
         capacityView.put("organizations", beneficiaries.size());
         capacityView.put("days", days);
 
+        // What the priority engine sees as "recently served": it lowers the
+        // score of organizations with more allocations in the last 30 days.
+        List<Map<String, Object>> fairness = new ArrayList<>();
+        for (User u : beneficiaries) {
+            Map<String, Object> f = new LinkedHashMap<>();
+            f.put("id", u.getId());
+            f.put("name", u.getOrganizationName() != null ? u.getOrganizationName() : u.getName());
+            f.put("allocationsLast30Days", u.getAllocationsLast30Days() == null ? 0 : u.getAllocationsLast30Days());
+            fairness.add(f);
+        }
+        fairness.sort(Comparator.comparingInt((Map<String, Object> f) -> (Integer) f.get("allocationsLast30Days")).reversed());
+
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("forecast", forecast);
         body.put("donors", donors);
+        body.put("donorCount", donors.size());
         body.put("capacity", capacityView);
+        body.put("fairness", fairness);
         return body;
+    }
+
+    /* Admin AI Insights > Model tab. /model and /model/retrain below stay for existing callers. */
+
+    @GetMapping("/admin/model-info")
+    public Map<String, Object> adminModelInfo() {
+        return aiClientService.modelInfo();
+    }
+
+    @GetMapping("/admin/health")
+    public Map<String, Object> adminHealth() {
+        return aiClientService.health();
+    }
+
+    @PostMapping("/admin/retrain")
+    public ResponseEntity<Map<String, Object>> adminRetrain() {
+        try {
+            return ResponseEntity.ok(aiClientService.retrainModel());
+        } catch (RestClientException e) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(Map.of(
+                    "error", "Retraining failed: the AI service is offline or returned an error. Forecasts keep using the current model."));
+        }
     }
 
     @GetMapping("/model")

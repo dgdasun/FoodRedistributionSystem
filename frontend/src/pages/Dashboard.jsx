@@ -12,9 +12,8 @@ import { HorizontalBarChart, ProportionBar, StatusDonut, useChartPalette } from 
 import { CountUp, FadeIn, GrowBar, Stagger, StaggerItem } from "../components/motion/Motion.jsx";
 import { useLiveData } from "../hooks/useLiveData.js";
 import LiveBadge from "../components/LiveBadge.jsx";
-import AISurplusCalendar from "../components/AISurplusCalendar.jsx";
-import AdminSurplusPlanner from "../components/AdminSurplusPlanner.jsx";
-import AIModelCard from "../components/AIModelCard.jsx";
+import ForecastSummaryCard from "../components/ForecastSummaryCard.jsx";
+import AdminInsightsCard from "../components/AdminInsightsCard.jsx";
 import Section from "../components/Section.jsx";
 import { UNITS } from "../units.js";
 import {
@@ -299,8 +298,8 @@ function DonorDashboard({ user }) {
         </div>
       </Section>
 
-      <Section title="AI forecast" hint="When surplus is likely to build up, so you can list it before it expires.">
-        <AISurplusCalendar donorId={user.id} />
+      <Section title="Food forecast" hint="What may go unsold in the coming days.">
+        <ForecastSummaryCard donorId={user.id} />
       </Section>
     </div>
   );
@@ -697,12 +696,8 @@ function AdminDashboard({ user }) {
         </div>
       </Section>
 
-      <Section title="AI surplus planning" hint="What all donors are expected to produce, and whether NGOs can take it.">
-        <AdminSurplusPlanner />
-      </Section>
-
-      <Section title="AI model" hint="The surplus model behind every forecast.">
-        <AIModelCard />
+      <Section title="AI insights" hint="What all donors are expected to produce, and whether NGOs can take it.">
+        <AdminInsightsCard />
       </Section>
 
       <Section title="Distribution" className="grid-2 cards-row" style={{ marginBottom: 0 }}>

@@ -183,6 +183,31 @@ public class AIClientService {
         }
     }
 
+    /**
+     * Whether the Python service answers its /health check. Offline is a
+     * normal answer here, not an error: forecasts then come from the simple
+     * trend fallback (or none at all), and the admin page says so.
+     */
+    public Map<String, Object> health() {
+        long started = System.currentTimeMillis();
+        try {
+            Map<?, ?> body = restTemplate.getForObject(aiServiceBaseUrl + "/health", Map.class);
+            Map<String, Object> out = new LinkedHashMap<>();
+            out.put("online", body != null && "ok".equals(String.valueOf(body.get("status"))));
+            out.put("service", body == null ? null : body.get("service"));
+            out.put("responseMs", System.currentTimeMillis() - started);
+            out.put("url", aiServiceBaseUrl);
+            return out;
+        } catch (RestClientException e) {
+            log.warn("AI service health check failed: {}", e.getMessage());
+            Map<String, Object> out = new LinkedHashMap<>();
+            out.put("online", false);
+            out.put("error", e.getMessage());
+            out.put("url", aiServiceBaseUrl);
+            return out;
+        }
+    }
+
     /** Retrains the surplus model on the AI service's dataset and returns the new model info. */
     public Map<String, Object> retrainModel() {
         @SuppressWarnings("unchecked")
