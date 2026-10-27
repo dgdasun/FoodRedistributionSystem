@@ -41,8 +41,37 @@ public class UploadConfirmRequestDTO {
         private String batchNumber;
         private Double quantityKg;
         private LocalDate expiryDate;
+        /** kg | liters | items, as parsed from the CSV; null means kg. */
+        private String unit;
+        /** For items rows: one packet's size, in packUnit (kg or liters). */
+        private Double packSize;
+        private String packUnit;
 
         public Row() {
+        }
+
+        public String getUnit() {
+            return unit;
+        }
+
+        public void setUnit(String unit) {
+            this.unit = unit;
+        }
+
+        public Double getPackSize() {
+            return packSize;
+        }
+
+        public void setPackSize(Double packSize) {
+            this.packSize = packSize;
+        }
+
+        public String getPackUnit() {
+            return packUnit;
+        }
+
+        public void setPackUnit(String packUnit) {
+            this.packUnit = packUnit;
         }
 
         public Long getRowNumber() {

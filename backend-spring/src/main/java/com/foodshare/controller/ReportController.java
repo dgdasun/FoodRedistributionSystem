@@ -28,14 +28,16 @@ public class ReportController {
 
     @GetMapping
     public Map<String, Object> generate(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-                                         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-        return reportService.generateReport(startDate, endDate);
+                                         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+                                         @RequestParam(required = false) String tz) {
+        return reportService.generateReport(startDate, endDate, tz);
     }
 
     @GetMapping("/pdf")
     public ResponseEntity<byte[]> pdf(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-                                       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-        Map<String, Object> report = reportService.generateReport(startDate, endDate);
+                                       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+                                       @RequestParam(required = false) String tz) {
+        Map<String, Object> report = reportService.generateReport(startDate, endDate, tz);
         byte[] pdf = reportPdfService.build(report);
         String filename = "foodshare-report-" + startDate + "_to_" + endDate + ".pdf";
         return ResponseEntity.ok()

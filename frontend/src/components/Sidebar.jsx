@@ -74,17 +74,23 @@ export default function Sidebar() {
         })}
       </ul>
 
-      <span className="nav-section">Support</span>
-      <ul className="nav-list">
-        <li>
-          <NavLink to="/help" className={({ isActive }) => "nav-item" + (isActive ? " active" : "")}>
-            <span className="ico">
-              <IconHelp size={19} />
-            </span>
-            <span className="nav-label">Help &amp; Support</span>
-          </NavLink>
-        </li>
-      </ul>
+      {/* Help & Support is for the people using the platform - donors,
+          beneficiaries and farms - not for admins, who run it. */}
+      {user?.role !== "admin" && (
+        <>
+          <span className="nav-section">Support</span>
+          <ul className="nav-list">
+            <li>
+              <NavLink to="/help" className={({ isActive }) => "nav-item" + (isActive ? " active" : "")}>
+                <span className="ico">
+                  <IconHelp size={19} />
+                </span>
+                <span className="nav-label">Help &amp; Support</span>
+              </NavLink>
+            </li>
+          </ul>
+        </>
+      )}
 
       {/* Pinned to the foot of the rail, apart from navigation, so it is never hit by accident. */}
       <div className="sidebar-foot">

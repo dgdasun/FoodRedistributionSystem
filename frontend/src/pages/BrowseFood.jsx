@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import { formatQty, hasPackSize, packText, packTotal, unitOf } from "../units.js";
 import { useAuth } from "../AuthContext.jsx";
 import { api } from "../api.js";
 import {
   Search, SlidersHorizontal, X, List, Map as MapIcon, MapPin, Package, Store,
-  Clock, ArrowRight, Lock, Hourglass, ShoppingBasket, Sparkles, ArrowUpDown, Minus, Plus,
+  Clock, ArrowRight, Lock, Hourglass, ShoppingBasket, Sparkles, ArrowUpDown, Minus, Plus, Eye,
 } from "lucide-react";
 import { useLiveData } from "../hooks/useLiveData.js";
 import FreshnessMeter, { freshnessOf } from "../components/FreshnessMeter.jsx";
@@ -44,6 +45,9 @@ function RequestModal({ item, user, onClose }) {
 
   const qty = Number(quantityKg);
   const setQty = (v) => setQuantityKg(Math.max(1, Math.min(max, v)));
+  // Requests are in the listing's own unit: kilograms, liters or packets.
+  const u = unitOf(item).short;
+  const isPackets = item.unit === "items";
   // Quick picks scale with what is on offer, so a 4 kg listing doesn't offer "10 kg".
   const quickPicks = [...new Set([Math.round(max / 4), Math.round(max / 2), max].filter((v) => v >= 1))];
 
@@ -59,7 +63,7 @@ function RequestModal({ item, user, onClose }) {
         urgency,
       });
       setDone(true);
-      toast.success(`Request sent for ${quantityKg} kg of ${item.name}.`);
+      toast.success(`Request sent for ${quantityKg} ${u} of ${item.name}.`);
     } catch (e2) {
       setError(e2.message);
       toast.error(e2.message);
@@ -78,7 +82,7 @@ function RequestModal({ item, user, onClose }) {
           <div className="rq-body">
             <SuccessBurst
               title="Request submitted"
-              message={`${quantityKg} kg of ${item.name}. The donor has been notified - you'll get a collection ticket once approved.`}
+              message={`${quantityKg} ${u} of ${item.name}. The donor has been notified - you'll get a collection ticket once approved.`}
             >
               <button className="btn btn-primary" style={{ marginTop: 6 }} onClick={onClose}>
                 Done
@@ -100,15 +104,18 @@ function RequestModal({ item, user, onClose }) {
 
             <div className="rq-body">
               <div className="bf-modal-facts">
-                <div><Package size={15} /><span>Available</span><strong>{item.quantityKg} kg</strong></div>
+                <div><Package size={15} /><span>Available</span><strong>{formatQty(item.quantityKg, item)}</strong></div>
+                {hasPackSize(item) && (
+                  <div><Package size={15} /><span>Each packet</span><strong>{packText(item).replace(/ each$/, "")}</strong></div>
+                )}
                 <div><Clock size={15} /><span>Expiry</span><strong>{expiryText(item)}</strong></div>
                 <div><MapPin size={15} /><span>Pickup</span><strong title={item.pickupLocation}>{item.pickupLocation}</strong></div>
               </div>
 
               <div>
                 <label className="bf-field-label bf-field-label-row" htmlFor="bf-qty">
-                  <span>How much do you need? (kg)</span>
-                  <span>max {max} kg</span>
+                  <span>{isPackets ? "How many packets do you need?" : `How much do you need? (${u})`}</span>
+                  <span>max {max} {u}</span>
                 </label>
                 <div className="bf-stepper">
                   <button type="button" onClick={() => setQty(qty - 1)} disabled={qty <= 1} aria-label="Decrease quantity">
@@ -137,10 +144,15 @@ function RequestModal({ item, user, onClose }) {
                         className={qty === v ? "bf-quick-btn active" : "bf-quick-btn"}
                         onClick={() => setQty(v)}
                       >
-                        {v === max ? `All ${v} kg` : `${v} kg`}
+                        {v === max ? `All ${v} ${u}` : `${v} ${u}`}
                       </button>
                     ))}
                   </div>
+                )}
+                {hasPackSize(item) && qty > 0 && (
+                  <p className="bf-pack-total">
+                    {qty} packet{qty === 1 ? "" : "s"} × {packText(item)} = <strong>{packTotal(qty, item)}</strong> in total
+                  </p>
                 )}
               </div>
 
@@ -318,7 +330,7 @@ function FoodCard({ item, actionLabel, onAction }) {
           {f.label}
         </span>
         <span className="bf-card-qty">
-          <Package size={13} /> {item.quantityKg} kg
+          <Package size={13} /> {formatQty(item.quantityKg, item)}
         </span>
       </div>
 
@@ -335,15 +347,22 @@ function FoodCard({ item, actionLabel, onAction }) {
         <p className="bf-card-location">
           <MapPin size={14} /> {item.pickupLocation}
         </p>
+        {hasPackSize(item) && (
+          <p className="bf-card-pack">
+            <Package size={14} /> {packText(item)} · {packTotal(item.quantityKg, item)} in total
+          </p>
+        )}
 
         <div className="bf-card-meter">
           <FreshnessMeter item={item} />
         </div>
 
-        <button className="btn btn-primary bf-card-action" onClick={() => onAction(item)}>
-          {actionLabel}
-          <ArrowRight size={15} />
-        </button>
+        {onAction && (
+          <button className="btn btn-primary bf-card-action" onClick={() => onAction(item)}>
+            {actionLabel}
+            <ArrowRight size={15} />
+          </button>
+        )}
       </div>
     </HoverLift>
   );
@@ -364,6 +383,12 @@ export default function BrowseFood() {
   const [view, setView] = useState("list");
 
   const isFarm = user?.role === "farm";
+  // Admins oversee the marketplace but never claim food, so they get no request action.
+  const isAdmin = user?.role === "admin";
+  // Farms only ever see expired stock; admins can look at either list, picked
+  // with ?show=expired (the dashboard's "Expired, routed to farms" row links there).
+  const [searchParams, setSearchParams] = useSearchParams();
+  const showExpired = isFarm || (isAdmin && searchParams.get("show") === "expired");
   const canRequest = !!user && (user.role === "beneficiary" || user.role === "farm") && !!user.verified;
   const actionLabel = !user ? "Request food" : canRequest ? "Request this item" : "Verification required";
 
@@ -372,8 +397,8 @@ export default function BrowseFood() {
   const loading = !data;
 
   const relevant = useMemo(
-    () => (items || []).filter((i) => (isFarm ? i.status === "expired" : i.status !== "expired")),
-    [items, isFarm]
+    () => (items || []).filter((i) => (showExpired ? i.status === "expired" : i.status !== "expired")),
+    [items, showExpired]
   );
 
   const categories = useMemo(
@@ -446,13 +471,17 @@ export default function BrowseFood() {
         <div className="bf-hero-top">
           <div>
             <span className="bf-eyebrow">
-              <Sparkles size={13} /> {isFarm ? "Compost & feed" : "Live surplus marketplace"}
+              <Sparkles size={13} /> {showExpired ? "Compost & feed" : "Live surplus marketplace"}
             </span>
-            <h1>{isFarm ? "Expired Food for Compost / Feed" : "Available Surplus Food"}</h1>
+            <h1>{showExpired ? "Expired Food for Compost / Feed" : "Available Surplus Food"}</h1>
             <p>
-              {isFarm
-                ? "Request expired items redirected for livestock feeding or composting."
-                : "Browse near-expiry food published by donors and submit a request before it goes to waste."}
+              {showExpired
+                ? isAdmin
+                  ? "Expired items redirected to farms for livestock feeding or composting."
+                  : "Request expired items redirected for livestock feeding or composting."
+                : isAdmin
+                  ? "Near-expiry food published by donors and open to beneficiary requests."
+                  : "Browse near-expiry food published by donors and submit a request before it goes to waste."}
             </p>
           </div>
 
@@ -510,6 +539,33 @@ export default function BrowseFood() {
           <div className="bf-notice-actions">
             <Link to="/login" className="btn btn-outline btn-sm">Log in</Link>
             <Link to="/register" className="btn btn-primary btn-sm">Register</Link>
+          </div>
+        </div>
+      )}
+
+      {isAdmin && (
+        <div className="bf-notice">
+          <div className="bf-notice-icon"><Eye size={17} /></div>
+          <div className="bf-notice-text">
+            <strong>Admin view (read-only)</strong>
+            <p>
+              {showExpired
+                ? "These listings have expired and are offered to farms for feed or compost."
+                : "These are the surplus listings currently live for beneficiaries. Requests are made by verified organizations."}
+            </p>
+          </div>
+          <div className="bf-notice-actions">
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              onClick={() => {
+                reset();
+                setSearchParams(showExpired ? {} : { show: "expired" });
+              }}
+            >
+              {showExpired ? "View surplus food" : "View expired food"}
+            </button>
+            <Link to="/dashboard" className="btn btn-outline btn-sm">Back to dashboard</Link>
           </div>
         </div>
       )}
@@ -609,7 +665,7 @@ export default function BrowseFood() {
 
           {view === "map" && !loading && (
             <div className="bf-map">
-              <FoodMap items={visible} onSelect={handleAction} actionLabel={actionLabel} />
+              <FoodMap items={visible} onSelect={isAdmin ? undefined : handleAction} actionLabel={actionLabel} />
             </div>
           )}
           {view === "map" && loading && <div className="bf-empty">Loading map…</div>}
@@ -618,7 +674,7 @@ export default function BrowseFood() {
             {loading && <SkeletonGrid count={6} />}
             {!loading &&
               visible.map((item) => (
-                <FoodCard key={item.id} item={item} actionLabel={actionLabel} onAction={handleAction} />
+                <FoodCard key={item.id} item={item} actionLabel={actionLabel} onAction={isAdmin ? null : handleAction} />
               ))}
           </div>
 

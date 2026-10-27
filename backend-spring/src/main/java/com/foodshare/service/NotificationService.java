@@ -1,7 +1,9 @@
 package com.foodshare.service;
 
 import com.foodshare.model.Notification;
+import com.foodshare.model.User;
 import com.foodshare.repository.NotificationRepository;
+import com.foodshare.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -11,9 +13,11 @@ import java.util.List;
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
+    private final UserRepository userRepository;
 
-    public NotificationService(NotificationRepository notificationRepository) {
+    public NotificationService(NotificationRepository notificationRepository, UserRepository userRepository) {
         this.notificationRepository = notificationRepository;
+        this.userRepository = userRepository;
     }
 
     public List<Notification> forUser(String userId) {
@@ -32,6 +36,13 @@ public class NotificationService {
         n.setRead(false);
         n.setCreatedAt(Instant.now());
         notificationRepository.save(n);
+    }
+
+    /** Sends the same message to every admin account, for events that need an admin to act. */
+    public void notifyAdmins(String type, String message) {
+        for (User admin : userRepository.findByRoleOrderByCreatedAtDesc("admin")) {
+            notify(admin.getId(), type, message);
+        }
     }
 
     public Notification markRead(String id) {

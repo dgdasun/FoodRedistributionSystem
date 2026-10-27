@@ -3,6 +3,7 @@ package com.foodshare.service;
 import com.foodshare.dto.UploadConfirmRequestDTO;
 import com.foodshare.model.Donation;
 import com.foodshare.repository.DonationRepository;
+import com.foodshare.util.DonationUnits;
 import com.foodshare.util.ExpiryUtil;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -149,6 +150,15 @@ public class DonationService {
     }
 
     public Donation create(Donation donation) {
+        donation.setUnit(DonationUnits.normalize(donation.getUnit()));
+        if (donation.getQuantityKg() == null || donation.getQuantityKg() <= 0) {
+            throw new IllegalArgumentException("Enter a quantity greater than zero.");
+        }
+        if (DonationUnits.ITEMS.equals(donation.getUnit()) && donation.getQuantityKg() % 1 != 0) {
+            throw new IllegalArgumentException("Items/packets must be a whole number.");
+        }
+        DonationUnits.applyPackSize(donation);
+
         int threshold = settingsService.resolveExpiryThresholdDays(donation.getCategory());
 
         // REQ-3: reject already-expired items being listed for human consumption
@@ -170,14 +180,14 @@ public class DonationService {
         donation.setStatus(ExpiryUtil.reListStatus(donation.getExpiryDate(), threshold));
         donation.setPublished(false);
         donation.setCreatedAt(Instant.now());
-        if (donation.getUnit() == null) donation.setUnit("kg");
+        donation.setInitialQuantity(donation.getQuantityKg());
         if (donation.getListingType() == null) donation.setListingType("donation");
         return donationRepository.save(donation);
     }
 
     /**
      * Bulk Data Upload (Module 1) - parses a CSV of supermarket inventory
-     * (name,category,batchNumber,quantityKg,expiryDate) and classifies each row
+     * (name,category,batchNumber,quantity,unit,expiryDate) and classifies each row
      * as fresh / surplus / expired.
      *
      * A pickupLocation column is ignored if present: every row is stamped with
@@ -218,7 +228,14 @@ public class DonationService {
 
                 LocalDate expiryDate = parseCsvDate(expiryStr);
                 String batchNumber = getOrDefault(row, "batchNumber", "N/A");
-                double quantityKg = parseDoubleSafe(getOrDefault(row, "quantityKg", "0"));
+                // "quantity" is the current header; "quantityKg" keeps older templates working.
+                double quantityKg = parseDoubleSafe(getOrDefault(row, "quantity", getOrDefault(row, "quantityKg", "0")));
+                // Optional unit column - files without it were always in kilograms. For
+                // items rows, optional packSize/packUnit give one packet's size.
+                String unit = DonationUnits.normalize(getOrDefault(row, "unit", DonationUnits.KG));
+                Double packSize = DonationUnits.ITEMS.equals(unit) && !getOrDefault(row, "packSize", "").isBlank()
+                        ? parseDoubleSafe(getOrDefault(row, "packSize", "0")) : null;
+                String packUnit = getOrDefault(row, "packUnit", DonationUnits.KG);
                 // The line number a donor sees in their spreadsheet, header being line 1.
                 long line = row.getRecordNumber() + 1;
 
@@ -230,7 +247,7 @@ public class DonationService {
                     if (!match.isAccepted()) {
                         review.add(new CategoryReview(line, typedCategory, match.category(), match.type(),
                                 match.editDistance(), match.similarity(), match.message(),
-                                new ReviewItem(name, batchNumber, quantityKg, expiryDate)));
+                                new ReviewItem(name, batchNumber, quantityKg, expiryDate, unit, packSize, packUnit)));
                         continue;
                     }
                     category = match.category();
@@ -243,6 +260,7 @@ public class DonationService {
                     freshSkipped++;
                     continue;
                 }
+                applyUploadedUnit(d, unit, packSize, packUnit);
                 created.add(d);
                 if (match != null && (match.type() == CategoryMatcher.MatchType.ALIAS_MATCH
                         || match.type() == CategoryMatcher.MatchType.FUZZY_MATCH)) {
@@ -285,6 +303,7 @@ public class DonationService {
             if (d == null) {
                 freshSkipped++;
             } else {
+                applyUploadedUnit(d, row.getUnit(), row.getPackSize(), row.getPackUnit());
                 created.add(d);
             }
         }
@@ -314,7 +333,8 @@ public class DonationService {
         }
         d.setBatchNumber(batchNumber);
         d.setQuantityKg(quantityKg);
-        d.setUnit("kg");
+        d.setInitialQuantity(quantityKg);
+        d.setUnit(DonationUnits.KG); // callers replace it via applyUploadedUnit
         d.setExpiryDate(expiryDate);
         d.setPickupLocation(donorLocation.getPickupLocation());
         d.setLatitude(donorLocation.getLatitude());
@@ -324,6 +344,20 @@ public class DonationService {
         d.setPublished(false);
         d.setCreatedAt(Instant.now());
         return d;
+    }
+
+    /**
+     * Sets an uploaded row's unit (kg / liters / items) and, for packets, the
+     * size of one packet. Rows without a packet size still import - the size is
+     * only validated when one is given.
+     */
+    private void applyUploadedUnit(Donation d, String unit, Double packSize, String packUnit) {
+        d.setUnit(DonationUnits.of(unit));
+        if (DonationUnits.ITEMS.equals(d.getUnit()) && packSize != null) {
+            d.setPackSize(packSize);
+            d.setPackUnit(packUnit == null || packUnit.isBlank() ? DonationUnits.KG : packUnit);
+            DonationUnits.applyPackSize(d);
+        }
     }
 
     private UploadResult saveUploaded(List<Donation> created, long freshSkipped,
@@ -391,5 +425,6 @@ public class DonationService {
                                  Double similarity, String message, ReviewItem item) {}
 
     /** The parsed row, so it can be imported without re-uploading the file. */
-    public record ReviewItem(String name, String batchNumber, double quantityKg, LocalDate expiryDate) {}
+    public record ReviewItem(String name, String batchNumber, double quantityKg, LocalDate expiryDate,
+                             String unit, Double packSize, String packUnit) {}
 }

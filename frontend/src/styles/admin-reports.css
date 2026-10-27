@@ -127,7 +127,7 @@
 /* Secondary numbers */
 .rp-mini {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
   margin-bottom: 20px;
 }
@@ -225,6 +225,9 @@
 .rp-status-surplus { color: var(--status-warn-fg); background: var(--status-warn-bg); }
 .rp-status-expired { color: var(--status-danger-fg); background: var(--status-danger-bg); }
 .rp-status-reserved { color: var(--status-violet-fg); background: var(--status-violet-bg); }
+.rp-status-approved { color: var(--status-ok-fg); background: var(--status-ok-bg); }
+.rp-status-pending { color: var(--status-warn-fg); background: var(--status-warn-bg); }
+.rp-status-rejected { color: var(--status-danger-fg); background: var(--status-danger-bg); }
 .rp-note { margin: 10px 2px 0; font-size: 12.5px; color: var(--text-light); }
 
 /* ---------- Responsive ---------- */
