@@ -310,11 +310,10 @@ export default function AdminVerifications() {
       .filter((b) => tab === "all" || verificationStatusOf(b) === tab)
       .filter((b) => !role || b.role === role)
       .filter((b) => !q || [b.organizationName, b.name, b.email, b.location].filter(Boolean).some((f) => f.toLowerCase().includes(q)))
-      // The review queue is first-come first-served; history reads newest first.
+      // Newest first everywhere, so a fresh submission lands at the top.
       .sort((a, b) => {
         const t = (x) => new Date(submittedAtOf(x) || 0).getTime() || 0;
-        const d = t(a) - t(b);
-        return tab === "pending" ? d : -d;
+        return t(b) - t(a);
       });
   }, [all, tab, role, query]);
 
@@ -355,7 +354,7 @@ export default function AdminVerifications() {
           iconBg="var(--status-warn-bg)"
           label="Waiting for review"
           value={dash(counts.pending)}
-          sub={counts.pending ? "Oldest first in the queue" : "Queue is clear"}
+          sub={counts.pending ? "Newest first in the queue" : "Queue is clear"}
         />
         <StatCard
           icon={<IconShieldCheck size={26} color="var(--status-ok-fg)" />}

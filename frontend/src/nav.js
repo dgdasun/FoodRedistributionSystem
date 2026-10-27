@@ -25,10 +25,10 @@ export const NAV_BY_ROLE = {
   donor: [
     { to: "/dashboard", label: "Dashboard", short: "Home", Icon: IconDashboard },
     { to: "/donations", label: "My Donations", short: "Donations", Icon: IconDonations },
-    // Sidebar only: the phone bar keeps its five tabs, and the dashboard card links here.
-    { to: "/forecast", label: "Food Forecast", short: "Forecast", Icon: CalendarClock, mobileTab: false },
     { to: "/requests", label: "Food Requests", short: "Requests", Icon: IconInbox },
     { to: "/pickups", label: "Pickup History", short: "History", Icon: IconTruck },
+    // Sidebar only: the phone bar keeps its five tabs, and the dashboard card links here.
+    { to: "/forecast", label: "Food Forecast", short: "Forecast", Icon: CalendarClock, mobileTab: false },
     { to: "/impact", label: "Impact", short: "Impact", Icon: IconImpact },
     { to: "/profile", label: "Profile", short: "Profile", Icon: IconUser },
   ],

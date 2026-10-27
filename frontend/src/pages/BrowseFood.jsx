@@ -397,7 +397,9 @@ export default function BrowseFood() {
   const loading = !data;
 
   const relevant = useMemo(
-    () => (items || []).filter((i) => (showExpired ? i.status === "expired" : i.status !== "expired")),
+    () => (items || [])
+      .filter((i) => Number(i.quantityKg) > 0)
+      .filter((i) => (showExpired ? i.status === "expired" : i.status !== "expired")),
     [items, showExpired]
   );
 

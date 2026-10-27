@@ -62,8 +62,8 @@ const FEATURES = [
 
 const STEPS = [
   { Icon: IconStepStore, label: "Donor lists surplus food before it goes to waste" },
-  { Icon: IconStepCollect, label: "AI ranks and matches it to the right beneficiary" },
   { Icon: IconStepDistribute, label: "Beneficiary or farm partner requests and is approved" },
+  { Icon: IconStepCollect, label: "AI ranks and matches it to the right beneficiary" },
   { Icon: IconStepHeart, label: "Pickup is confirmed by QR — impact tracked automatically" },
 ];
 

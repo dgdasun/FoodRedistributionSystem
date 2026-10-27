@@ -59,6 +59,12 @@ public class RequestService {
         if ("expired".equals(item.getStatus()) && !"expired".equals(item.getListingType())) {
             throw new IllegalArgumentException("This item has expired and is no longer available for human consumption.");
         }
+        if (item.getQuantityKg() == null || item.getQuantityKg() <= 0) {
+            throw new IllegalArgumentException("This item is no longer available - all of it has already been given out.");
+        }
+        if (request.getQuantityKg() == null || request.getQuantityKg() <= 0) {
+            throw new IllegalArgumentException("Please request a quantity greater than 0.");
+        }
 
         request.setStatus("pending");
         request.setCreatedAt(Instant.now());
@@ -119,6 +125,9 @@ public class RequestService {
             } else {
                 double qty = approvedQuantityKg != null ? approvedQuantityKg : request.getQuantityKg();
                 if (item != null) qty = Math.min(qty, item.getQuantityKg());
+                if (qty <= 0) {
+                    throw new IllegalArgumentException("Nothing left to give - this item's stock is already 0.");
+                }
                 request.setApprovedQuantityKg(qty);
 
                 if (qty < request.getQuantityKg()) {
