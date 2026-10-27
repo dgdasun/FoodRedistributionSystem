@@ -17,6 +17,33 @@ foodshare:
     base-url: ${AI_SERVICE_URL:http://localhost:8000}
   cors:
     allowed-origins: ${FRONTEND_ORIGIN:http://localhost:5173}
+  # Canonical donation categories for bulk CSV upload (see CategoryMatcher).
+  # Names must match CATEGORIES in frontend/src/pages/MyDonations.jsx.
+  # Aliases are verified alternative names, matched exactly (after
+  # normalizing case and spacing) before any spelling correction is tried.
+  categories:
+    definitions:
+      - name: Vegetables
+        aliases: [vegetable, veg, veggie, veggies]
+      - name: Dairy
+        aliases: [dairy products, milk, milk products, cheese, yogurt, yoghurt, curd]
+      - name: Bakery
+        aliases: [bread, breads, bakery items, baked goods, pastry, pastries, buns]
+      - name: Cooked Meals
+        aliases: [cooked meal, cooked food, prepared food, prepared meals, ready meals, meals, hot food]
+      - name: Fruits
+        aliases: [fruit]
+      - name: Packaged Goods
+        aliases: [packaged, packaged food, packaged foods, canned food, canned goods, dry goods]
+      - name: Other
+        aliases: [misc, miscellaneous]
+    matching:
+      min-fuzzy-length: 4
+      max-edit-distance: 2
+      auto-accept-similarity: 0.75
+      review-similarity: 0.5
+      ambiguity-margin: 1
+      max-input-length: 60
 
 logging:
   level:

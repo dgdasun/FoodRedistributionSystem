@@ -15,6 +15,11 @@ public class Donation {
     private String donorId;
     private String name;
     private String category;
+    /**
+     * The category exactly as typed in a bulk upload, kept only when it was
+     * corrected to a canonical one ("Dary" -> "Dairy"); null otherwise.
+     */
+    private String originalCategory;
     private String batchNumber;
     private Double quantityKg;
     private String unit = "kg";
@@ -72,6 +77,14 @@ public class Donation {
 
     public void setCategory(String category) {
         this.category = category;
+    }
+
+    public String getOriginalCategory() {
+        return originalCategory;
+    }
+
+    public void setOriginalCategory(String originalCategory) {
+        this.originalCategory = originalCategory;
     }
 
     public String getBatchNumber() {
