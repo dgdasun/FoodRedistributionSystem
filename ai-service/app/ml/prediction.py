@@ -1,84 +1,87 @@
 """
-AI-Based Surplus Prediction Module.
+Use the saved (trained) surplus model inside FastAPI.  (version 2)
 
-For each food category, fits a scikit-learn LinearRegression model over the
-last N days of (dummy) historical inventory data - day index as the
-feature, quantity donated (kg) as the target - then extrapolates forward to
-forecast total expected surplus over the requested horizon. This is a small,
-fast, fully-interpretable model appropriate for the size of dataset produced
-by a single supermarket chain's inventory history, and is easy to swap out
-for a more sophisticated time-series model (e.g. Prophet, ARIMA, or an
-LSTM) as more real historical data becomes available - the module's
-public function signature (`predict_surplus`) is what the FastAPI route and
-Spring Boot backend depend on, so any future upgrade is an internal-only
-change here.
+- Works for any donor size (model predicts a ratio of the 7-day average).
+- Accepts category names in any style: "dairy", "Dairy", "fruit", "Fruits"...
+- Unknown category -> uses the general pattern of all categories.
+- Fewer than 7 days of history -> missing days are filled with the average.
 """
-from collections import defaultdict
-from datetime import date, datetime
-from typing import Dict, List
+from datetime import date, timedelta
+from pathlib import Path
+import joblib
+import pandas as pd
 
-try:
-    import numpy as np
-    from sklearn.linear_model import LinearRegression
-    HAS_SKLEARN = True
-except ImportError:
-    HAS_SKLEARN = False
-
-from app.schemas import HistoryEntry
+# ai-service/models/surplus_model.joblib, wherever uvicorn is started from
+MODEL_FILE = Path(__file__).resolve().parents[2] / "models" / "surplus_model.joblib"
+_bundle = None   # loaded ONCE, on the first prediction
 
 
-def _parse_date(d: str) -> date:
-    return datetime.strptime(d, "%Y-%m-%d").date()
+def _get_bundle():
+    # A missing model must not crash the whole service: the backend falls
+    # back to the simple trend model when /predict/surplus-ml fails.
+    global _bundle
+    if _bundle is None:
+        if not MODEL_FILE.exists():
+            raise RuntimeError(f"Trained model not found at {MODEL_FILE} - run app/ml/train.py")
+        _bundle = joblib.load(MODEL_FILE)
+    return _bundle
+
+ALIASES = {
+    "vegetable": "Vegetables", "vegetables": "Vegetables", "veg": "Vegetables",
+    "fruit": "Fruits", "fruits": "Fruits",
+    "dairy": "Dairy", "milk": "Dairy",
+    "bakery": "Bakery", "bread": "Bakery",
+    "cooked": "Cooked Meals", "cooked meals": "Cooked Meals", "cooked food": "Cooked Meals",
+    "meals": "Cooked Meals", "prepared food": "Cooked Meals",
+}
 
 
-def _fit_linear_pure_python(y_vals: List[float], days_ahead: int) -> float:
-    n = len(y_vals)
-    x_mean = (n - 1) / 2.0
-    y_mean = sum(y_vals) / float(n)
-    
-    denom = sum((i - x_mean) ** 2 for i in range(n))
-    if denom == 0:
-        slope = 0.0
-    else:
-        numer = sum((i - x_mean) * (y_vals[i] - y_mean) for i in range(n))
-        slope = numer / denom
-    intercept = y_mean - slope * x_mean
-
-    future_preds = [max(0.0, intercept + slope * (n + i)) for i in range(days_ahead)]
-    return sum(future_preds) / float(days_ahead)
+def reload_model():
+    global _bundle
+    _bundle = None
+    _get_bundle()
 
 
-def predict_surplus(history: List[HistoryEntry], days_ahead: int = 7) -> Dict[str, float]:
-    by_category: Dict[str, List[HistoryEntry]] = defaultdict(list)
-    for entry in history:
-        by_category[entry.category].append(entry)
+def _match_category(category: str):
+    key = (category or "").strip().lower()
+    for c in _get_bundle()["categories"]:
+        if c.lower() == key:
+            return c
+    return ALIASES.get(key)          # None = unknown
 
-    predictions: Dict[str, float] = {}
 
-    for category, entries in by_category.items():
-        if not entries:
-            predictions[category] = 0.0
-            continue
+def predict_surplus(category: str, history: list[float], days_ahead: int = 7) -> dict:
+    """history = past daily surplus values (kg) for this category, oldest first."""
+    if not history:
+        raise ValueError("history must contain at least 1 value")
+    bundle = _get_bundle()
+    model, cats, feats = bundle["model"], bundle["categories"], bundle["features"]
 
-        sorted_entries = sorted(entries, key=lambda e: _parse_date(e.date))
-        y_vals = [float(e.quantityKg) for e in sorted_entries]
+    matched = _match_category(category)
+    codes = [cats.index(matched)] if matched else list(range(len(cats)))
 
-        if len(sorted_entries) < 2:
-            predicted_daily = float(y_vals[0])
-        elif HAS_SKLEARN:
-            X = np.array([[i] for i in range(len(sorted_entries))])
-            y = np.array(y_vals)
-            model = LinearRegression()
-            model.fit(X, y)
-            future_idx = np.array([[len(sorted_entries) + i] for i in range(days_ahead)])
-            future_preds = model.predict(future_idx)
-            future_preds = np.clip(future_preds, a_min=0, a_max=None)
-            predicted_daily = float(np.mean(future_preds))
+    hist = [max(float(x), 0.0) for x in history]
+    if len(hist) < 7:                                    # pad short history
+        avg = sum(hist) / len(hist)
+        hist = [avg] * (7 - len(hist)) + hist
+
+    daily = []
+    for i in range(1, days_ahead + 1):
+        d = date.today() + timedelta(days=i)
+        roll7 = sum(hist[-7:]) / 7
+        if roll7 <= 0:
+            y = 0.0
         else:
-            predicted_daily = _fit_linear_pure_python(y_vals, days_ahead)
+            rows = pd.DataFrame([{
+                "dow": d.weekday(), "month": d.month,
+                "r_lag1": hist[-1] / roll7, "r_lag7": hist[-7] / roll7,
+                "cat_code": code,
+            } for code in codes])[feats]
+            ratio = float(model.predict(rows).mean())
+            y = max(ratio * roll7, 0.0)                  # no negative kg
+        daily.append({"date": d.isoformat(), "quantityKg": round(y, 2)})
+        hist.append(y)                                   # tomorrow uses today's guess
 
-        total_predicted = round(max(predicted_daily, 0) * days_ahead, 1)
-        predictions[category] = total_predicted
-
-    return predictions
-
+    return {"category": category, "matchedCategory": matched or "general",
+            "model": bundle["model_name"], "daily": daily,
+            "totalKg": round(sum(x["quantityKg"] for x in daily), 2)}

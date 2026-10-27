@@ -1,5 +1,9 @@
-fastapi==0.115.0
-uvicorn[standard]==0.30.6
-pydantic==2.9.2
-scikit-learn==1.5.2
-numpy==2.1.1
+fastapi==0.143.1
+uvicorn[standard]==0.54.0
+pydantic==2.14.1
+# Must match the versions models/surplus_model.joblib was trained with,
+# or joblib cannot unpickle the RandomForest.
+scikit-learn==1.9.1
+numpy==2.5.4
+pandas==3.0.6
+joblib==1.6.0
