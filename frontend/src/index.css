@@ -2703,13 +2703,14 @@ select.auth-input {
 /* ---------- Toasts ---------- */
 .toast-viewport {
   position: fixed;
-  right: 20px;
-  bottom: 20px;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 200;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  align-items: flex-end;
+  align-items: center;
   pointer-events: none;
 }
 
@@ -2718,13 +2719,13 @@ select.auth-input {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-width: 260px;
-  max-width: 380px;
-  padding: 11px 12px;
+  min-width: 280px;
+  max-width: 440px;
+  padding: 12px 14px;
   border-radius: 14px;
   background: var(--white);
   border: 1px solid var(--card-border);
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 12px 32px -12px rgba(15, 23, 42, 0.28), 0 2px 6px rgba(15, 23, 42, 0.06);
 }
 
 .toast-icon {
@@ -2755,9 +2756,8 @@ select.auth-input {
 }
 .toast-close:hover { background: var(--primary-lighter); color: var(--text-mid); }
 
-/* The chatbot bubble sits bottom-right too; lift toasts above it on phones. */
 @media (max-width: 620px) {
-  .toast-viewport { left: 16px; right: 16px; bottom: 86px; align-items: stretch; }
+  .toast-viewport { top: 16px; left: 16px; right: 16px; transform: none; align-items: stretch; }
   .toast { min-width: 0; max-width: none; }
 }
 

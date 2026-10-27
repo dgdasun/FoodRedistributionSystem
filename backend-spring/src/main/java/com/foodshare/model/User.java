@@ -43,7 +43,10 @@ public class User {
     /** Official phone / mobile number for the organization contact */
     private String phone;
 
-    /** AMBIENT | COLD | FREEZER - what kind of donations this beneficiary can safely accept */
+    /** e.g. "Ambient / Dry", "Refrigerated / Cold", "Deep Freezer" - what kind of donations this beneficiary can safely accept */
+    private List<String> storageTypes = new ArrayList<>();
+
+    /** Legacy single storage type saved before storageTypes existed; only read as a fallback */
     private String storageCapacity;
 
     /** NGO Reg No. / Trust ID printed on the organization's verification document */
@@ -62,6 +65,15 @@ public class User {
 
     /** Stored filenames of documents uploaded to prove the organization's legitimacy (see VerificationDocumentService). */
     private List<String> verificationDocuments = new ArrayList<>();
+
+    /** Which kind of proof the primary verification document is (one of RegisterRequestDTO.PRIMARY_DOCUMENT_TYPES). */
+    private String primaryDocumentType;
+
+    /** Download URL of the primary verification document; the file is also listed in verificationDocuments. */
+    private String primaryDocumentUrl;
+
+    /** Download URLs of optional supporting certificates (PHI, awards, recommendation letters...). */
+    private List<String> supportingDocumentUrls = new ArrayList<>();
 
     /**
      * When the account was created, so listings can show newest accounts first.
@@ -252,12 +264,15 @@ public class User {
         this.phone = phone;
     }
 
-    public String getStorageCapacity() {
-        return storageCapacity;
+    public List<String> getStorageTypes() {
+        if ((storageTypes == null || storageTypes.isEmpty()) && storageCapacity != null && !storageCapacity.isBlank()) {
+            return List.of(storageCapacity);
+        }
+        return storageTypes;
     }
 
-    public void setStorageCapacity(String storageCapacity) {
-        this.storageCapacity = storageCapacity;
+    public void setStorageTypes(List<String> storageTypes) {
+        this.storageTypes = storageTypes;
     }
 
     public String getRegistrationNumber() {
@@ -274,5 +289,29 @@ public class User {
 
     public void setVerificationDocuments(List<String> verificationDocuments) {
         this.verificationDocuments = verificationDocuments;
+    }
+
+    public String getPrimaryDocumentType() {
+        return primaryDocumentType;
+    }
+
+    public void setPrimaryDocumentType(String primaryDocumentType) {
+        this.primaryDocumentType = primaryDocumentType;
+    }
+
+    public String getPrimaryDocumentUrl() {
+        return primaryDocumentUrl;
+    }
+
+    public void setPrimaryDocumentUrl(String primaryDocumentUrl) {
+        this.primaryDocumentUrl = primaryDocumentUrl;
+    }
+
+    public List<String> getSupportingDocumentUrls() {
+        return supportingDocumentUrls;
+    }
+
+    public void setSupportingDocumentUrls(List<String> supportingDocumentUrls) {
+        this.supportingDocumentUrls = supportingDocumentUrls;
     }
 }

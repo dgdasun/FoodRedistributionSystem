@@ -178,7 +178,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 if (user.isReceiver && _has(user.orgType)) _row(Icons.apartment_rounded, 'Organisation type', user.orgType!),
                 if (user.role == 'beneficiary' && user.organizationSize > 0)
                   _row(Icons.groups_outlined, 'People served daily', '${user.organizationSize}'),
-                if (_has(user.storageCapacity)) _row(Icons.kitchen_outlined, 'Storage', user.storageCapacity!),
+                if (user.storageTypes.isNotEmpty) _row(Icons.kitchen_outlined, 'Storage', user.storageTypes.join(', ')),
               ]),
             ),
             if (user.isReceiver) ...[

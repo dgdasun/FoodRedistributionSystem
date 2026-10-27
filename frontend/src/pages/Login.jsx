@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../AuthContext.jsx";
 import { api } from "../api.js";
 import { BrandWordmark } from "../components/Icons.jsx";
+import { validateEmail } from "../utils/validation.js";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -10,6 +11,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState("");
+  const [emailError, setEmailError] = useState("");
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -18,9 +20,12 @@ export default function Login() {
     e.preventDefault();
     if (!email || !password) return;
     setError("");
+    const emailMsg = validateEmail(email);
+    setEmailError(emailMsg);
+    if (emailMsg) return;
     setLoading(true);
     try {
-      const { user } = await api.post("/auth/login", { email, password });
+      const { user } = await api.post("/auth/login", { email: email.trim(), password });
       login(user, { announce: true });
       navigate("/dashboard");
     } catch (e2) {
@@ -63,14 +68,27 @@ export default function Login() {
               <label htmlFor="login-email">Email</label>
               <input
                 id="login-email"
-                type="email"
+                type="text"
+                inputMode="email"
                 className="auth-input"
                 placeholder="Enter your email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (emailError) setEmailError(validateEmail(e.target.value));
+                }}
+                onBlur={() => email && setEmailError(validateEmail(email))}
+                aria-invalid={!!emailError}
+                aria-describedby={emailError ? "login-email-error" : undefined}
+                style={emailError ? { borderColor: "var(--danger)" } : undefined}
                 required
                 autoComplete="email"
               />
+              {emailError && (
+                <p id="login-email-error" role="alert" style={{ color: "var(--danger)", fontSize: 12, marginTop: 4 }}>
+                  {emailError}
+                </p>
+              )}
             </div>
 
             {/* Password Field */}

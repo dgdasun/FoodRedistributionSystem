@@ -2,7 +2,13 @@ const BASE = "/api";
 
 async function handle(res) {
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || "Request failed");
+  if (!res.ok) {
+    // An empty body usually means the dev proxy could not reach the backend,
+    // so fall back to the HTTP status rather than a bare "Request failed".
+    const err = new Error(data.error || data.message || `Request failed (${res.status} ${res.statusText})`.trim());
+    err.response = { status: res.status, data };
+    throw err;
+  }
   return data;
 }
 

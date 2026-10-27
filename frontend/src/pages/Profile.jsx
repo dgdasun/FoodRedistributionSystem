@@ -5,6 +5,7 @@ import { api } from "../api.js";
 import { avatarUrl } from "../avatar.js";
 import { navItemsFor } from "../nav.js";
 import VerificationUpload from "../components/VerificationUpload.jsx";
+import BeneficiaryVerificationUpload from "../components/BeneficiaryVerificationUpload.jsx";
 import { AppearancePicker } from "../components/ThemeToggle.jsx";
 import {
   IconUser,
@@ -286,7 +287,7 @@ function VerificationCard({ user }) {
         )
       ) : (
         <div className="pf-upload">
-          <VerificationUpload user={user} />
+          {user.role === "beneficiary" ? <BeneficiaryVerificationUpload user={user} embedded /> : <VerificationUpload user={user} />}
         </div>
       )}
     </section>
@@ -398,7 +399,7 @@ export default function Profile() {
         value: user.location,
       },
     user.registrationNumber && { icon: <IconDocument size={16} />, label: "Registration no.", value: user.registrationNumber },
-    user.storageCapacity && { icon: <IconTruck size={16} />, label: "Storage", value: user.storageCapacity },
+    user.storageTypes?.length > 0 && { icon: <IconTruck size={16} />, label: "Storage", value: user.storageTypes.join(", ") },
   ].filter(Boolean);
 
   return (

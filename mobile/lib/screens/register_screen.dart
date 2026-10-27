@@ -50,7 +50,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _password = TextEditingController();
   final _confirm = TextEditingController();
   String _role = 'donor';
-  String? _storage;
+  final Set<String> _storage = {};
   PickedFile? _document;
   bool _agreementStage = false, _busy = false, _obscure = true;
   String? _error;
@@ -102,7 +102,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         'organizationName': _org.text.trim(),
         'location': _location.text.trim(),
         if (_isBeneficiary) 'organizationSize': int.tryParse(_served.text.trim()) ?? 0,
-        if (_isBeneficiary) 'storageCapacity': _storage,
+        if (_isBeneficiary) 'storageTypes': [for (final s in _storageTypes) if (_storage.contains(s)) s],
       });
       var json = user.raw;
       String? uploadError;
@@ -242,27 +242,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
           if (_isBeneficiary) ...[
             const SizedBox(height: 12),
-            Row(children: [
-              Expanded(
-                child: TextFormField(
-                  controller: _served,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'People served daily'),
-                  validator: (v) => int.tryParse(v?.trim() ?? '') == null ? 'Enter a number' : null,
-                ),
+            TextFormField(
+              controller: _served,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'People served daily'),
+              validator: (v) => int.tryParse(v?.trim() ?? '') == null ? 'Enter a number' : null,
+            ),
+            const SizedBox(height: 12),
+            FormField<Set<String>>(
+              validator: (_) => _storage.isEmpty ? 'Choose at least one' : null,
+              builder: (field) => InputDecorator(
+                decoration: InputDecoration(labelText: 'Storage types', errorText: field.errorText),
+                child: Wrap(spacing: 8, runSpacing: 4, children: [
+                  for (final s in _storageTypes)
+                    FilterChip(
+                      label: Text(s),
+                      selected: _storage.contains(s),
+                      onSelected: (on) {
+                        setState(() => on ? _storage.add(s) : _storage.remove(s));
+                        field.didChange(_storage);
+                      },
+                    ),
+                ]),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  initialValue: _storage,
-                  isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'Storage'),
-                  items: [for (final s in _storageTypes) DropdownMenuItem(value: s, child: Text(s, overflow: TextOverflow.ellipsis))],
-                  onChanged: (v) => setState(() => _storage = v),
-                  validator: (v) => v == null ? 'Choose one' : null,
-                ),
-              ),
-            ]),
+            ),
           ],
           const SizedBox(height: 12),
           TextFormField(

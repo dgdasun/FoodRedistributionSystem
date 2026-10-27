@@ -5,6 +5,7 @@ import { api } from "../api.js";
 import StatCard from "../components/StatCard.jsx";
 import ProgressRing from "../components/ProgressRing.jsx";
 import VerificationUpload from "../components/VerificationUpload.jsx";
+import BeneficiaryVerificationUpload from "../components/BeneficiaryVerificationUpload.jsx";
 import VerificationApprovedBanner from "../components/VerificationApprovedBanner.jsx";
 import LottieState from "../components/LottieState.jsx";
 import { HorizontalBarChart, ProportionBar, StatusDonut, useChartPalette } from "../components/charts/ChartKit.jsx";
@@ -333,7 +334,9 @@ function BeneficiaryDashboard({ user }) {
 
       <VerificationApprovedBanner user={user} />
 
-      {!user.verified && user.verificationStatus === "rejected" ? (
+      {!user.verified && user.role === "beneficiary" ? (
+        <BeneficiaryVerificationUpload user={user} />
+      ) : !user.verified && user.verificationStatus === "rejected" ? (
         <div className="banner" style={{ background: "var(--status-danger-bg)", border: "1px solid var(--status-danger-border)", borderRadius: 14, padding: "14px 20px", marginBottom: 20 }}>
           <strong style={{ color: "var(--status-danger-fg)" }}>Verification rejected</strong>
           <p style={{ margin: "2px 0 0", color: "var(--status-danger-fg)", fontSize: 13.5 }}>

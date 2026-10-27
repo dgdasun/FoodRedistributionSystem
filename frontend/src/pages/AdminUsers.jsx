@@ -135,7 +135,7 @@ function UserDrawer({ user, onClose }) {
   const capacity = [
     user.organizationSize ? ["People served", user.organizationSize] : null,
     user.handlingCapacityKg ? ["Handling capacity", `${user.handlingCapacityKg} kg`] : null,
-    user.storageCapacity ? ["Storage", user.storageCapacity] : null,
+    user.storageTypes?.length ? ["Storage", user.storageTypes.join(", ")] : null,
     user.allocationsLast30Days ? ["Allocations (30 days)", user.allocationsLast30Days] : null,
   ].filter(Boolean);
 
