@@ -106,28 +106,7 @@ function DonorDashboard({ user }) {
 
       <VerificationApprovedBanner user={user} />
 
-      {!user.verified && user.verificationStatus === "rejected" ? (
-        <div className="banner" style={{ background: "var(--status-danger-bg)", border: "1px solid var(--status-danger-border)", borderRadius: 14, padding: "14px 20px", marginBottom: 20 }}>
-          <strong style={{ color: "var(--status-danger-fg)" }}>Verification rejected</strong>
-          <p style={{ margin: "2px 0 0", color: "var(--status-danger-fg)", fontSize: 13.5 }}>
-            {user.rejectionReason
-              ? `Reason: ${user.rejectionReason}. Please upload a corrected document to request another review.`
-              : "Please upload a corrected document to request another review."}
-          </p>
-          <VerificationUpload user={user} />
-        </div>
-      ) : (
-        !user.verified && (
-          <div className="banner" style={{ background: "var(--status-warn-bg)", border: "1px solid var(--status-warn-border)", borderRadius: 14, padding: "14px 20px", marginBottom: 20 }}>
-            <strong style={{ color: "var(--status-warn-fg)" }}>Verification pending</strong>
-            <p style={{ margin: "2px 0 0", color: "var(--status-warn-fg)", fontSize: 13.5 }}>
-              An administrator is reviewing your organization. You can keep donating while you wait, but verified
-              donors are shown as trusted partners to beneficiaries and admins.
-            </p>
-            <VerificationUpload user={user} />
-          </div>
-        )
-      )}
+      {!user.verified && <VerificationUpload user={user} />}
 
       {/* Stat Cards */}
       <Stagger className="grid-4 stats-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
@@ -340,30 +319,8 @@ function BeneficiaryDashboard({ user }) {
 
       <VerificationApprovedBanner user={user} />
 
-      {!user.verified && user.role === "beneficiary" ? (
-        <BeneficiaryVerificationUpload user={user} />
-      ) : !user.verified && user.verificationStatus === "rejected" ? (
-        <div className="banner" style={{ background: "var(--status-danger-bg)", border: "1px solid var(--status-danger-border)", borderRadius: 14, padding: "14px 20px", marginBottom: 20 }}>
-          <strong style={{ color: "var(--status-danger-fg)" }}>Verification rejected</strong>
-          <p style={{ margin: "2px 0 0", color: "var(--status-danger-fg)", fontSize: 13.5 }}>
-            {user.rejectionReason
-              ? `Reason: ${user.rejectionReason}. Please upload a corrected document to request another review.`
-              : "Please upload a corrected document to request another review."}
-          </p>
-          <VerificationUpload user={user} />
-        </div>
-      ) : (
-        !user.verified && (
-          <div className="banner" style={{ background: "var(--status-warn-bg)", border: "1px solid var(--status-warn-border)", borderRadius: 14, padding: "14px 20px", marginBottom: 20 }}>
-            <strong style={{ color: "var(--status-warn-fg)" }}>Verification pending</strong>
-            <p style={{ margin: "2px 0 0", color: "var(--status-warn-fg)", fontSize: 13.5 }}>
-              An administrator is reviewing your organization. You can browse available food, but you'll need to be
-              verified before you can request or receive it.
-            </p>
-            <VerificationUpload user={user} />
-          </div>
-        )
-      )}
+      {!user.verified &&
+        (user.role === "beneficiary" ? <BeneficiaryVerificationUpload user={user} /> : <VerificationUpload user={user} />)}
 
       <Stagger className="grid-4 stats-grid">
         <StatCard

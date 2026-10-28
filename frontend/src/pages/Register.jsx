@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Eye, EyeOff } from "lucide-react";
+import { AlertCircle, ArrowLeft, Check, Eye, EyeOff, Loader2, ShieldCheck } from "lucide-react";
 import { useAuth } from "../AuthContext.jsx";
 import { api } from "../api.js";
 import {
@@ -254,6 +254,10 @@ export default function Register() {
         {/* Left Hero Column */}
         <div className="auth-hero-panel">
           <div className="auth-hero-overlay" />
+          <Link to="/" className="auth-back-link">
+            <ArrowLeft size={16} aria-hidden="true" />
+            Back to home
+          </Link>
           <div className="auth-hero-content">
             <span className="auth-hero-badge">AI Powered</span>
             <h1 className="auth-hero-title">
@@ -277,42 +281,38 @@ export default function Register() {
 
           <div className="w-full">
             {stage === "agreement" ? (
-              <div className="flex flex-col gap-4">
-                <button
-                  type="button"
-                  className="self-start text-sm font-medium text-emerald-700 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
-                  onClick={backToForm}
-                  disabled={loading}
-                >
-                  ← Back to edit details
+              <div className="auth-pledge-step">
+                <button type="button" className="auth-pledge-back" onClick={backToForm} disabled={loading}>
+                  <ArrowLeft size={16} aria-hidden="true" />
+                  Back to edit details
                 </button>
 
-                <div className="max-h-64 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5">
-                  <h3 className="mb-2 text-[14px] font-bold text-slate-900">{agreement.title}</h3>
-                  <p className="text-[13px] leading-6 text-slate-700">{agreement.body}</p>
+                <div className="auth-pledge-progress" aria-hidden="true">
+                  <span className="done" /><span className="active" />
                 </div>
+                <p className="auth-pledge-step-label">Step 2 of 2 · Review and accept</p>
+
+                <section className="auth-pledge" aria-labelledby="pledge-title">
+                  <div className="auth-pledge-head">
+                    <span className="auth-pledge-icon"><ShieldCheck size={20} aria-hidden="true" /></span>
+                    <h3 id="pledge-title">{agreement.title}</h3>
+                  </div>
+                  <p>{agreement.body}</p>
+                </section>
 
                 {error && (
-                  <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-center text-sm text-rose-600">
+                  <div className="auth-pledge-error" role="alert">
+                    <AlertCircle size={16} aria-hidden="true" />
                     {error}
                   </div>
                 )}
 
-                <div className="flex gap-2.5">
-                  <button
-                    type="button"
-                    className="h-11 flex-1 rounded-xl bg-[var(--primary-strong)] text-sm font-medium text-white shadow-md transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:bg-slate-300"
-                    onClick={confirmAgreement}
-                    disabled={loading}
-                  >
-                    {loading ? "Creating Account..." : "I Agree — Continue"}
+                <div className="auth-pledge-actions">
+                  <button type="button" className="auth-pledge-agree" onClick={confirmAgreement} disabled={loading}>
+                    {loading ? <Loader2 size={17} className="auth-pledge-spin" aria-hidden="true" /> : <Check size={17} aria-hidden="true" />}
+                    {loading ? "Creating account…" : "I Agree — Continue"}
                   </button>
-                  <button
-                    type="button"
-                    className="h-11 flex-1 rounded-xl border border-rose-300 text-sm font-medium text-rose-600 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
-                    onClick={rejectAgreement}
-                    disabled={loading}
-                  >
+                  <button type="button" className="auth-pledge-disagree" onClick={rejectAgreement} disabled={loading}>
                     I Disagree
                   </button>
                 </div>

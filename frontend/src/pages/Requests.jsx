@@ -320,17 +320,15 @@ export default function Requests() {
       return [r.beneficiary?.organizationName, r.beneficiary?.name, r.item?.name].some((f) => (f || "").toLowerCase().includes(q));
     })
     .sort((a, b) => {
-      // Waiting requests first, most urgent on top; then newest.
+      // Waiting requests first, newest on top; the urgency badge still shows on each card.
       const pa = a.status === "pending" ? 0 : 1;
       const pb = b.status === "pending" ? 0 : 1;
       if (pa !== pb) return pa - pb;
-      const u = (URGENCY_RANK[a.urgency] ?? 2) - (URGENCY_RANK[b.urgency] ?? 2);
-      if (pa === 0 && u !== 0) return u;
       return String(b.createdAt || "").localeCompare(String(a.createdAt || ""));
     });
 
   // Collapse each contested item's pending requests into one card, placed where
-  // its first (most urgent) request would have been.
+  // its newest request would have been.
   const entries = [];
   const groups = {};
   visible.forEach((r) => {

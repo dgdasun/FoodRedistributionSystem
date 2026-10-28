@@ -27,6 +27,8 @@ const TABS = [
 ];
 
 const SORTS = [
+  // Default: what the donor just added is the first row they see.
+  { key: "newest", label: "Newest first", cmp: (a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")) },
   { key: "expiry", label: "Expiry: soonest", cmp: (a, b) => String(a.expiryDate).localeCompare(String(b.expiryDate)) },
   { key: "expiry-desc", label: "Expiry: latest", cmp: (a, b) => String(b.expiryDate).localeCompare(String(a.expiryDate)) },
   { key: "qty", label: "Quantity: most", cmp: (a, b) => Number(b.quantityKg) - Number(a.quantityKg) },
@@ -386,7 +388,7 @@ export default function MyDonations() {
   const [donations, setDonations] = useState(null);
   const [tab, setTab] = useState("all");
   const [query, setQuery] = useState("");
-  const [sort, setSort] = useState("expiry");
+  const [sort, setSort] = useState("newest");
   const [showForm, setShowForm] = useState(false);
   const [upload, setUpload] = useState(null); // { tone, text } | { busy: true }
   // Which row has its progress timeline expanded. One at a time - two open

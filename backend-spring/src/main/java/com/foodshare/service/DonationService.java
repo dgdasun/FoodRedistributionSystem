@@ -178,7 +178,8 @@ public class DonationService {
         applyDonorLocation(donation);
 
         donation.setStatus(ExpiryUtil.reListStatus(donation.getExpiryDate(), threshold));
-        donation.setPublished(false);
+        // New listings go live straight away; the donor can hide one from My Donations.
+        donation.setPublished(true);
         donation.setCreatedAt(Instant.now());
         donation.setInitialQuantity(donation.getQuantityKg());
         if (donation.getListingType() == null) donation.setListingType("donation");
@@ -341,7 +342,7 @@ public class DonationService {
         d.setLongitude(donorLocation.getLongitude());
         d.setListingType("donation");
         d.setStatus(ExpiryUtil.reListStatus(expiryDate, threshold));
-        d.setPublished(false);
+        d.setPublished(true);
         d.setCreatedAt(Instant.now());
         return d;
     }

@@ -692,6 +692,79 @@ table tbody tr:hover {
   .auth-back-link:hover svg { transform: none; }
 }
 
+/* Register: pledge / disclaimer step */
+.auth-pledge-step { display: flex; flex-direction: column; }
+.auth-pledge-back {
+  align-self: flex-start; display: inline-flex; align-items: center; gap: 6px;
+  margin: 0 0 18px; padding: 7px 14px 7px 10px; border-radius: 999px;
+  border: 1px solid var(--card-border); background: var(--surface);
+  font: inherit; font-size: 13.5px; font-weight: 600; color: var(--text-mid); cursor: pointer;
+  transition: border-color .18s ease, color .18s ease, background .18s ease;
+}
+.auth-pledge-back:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); background: var(--sand-light); }
+.auth-pledge-back:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.auth-pledge-back:disabled { opacity: .5; cursor: not-allowed; }
+.auth-pledge-back svg { transition: transform .18s ease; }
+.auth-pledge-back:hover:not(:disabled) svg { transform: translateX(-2px); }
+
+.auth-pledge-progress { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.auth-pledge-progress span { height: 5px; border-radius: 999px; background: var(--surface-muted); }
+.auth-pledge-progress .done { background: var(--primary); }
+.auth-pledge-progress .active { background: linear-gradient(90deg, var(--primary), var(--accent)); }
+.auth-pledge-step-label { margin: 8px 0 16px; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-light); }
+
+.auth-pledge {
+  position: relative; padding: 20px 22px; border-radius: var(--radius-sm);
+  border: 1px solid var(--sand); background: linear-gradient(135deg, var(--sand-light), var(--surface));
+  box-shadow: var(--shadow-md); max-height: 320px; overflow-y: auto;
+}
+.auth-pledge::before {
+  content: ""; position: absolute; left: 0; top: 18px; bottom: 18px; width: 4px;
+  border-radius: 0 4px 4px 0; background: var(--primary);
+}
+.auth-pledge-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.auth-pledge-icon {
+  width: 36px; height: 36px; flex-shrink: 0; display: grid; place-items: center; border-radius: 11px;
+  background: var(--icon-chip); color: var(--primary);
+}
+.auth-pledge h3 { margin: 0; font-size: 16px; font-weight: 800; color: var(--text-dark); }
+.auth-pledge p { margin: 0; font-size: 14px; line-height: 1.7; color: var(--text-mid); }
+
+.auth-pledge-error {
+  display: flex; align-items: flex-start; gap: 8px; margin-top: 14px; padding: 10px 12px;
+  border-radius: var(--radius-sm); font-size: 13.5px;
+  background: var(--status-danger-bg); border: 1px solid var(--status-danger-border); color: var(--status-danger-fg);
+}
+.auth-pledge-error svg { flex-shrink: 0; margin-top: 1px; }
+
+.auth-pledge-actions { display: grid; grid-template-columns: 2fr 1fr; gap: 10px; margin-top: 20px; }
+.auth-pledge-agree, .auth-pledge-disagree {
+  height: 52px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border-radius: 999px; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
+  transition: transform .15s ease, box-shadow .18s ease, background .18s ease, border-color .18s ease, color .18s ease;
+}
+.auth-pledge-agree {
+  border: 0; color: #fff; background: var(--primary-strong);
+  box-shadow: 0 10px 22px -10px rgba(56, 126, 1, 0.7);
+}
+.auth-pledge-agree:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 14px 26px -10px rgba(56, 126, 1, 0.8); }
+.auth-pledge-disagree {
+  border: 1px solid var(--card-border); background: var(--surface); color: var(--text-mid);
+}
+.auth-pledge-disagree:hover:not(:disabled) {
+  border-color: var(--status-danger-border); background: var(--status-danger-bg); color: var(--status-danger-fg);
+}
+.auth-pledge-agree:focus-visible, .auth-pledge-disagree:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.auth-pledge-agree:disabled, .auth-pledge-disagree:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+.auth-pledge-spin { animation: auth-pledge-spin .8s linear infinite; }
+@keyframes auth-pledge-spin { to { transform: rotate(360deg); } }
+@media (max-width: 420px) { .auth-pledge-actions { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) {
+  .auth-pledge-back, .auth-pledge-back svg, .auth-pledge-agree, .auth-pledge-disagree { transition: none; }
+  .auth-pledge-agree:hover:not(:disabled), .auth-pledge-back:hover:not(:disabled) svg { transform: none; }
+  .auth-pledge-spin { animation-duration: 2s; }
+}
+
 .auth-logo-badge {
   margin: 0 0 28px;
 }

@@ -287,7 +287,7 @@ function VerificationCard({ user }) {
         )
       ) : (
         <div className="pf-upload">
-          {user.role === "beneficiary" ? <BeneficiaryVerificationUpload user={user} embedded /> : <VerificationUpload user={user} />}
+          {user.role === "beneficiary" ? <BeneficiaryVerificationUpload user={user} embedded /> : <VerificationUpload user={user} embedded />}
         </div>
       )}
     </section>
