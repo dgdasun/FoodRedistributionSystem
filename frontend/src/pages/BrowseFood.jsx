@@ -5,7 +5,7 @@ import { useAuth } from "../AuthContext.jsx";
 import { api } from "../api.js";
 import {
   Search, SlidersHorizontal, X, List, Map as MapIcon, MapPin, Package, Store,
-  Clock, ArrowRight, Lock, Hourglass, ShoppingBasket, Sparkles, ArrowUpDown, Minus, Plus, Eye,
+  Clock, ArrowRight, Lock, Hourglass, ShoppingBasket, Sparkles, ArrowUpDown, Minus, Plus, Eye, Check,
 } from "lucide-react";
 import { useLiveData } from "../hooks/useLiveData.js";
 import FreshnessMeter, { freshnessOf } from "../components/FreshnessMeter.jsx";
@@ -194,7 +194,7 @@ function RequestModal({ item, user, onClose }) {
   );
 }
 
-function LockedModal({ mode, onClose }) {
+function LockedModal({ mode, expired, onClose }) {
   const isGuest = mode === "guest";
   useEscape(onClose);
   return (
@@ -207,7 +207,9 @@ function LockedModal({ mode, onClose }) {
           <h3>{isGuest ? "Log in to request food" : "Verification pending"}</h3>
           <p>
             {isGuest
-              ? "Log in or register as a verified Beneficiary/NGO to claim food donations."
+              ? expired
+                ? "Log in or register as a verified farm partner to claim expired food for feed or compost."
+                : "Log in or register as a verified Beneficiary/NGO to claim food donations."
               : "Your account is pending verification. Once approved by Admin, you can claim this item."}
           </p>
           {isGuest ? (
@@ -232,9 +234,9 @@ const EXPIRY_BANDS = [
 ];
 
 const SORTS = [
+  { key: "newest", label: "Newest first", cmp: (a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")) },
   { key: "expiry", label: "Expiring soonest", cmp: (a, b) => Number(a.daysUntilExpiry) - Number(b.daysUntilExpiry) },
   { key: "qty", label: "Most quantity", cmp: (a, b) => Number(b.quantityKg) - Number(a.quantityKg) },
-  { key: "newest", label: "Newest", cmp: (a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")) },
 ];
 
 function expiryText(item) {
@@ -245,9 +247,6 @@ function expiryText(item) {
   return `${d} day${d === 1 ? "" : "s"} left`;
 }
 
-function formatKg(n) {
-  return Number.isInteger(n) ? String(n) : n.toFixed(1);
-}
 
 function FilterPanel({ categories, counts, selected, onToggle, band, onBand, minKg, onMinKg, onReset, resultCount }) {
   return (
@@ -319,7 +318,7 @@ function FilterPanel({ categories, counts, selected, onToggle, band, onBand, min
   );
 }
 
-function FoodCard({ item, actionLabel, onAction }) {
+function FoodCard({ item, actionLabel, onAction, requested }) {
   const f = freshnessOf(item);
   return (
     <HoverLift className="bf-card" initial="hidden" animate="shown">
@@ -357,7 +356,13 @@ function FoodCard({ item, actionLabel, onAction }) {
           <FreshnessMeter item={item} />
         </div>
 
-        {onAction && (
+        {onAction && requested && (
+          <button className="btn btn-outline bf-card-action" disabled>
+            <Check size={15} />
+            Already requested
+          </button>
+        )}
+        {onAction && !requested && (
           <button className="btn btn-primary bf-card-action" onClick={() => onAction(item)}>
             {actionLabel}
             <ArrowRight size={15} />
@@ -376,7 +381,7 @@ export default function BrowseFood() {
   const [cats, setCats] = useState([]);
   const [band, setBand] = useState("");
   const [minKg, setMinKg] = useState(0);
-  const [sort, setSort] = useState("expiry");
+  const [sort, setSort] = useState("newest");
   const [showFilters, setShowFilters] = useState(false);
   // Map and list show the same filtered set - the toggle only changes how it
   // is drawn, never what is in it.
@@ -385,10 +390,10 @@ export default function BrowseFood() {
   const isFarm = user?.role === "farm";
   // Admins oversee the marketplace but never claim food, so they get no request action.
   const isAdmin = user?.role === "admin";
-  // Farms only ever see expired stock; admins can look at either list, picked
-  // with ?show=expired (the dashboard's "Expired, routed to farms" row links there).
+  // Farms only ever see expired stock; admins and guests can look at either list,
+  // picked with ?show=expired (the dashboard's "Expired, routed to farms" row links there).
   const [searchParams, setSearchParams] = useSearchParams();
-  const showExpired = isFarm || (isAdmin && searchParams.get("show") === "expired");
+  const showExpired = isFarm || ((isAdmin || !user) && searchParams.get("show") === "expired");
   const canRequest = !!user && (user.role === "beneficiary" || user.role === "farm") && !!user.verified;
   const actionLabel = !user ? "Request food" : canRequest ? "Request this item" : "Verification required";
 
@@ -396,11 +401,19 @@ export default function BrowseFood() {
   const items = data?.donations;
   const loading = !data;
 
+  // The backend allows one request per organization per item; mirror that here
+  // so the button is already disabled instead of failing on submit.
+  const { data: mine, refresh: refreshMine } = useLiveData(`/requests?beneficiaryId=${user?.id}`, {
+    intervalMs: 20000,
+    enabled: canRequest,
+  });
+  const requestedIds = useMemo(() => new Set((mine?.requests || []).map((r) => r.itemId)), [mine]);
+
+  const inStock = useMemo(() => (items || []).filter((i) => Number(i.quantityKg) > 0), [items]);
+  const expiredCount = useMemo(() => inStock.filter((i) => i.status === "expired").length, [inStock]);
   const relevant = useMemo(
-    () => (items || [])
-      .filter((i) => Number(i.quantityKg) > 0)
-      .filter((i) => (showExpired ? i.status === "expired" : i.status !== "expired")),
-    [items, showExpired]
+    () => inStock.filter((i) => (showExpired ? i.status === "expired" : i.status !== "expired")),
+    [inStock, showExpired]
   );
 
   const categories = useMemo(
@@ -415,9 +428,8 @@ export default function BrowseFood() {
   }, [relevant]);
 
   const stats = useMemo(() => {
-    const kg = relevant.reduce((s, i) => s + (Number(i.quantityKg) || 0), 0);
     const points = new Set(relevant.map((i) => i.pickupLocation).filter(Boolean)).size;
-    return { listings: relevant.length, kg, points };
+    return { listings: relevant.length, points };
   }, [relevant]);
 
   // Every filter runs client-side over the live list, so typing or ticking a
@@ -458,6 +470,7 @@ export default function BrowseFood() {
   const handleAction = (item) => {
     if (!user) return setLocked("guest");
     if (!canRequest) return setLocked("pending");
+    if (requestedIds.has(item.id)) return;
     setSelected(item);
   };
 
@@ -489,7 +502,6 @@ export default function BrowseFood() {
 
           <div className="bf-stats">
             <div><strong>{loading ? "–" : stats.listings}</strong><span>Listings</span></div>
-            <div><strong>{loading ? "–" : formatKg(stats.kg)}<small> kg</small></strong><span>Food available</span></div>
             <div><strong>{loading ? "–" : stats.points}</strong><span>Pickup points</span></div>
           </div>
         </div>
@@ -536,12 +548,41 @@ export default function BrowseFood() {
           <div className="bf-notice-icon"><Lock size={17} /></div>
           <div className="bf-notice-text">
             <strong>You are browsing as a guest</strong>
-            <p>Anyone can view available surplus food. Log in or register as a verified Beneficiary/NGO to claim items.</p>
+            <p>
+              {showExpired
+                ? "Anyone can view expired food set aside for feed or compost. Log in or register as a verified farm partner to claim items."
+                : "Anyone can view available surplus food. Log in or register as a verified Beneficiary/NGO to claim items."}
+            </p>
           </div>
           <div className="bf-notice-actions">
             <Link to="/login" className="btn btn-outline btn-sm">Log in</Link>
             <Link to="/register" className="btn btn-primary btn-sm">Register</Link>
           </div>
+        </div>
+      )}
+
+      {!user && (
+        <div className="bf-view bf-kind" role="tablist" aria-label="Food type">
+          {[
+            { expired: false, label: "Surplus food", count: inStock.length - expiredCount },
+            { expired: true, label: "Expired food", count: expiredCount },
+          ].map((t) => (
+            <button
+              key={t.label}
+              type="button"
+              role="tab"
+              aria-selected={showExpired === t.expired}
+              className={showExpired === t.expired ? "active" : undefined}
+              onClick={() => {
+                reset();
+                setSearchParams(t.expired ? { show: "expired" } : {});
+              }}
+            >
+              {t.expired ? <Hourglass size={15} /> : <ShoppingBasket size={15} />}
+              {t.label}
+              <span className="bf-kind-count">{loading ? "–" : t.count}</span>
+            </button>
+          ))}
         </div>
       )}
 
@@ -676,7 +717,13 @@ export default function BrowseFood() {
             {loading && <SkeletonGrid count={6} />}
             {!loading &&
               visible.map((item) => (
-                <FoodCard key={item.id} item={item} actionLabel={actionLabel} onAction={isAdmin ? null : handleAction} />
+                <FoodCard
+                  key={item.id}
+                  item={item}
+                  actionLabel={actionLabel}
+                  onAction={isAdmin ? null : handleAction}
+                  requested={requestedIds.has(item.id)}
+                />
               ))}
           </div>
 
@@ -708,10 +755,11 @@ export default function BrowseFood() {
           onClose={() => {
             setSelected(null);
             refresh();
+            refreshMine();
           }}
         />
       )}
-      {locked && <LockedModal mode={locked} onClose={() => setLocked(null)} />}
+      {locked && <LockedModal mode={locked} expired={showExpired} onClose={() => setLocked(null)} />}
     </div>
   );
 }

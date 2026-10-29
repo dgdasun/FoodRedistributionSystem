@@ -8,7 +8,6 @@ import com.foodshare.repository.DonationRepository;
 import com.foodshare.repository.FoodRequestRepository;
 import com.foodshare.repository.TicketRepository;
 import com.foodshare.repository.UserRepository;
-import com.foodshare.util.DonationUnits;
 import org.bson.types.ObjectId;
 import org.springframework.stereotype.Service;
 
@@ -137,30 +136,6 @@ public class ReportService {
         Integer approvalRate = decided == 0 ? null
                 : (int) Math.round(requestOutcomes.get("approved") * 100.0 / decided);
 
-        // Expired food sent to farms, kept apart by measure: kilograms and liters
-        // are never added together. Packets count by what they hold; packets
-        // listed without a size can't be weighed, so they're counted on their own.
-        double expiredKg = 0, expiredLiters = 0, expiredUnsizedPackets = 0;
-        for (Donation d : donations) {
-            if (!"expired".equals(d.getStatus())) continue;
-            double qty = kg(d);
-            switch (DonationUnits.of(d.getUnit())) {
-                case DonationUnits.LITERS -> expiredLiters += qty;
-                case DonationUnits.ITEMS -> {
-                    if (d.getPackSize() != null && d.getPackSize() > 0) {
-                        if (DonationUnits.LITERS.equals(DonationUnits.of(d.getPackUnit()))) {
-                            expiredLiters += qty * d.getPackSize();
-                        } else {
-                            expiredKg += qty * d.getPackSize();
-                        }
-                    } else {
-                        expiredUnsizedPackets += qty;
-                    }
-                }
-                default -> expiredKg += qty;
-            }
-        }
-
         Map<String, Double> donorTotals = new LinkedHashMap<>();
         for (Donation d : donations) {
             User donor = usersById.get(d.getDonorId());
@@ -213,9 +188,6 @@ public class ReportService {
         summary.put("requestApprovalRate", approvalRate);
         summary.put("totalTickets", tickets.size());
         summary.put("activeDonors", activeDonors);
-        summary.put("expiredKg", round1(expiredKg));
-        summary.put("expiredLiters", round1(expiredLiters));
-        summary.put("expiredUnsizedPackets", (long) expiredUnsizedPackets);
 
         Map<String, Object> period = new LinkedHashMap<>();
         period.put("startDate", startDate.toString());

@@ -27,6 +27,14 @@ public class AuthController {
     public Map<String, Object> login(@Valid @RequestBody LoginRequestDTO req) {
         User user = authService.login(req.getEmail(), req.getPassword())
                 .orElseThrow(() -> new IllegalArgumentException("Invalid email or password"));
+        // Checked only after the password matched, so it never reveals which emails exist.
+        if (user.isBlocked()) {
+            String reason = user.getBlockReason() == null ? "" : user.getBlockReason().trim();
+            if (!reason.isEmpty() && !reason.matches(".*[.!?]$")) reason += ".";
+            throw new IllegalStateException("This account has been blocked by an administrator"
+                    + (reason.isEmpty() ? "." : ": " + reason)
+                    + " Contact support if you think this is a mistake.");
+        }
         return Map.of("user", user);
     }
 

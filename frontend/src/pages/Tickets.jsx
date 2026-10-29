@@ -190,7 +190,7 @@ export function CollectionTicketCard({ ticket, isDonor = false, forFeed = false,
         <dl className="tk-details">
           <div><dt><Package size={14} /> Quantity</dt><dd>{ticket.quantityKg} kg {forFeed ? "for feed / compost" : "surplus"}</dd></div>
           <div><dt><MapPin size={14} /> Pickup at</dt><dd title={ticket.pickupLocation}>{ticket.pickupLocation}</dd></div>
-          <div><dt><CalendarDays size={14} /> Date</dt><dd>{formatDate(ticket.pickupDate)}{ticket.pickupTime ? ` · ${ticket.pickupTime}` : ""}</dd></div>
+          <div><dt><CalendarDays size={14} /> Collect by</dt><dd>{formatDate(ticket.pickupDate)}{ticket.pickupTime ? ` · ${ticket.pickupTime}` : ""}</dd></div>
           <div>
             <dt><Clock size={14} /> Window</dt>
             <dd>

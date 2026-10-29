@@ -149,7 +149,16 @@ public class DonationService {
                 .toList();
     }
 
+    /** A donor an admin has blocked can't add stock, by hand or by CSV. */
+    private void ensureNotBlocked(String donorId) {
+        if (donorId == null) return;
+        userRepository.findById(donorId).filter(User::isBlocked).ifPresent(u -> {
+            throw new IllegalStateException("Your account has been blocked by an administrator, so you can't list food.");
+        });
+    }
+
     public Donation create(Donation donation) {
+        ensureNotBlocked(donation.getDonorId());
         donation.setUnit(DonationUnits.normalize(donation.getUnit()));
         if (donation.getQuantityKg() == null || donation.getQuantityKg() <= 0) {
             throw new IllegalArgumentException("Enter a quantity greater than zero.");
@@ -178,7 +187,8 @@ public class DonationService {
         applyDonorLocation(donation);
 
         donation.setStatus(ExpiryUtil.reListStatus(donation.getExpiryDate(), threshold));
-        donation.setPublished(false);
+        // New listings go live straight away; the donor can hide one from My Donations.
+        donation.setPublished(true);
         donation.setCreatedAt(Instant.now());
         donation.setInitialQuantity(donation.getQuantityKg());
         if (donation.getListingType() == null) donation.setListingType("donation");
@@ -201,6 +211,7 @@ public class DonationService {
      * suggestion, for the donor to confirm through importReviewedRows.
      */
     public UploadResult bulkUpload(String donorId, MultipartFile file) throws IOException {
+        ensureNotBlocked(donorId);
         List<Donation> created = new ArrayList<>();
         List<CategoryCorrection> corrections = new ArrayList<>();
         List<CategoryReview> review = new ArrayList<>();
@@ -281,6 +292,7 @@ public class DonationService {
      */
     public UploadResult importReviewedRows(String donorId, List<UploadConfirmRequestDTO.Row> rows) {
         if (rows == null || rows.isEmpty()) throw new IllegalArgumentException("No rows to import.");
+        ensureNotBlocked(donorId);
         Donation donorLocation = donorLocation(donorId);
         List<Donation> created = new ArrayList<>();
         long freshSkipped = 0;
@@ -341,7 +353,7 @@ public class DonationService {
         d.setLongitude(donorLocation.getLongitude());
         d.setListingType("donation");
         d.setStatus(ExpiryUtil.reListStatus(expiryDate, threshold));
-        d.setPublished(false);
+        d.setPublished(true);
         d.setCreatedAt(Instant.now());
         return d;
     }

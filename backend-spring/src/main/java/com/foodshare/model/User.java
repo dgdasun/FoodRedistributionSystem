@@ -92,7 +92,40 @@ public class User {
     /** When an admin last approved or rejected this account - shown as "Approved/Rejected X ago". */
     private Instant verificationReviewedAt;
 
+    /**
+     * Set by an admin when an account acts suspiciously or misuses the
+     * platform. A blocked account can't sign in, request food or list food
+     * until an admin unblocks it.
+     */
+    private boolean blocked = false;
+    private String blockReason;
+    private Instant blockedAt;
+
     public User() {
+    }
+
+    public boolean isBlocked() {
+        return blocked;
+    }
+
+    public void setBlocked(boolean blocked) {
+        this.blocked = blocked;
+    }
+
+    public String getBlockReason() {
+        return blockReason;
+    }
+
+    public void setBlockReason(String blockReason) {
+        this.blockReason = blockReason;
+    }
+
+    public Instant getBlockedAt() {
+        return blockedAt;
+    }
+
+    public void setBlockedAt(Instant blockedAt) {
+        this.blockedAt = blockedAt;
     }
 
     public Instant getVerificationSubmittedAt() {

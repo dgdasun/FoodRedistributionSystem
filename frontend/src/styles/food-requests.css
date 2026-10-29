@@ -464,6 +464,14 @@
   color: var(--text-light);
 }
 .fr-subreq-meta strong { color: var(--text-mid); font-weight: 700; }
+.fr-subreq-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--text-light);
+}
 .fr-subreq-urg {
   padding: 0 7px;
   border-radius: 999px;

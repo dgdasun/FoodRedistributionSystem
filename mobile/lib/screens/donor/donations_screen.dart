@@ -205,7 +205,7 @@ class _AddItemSheetState extends State<_AddItemSheet> {
         'expiryDate': '${e.year}-${e.month.toString().padLeft(2, '0')}-${e.day.toString().padLeft(2, '0')}',
       });
       if (!mounted) return;
-      showSnack(context, '${_name.text.trim()} added. Switch it to Live to publish.');
+      showSnack(context, '${_name.text.trim()} added and is now live for beneficiaries.');
       Navigator.pop(context, true);
     } catch (e) {
       if (mounted) setState(() => _error = errorText(e));

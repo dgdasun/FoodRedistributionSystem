@@ -147,20 +147,23 @@ function ChartTooltip({ active, payload, label, unit = "kg" }) {
 
 /** Screen-reader equivalent of any chart, so identity is never colour-alone. */
 function DataTable({ caption, rows, unit = "kg" }) {
+  // Tables ignore width/overflow, so the clipping wrapper keeps this off-screen table from widening the page.
   return (
-    <table className="sr-only">
-      <caption>{caption}</caption>
-      <tbody>
-        {rows.map((r) => (
-          <tr key={r.label}>
-            <th scope="row">{r.label}</th>
-            <td>
-              {r.value} {unit}
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <div className="sr-only">
+      <table>
+        <caption>{caption}</caption>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.label}>
+              <th scope="row">{r.label}</th>
+              <td>
+                {r.value} {unit}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

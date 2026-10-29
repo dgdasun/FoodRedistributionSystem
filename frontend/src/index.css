@@ -632,8 +632,16 @@ p { margin: 0; line-height: 1.55; }
   margin-bottom: 20px;
 }
 
+/* Two-up stat row (My Donations). A class rather than an inline style, so
+   the breakpoints below can still collapse it. */
+.grid-4.stats-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* Three-up row (beneficiary / farm dashboard). */
+.grid-4.stats-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
 @media (max-width: 1100px) {
   .grid-4 { grid-template-columns: repeat(2, 1fr); }
+  /* Two-up would orphan the third tile; with the sidebar showing, one per row reads best. */
+  .grid-4.stats-grid-3 { grid-template-columns: 1fr; }
   .grid-2 { grid-template-columns: 1fr; }
   .dashboard-top-row { flex-direction: column; align-items: flex-start; }
   .quote-banner { width: 100%; min-width: 0; }
@@ -2297,7 +2305,7 @@ select.auth-input {
 .home-section-title { font-size: clamp(28px, 3.4vw, 38px); font-weight: 800; letter-spacing: -0.03em; margin: 0 0 12px; }
 .home-section-sub { font-size: 15.5px; color: var(--text-mid); line-height: 1.6; }
 
-.home-stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+.home-stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 .home-stat-card { text-align: center; padding: 28px 16px; border-radius: 18px; background: var(--surface); border: 1px solid var(--card-border); box-shadow: var(--shadow-md); transition: transform 0.25s ease, box-shadow 0.25s ease; }
 .home-stat-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
 .home-stat-icon { width: 52px; height: 52px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; }
@@ -2865,6 +2873,76 @@ select.auth-input {
 
 .bottom-nav-item:active {
   background: var(--surface-muted);
+}
+button.bottom-nav-item {
+  border: none;
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* "More" sheet: everything the phone tab bar has no room for. The backdrop
+   stops at the bar so the bar stays visible and its More tab still closes the
+   sheet, and sits above the chat launcher (z 55) so it can't cover Logout. */
+.more-backdrop {
+  position: fixed;
+  /* The phone bar floats 10px up and is ~66px tall (modern.css). */
+  inset: 0 0 calc(80px + env(safe-area-inset-bottom)) 0;
+  z-index: 56;
+  background: rgba(10, 16, 6, 0.45);
+  animation: more-fade 0.16s ease-out;
+}
+.more-sheet {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  max-height: calc(100vh - 140px);
+  overflow-y: auto;
+  padding: 8px 12px 14px;
+  border-radius: 22px;
+  border: 1px solid var(--card-border);
+  background: var(--surface);
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.25);
+  animation: more-rise 0.2s var(--ease-out, ease-out);
+}
+.more-handle {
+  display: block;
+  width: 38px;
+  height: 4px;
+  margin: 2px auto 10px;
+  border-radius: 999px;
+  background: var(--border);
+}
+.more-list { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 2px; }
+.more-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 6px 10px;
+  border-radius: 14px;
+  color: var(--text-dark);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.more-item:active { background: var(--surface-muted); }
+.more-item.active { color: var(--primary); background: var(--primary-light); }
+.more-ico {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  color: var(--primary);
+  background: var(--icon-chip);
+}
+.more-logout { width: 100%; }
+@keyframes more-fade { from { opacity: 0; } }
+@keyframes more-rise { from { opacity: 0; transform: translateY(12px); } }
+@media (prefers-reduced-motion: reduce) {
+  .more-backdrop, .more-sheet { animation: none; }
 }
 
 /* ---------- Donation tracking timeline ---------- */

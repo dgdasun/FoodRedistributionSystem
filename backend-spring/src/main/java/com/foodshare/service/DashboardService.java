@@ -12,6 +12,8 @@ import com.foodshare.util.DonationUnits;
 import org.bson.types.ObjectId;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -73,15 +75,21 @@ public class DashboardService {
                     row.put("id", d.getId());
                     row.put("name", d.getName());
                     row.put("quantityKg", d.getQuantityKg());
+                    // Needed to label the quantity (kg / L / items) and pick the thumbnail.
+                    row.put("unit", d.getUnit());
+                    row.put("category", d.getCategory());
                     row.put("pickupLocation", d.getPickupLocation());
                     row.put("createdAt", d.getCreatedAt().toString());
                     row.put("status", t != null ? ("collected".equals(t.getStatus()) ? "COMPLETED" : "SCHEDULED") : d.getStatus().toUpperCase());
                     return row;
                 }).toList();
 
+        // A pending ticket whose window has closed is expired, not "next".
+        Instant now = Instant.now();
         Ticket nextTicket = donorTickets.stream()
                 .filter(t -> "pending".equals(t.getStatus()))
-                .min((a, b) -> a.getPickupDate().compareTo(b.getPickupDate()))
+                .filter(t -> t.getExpiresAt() == null || t.getExpiresAt().isAfter(now))
+                .min(Comparator.comparing(Ticket::getExpiresAt, Comparator.nullsLast(Comparator.naturalOrder())))
                 .orElse(null);
 
         Map<String, Object> nextPickup = null;

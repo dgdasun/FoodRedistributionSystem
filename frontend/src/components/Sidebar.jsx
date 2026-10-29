@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext.jsx";
 import { navItemsFor } from "../nav.js";
 import { useTheme } from "../ThemeContext.jsx";
@@ -12,7 +12,13 @@ import {
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const { isDark } = useTheme();
+  // Always land on the login page, even from public pages like /browse.
+  const handleLogout = () => {
+    logout();
+    navigate("/login", { replace: true });
+  };
   const items = navItemsFor(user);
   const [toastMsg, setToastMsg] = useState("");
 
@@ -94,7 +100,7 @@ export default function Sidebar() {
 
       {/* Pinned to the foot of the rail, apart from navigation, so it is never hit by accident. */}
       <div className="sidebar-foot">
-        <button type="button" className="nav-logout" onClick={logout}>
+        <button type="button" className="nav-logout" onClick={handleLogout}>
           <IconLogout size={18} />
           <span>Logout</span>
         </button>

@@ -66,6 +66,14 @@ function timeAgo(value) {
   return new Date(t).toLocaleDateString(undefined, { day: "numeric", month: "short" });
 }
 
+// Exact moment a request came in, e.g. "Oct 28, 10:12 PM".
+function formatStamp(value) {
+  if (!value) return null;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleString(undefined, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+}
+
 function formatKg(kg) {
   const n = Number(kg) || 0;
   return Number.isInteger(n) ? n : n.toFixed(1);
@@ -78,6 +86,7 @@ function RequestCard({ request: r, onOpen }) {
   const name = r.beneficiary?.organizationName || r.beneficiary?.name || "Unknown requester";
   const isFarm = typeOf(r) === "farm";
   const ago = timeAgo(r.createdAt);
+  const stamp = formatStamp(r.createdAt);
   // Pending cards are coloured by urgency (what to act on first); decided ones by outcome.
   const stripTone = isPending ? URGENCY_TONE[urgency] : status.tone;
 
@@ -127,10 +136,11 @@ function RequestCard({ request: r, onOpen }) {
             {r.distanceKm} km away
           </span>
         )}
-        {ago && (
-          <span>
+        {stamp && (
+          <span title={`Requested ${stamp}`}>
             <IconClock size={14} color="currentColor" />
-            {ago}
+            {stamp}
+            {ago && ` · ${ago}`}
           </span>
         )}
       </div>
@@ -214,6 +224,12 @@ function ContestedItemCard({ group, ranking, onOpenAI, onOpenRequest }) {
                     {r.distanceKm != null && <span>{r.distanceKm} km</span>}
                     {typeOf(r) === "farm" && <span>Farm</span>}
                   </span>
+                  {formatStamp(r.createdAt) && (
+                    <span className="fr-subreq-time">
+                      <IconClock size={12} color="currentColor" />
+                      Requested {formatStamp(r.createdAt)}
+                    </span>
+                  )}
                 </span>
                 {rk && <span className="fr-subreq-score">{matchPercent(rk.score)}%</span>}
               </button>
@@ -320,17 +336,15 @@ export default function Requests() {
       return [r.beneficiary?.organizationName, r.beneficiary?.name, r.item?.name].some((f) => (f || "").toLowerCase().includes(q));
     })
     .sort((a, b) => {
-      // Waiting requests first, most urgent on top; then newest.
+      // Waiting requests first, newest on top; the urgency badge still shows on each card.
       const pa = a.status === "pending" ? 0 : 1;
       const pb = b.status === "pending" ? 0 : 1;
       if (pa !== pb) return pa - pb;
-      const u = (URGENCY_RANK[a.urgency] ?? 2) - (URGENCY_RANK[b.urgency] ?? 2);
-      if (pa === 0 && u !== 0) return u;
       return String(b.createdAt || "").localeCompare(String(a.createdAt || ""));
     });
 
   // Collapse each contested item's pending requests into one card, placed where
-  // its first (most urgent) request would have been.
+  // its newest request would have been.
   const entries = [];
   const groups = {};
   visible.forEach((r) => {
