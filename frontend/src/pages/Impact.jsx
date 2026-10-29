@@ -6,7 +6,6 @@ import ProgressRing from "../components/ProgressRing.jsx";
 import {
   IconLeafBullet,
   IconForkKnife,
-  IconStatCO2,
   IconCommunity,
   IconDonations,
   IconStatStore,
@@ -16,8 +15,6 @@ import {
 } from "../components/Icons.jsx";
 
 const MEALS_PER_KG = 2;
-// Same factor DashboardService uses for the donor/admin CO2 figure.
-const CO2_KG_PER_KG_FOOD = 2.5;
 
 function BeneficiaryImpact({ user }) {
   const [tickets, setTickets] = useState([]);
@@ -29,15 +26,13 @@ function BeneficiaryImpact({ user }) {
   }, [user.id]);
 
   const collectedTickets = tickets.filter((t) => t.status === "collected");
-  const readyForPickup = tickets.filter((t) => t.status === "pending");
   const pendingRequests = requests.filter((r) => r.status === "pending");
   const collectedKg = Math.round(collectedTickets.reduce((sum, t) => sum + (t.quantityKg || 0), 0) * 10) / 10;
   const mealsReceived = Math.round(collectedKg * MEALS_PER_KG);
   const peopleFed = Math.round(mealsReceived / 3);
   // Farms take expired stock for feed and compost, so meals and people fed
-  // would be the wrong story - they divert waste and the emissions it causes.
+  // would be the wrong story - they divert waste from landfill.
   const isFarm = user.role === "farm";
-  const co2Avoided = Math.round(collectedKg * CO2_KG_PER_KG_FOOD * 10) / 10;
 
   return (
     <div className="dashboard-container">
@@ -50,17 +45,14 @@ function BeneficiaryImpact({ user }) {
         </p>
       </div>
 
-      <div className="grid-4 stats-grid">
+      <div className={`grid-4 stats-grid ${isFarm ? "stats-grid-2" : "stats-grid-3"}`}>
         {isFarm ? (
           <StatMiniCard icon={<IconDonations size={28} color="var(--primary)" />} label="Diverted from Landfill" value={`${collectedKg} kg`} sub="Expired food collected to date" />
         ) : (
           <StatMiniCard icon={<IconForkKnife size={28} color="var(--primary)" />} label="Meals Received" value={mealsReceived} sub={`${collectedKg} kg collected to date`} />
         )}
         <StatMiniCard icon={<IconInbox size={28} color="var(--primary)" />} label="Pending Requests" value={pendingRequests.length} sub="Awaiting donor approval" />
-        <StatMiniCard icon={<IconTicket size={28} color="var(--primary)" />} label="Ready for Pickup" value={readyForPickup.length} sub="Active collection tickets" />
-        {isFarm ? (
-          <StatMiniCard icon={<IconStatCO2 size={28} color="var(--primary)" />} label="CO₂ Avoided" value={`${co2Avoided} kg`} sub="Estimated from food diverted" />
-        ) : (
+        {!isFarm && (
           <StatMiniCard icon={<IconStatPeople size={28} color="var(--primary)" />} label="People Fed" value={peopleFed} sub="Estimated from meals collected" />
         )}
       </div>
@@ -160,26 +152,6 @@ export default function Impact() {
                 </p>
               </div>
             </div>
-            <div className="impact-mini-grid impact-mini-grid--2">
-              <div className="impact-mini-card">
-                <div className="impact-icon-badge">
-                  <IconForkKnife size={17} color="var(--primary)" />
-                </div>
-                <div className="impact-mini-info">
-                  <div className="val">{dash.impact.mealsProvided || 1040}</div>
-                  <div className="lbl">Meals Provided</div>
-                </div>
-              </div>
-              <div className="impact-mini-card">
-                <div className="impact-icon-badge">
-                  <IconCommunity size={17} color="var(--primary)" />
-                </div>
-                <div className="impact-mini-info">
-                  <div className="val">{dash.impact.communitiesHelped || 5}</div>
-                  <div className="lbl">Communities</div>
-                </div>
-              </div>
-            </div>
           </div>
 
           <div className="card rounded-2xl shadow-sm border border-slate-100 p-5 sm:p-6">
@@ -194,28 +166,14 @@ export default function Impact() {
               </span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-              <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3.5 flex flex-col gap-2.5">
-                <div className="w-9 h-9 rounded-lg bg-blue-100 flex items-center justify-center">
-                  <IconDonations size={18} color="var(--status-info-fg)" />
-                </div>
-                <div>
-                  <div className="text-[10.5px] font-semibold uppercase tracking-wide text-slate-500">
-                    Total Donations
-                  </div>
-                  <div className="text-2xl font-bold text-gray-900 mt-0.5">
-                    {dash.stats.totalDonations}
-                  </div>
-                </div>
-              </div>
-
+            <div className="grid grid-cols-2 gap-3">
               <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3.5 flex flex-col gap-2.5">
                 <div className="w-9 h-9 rounded-lg bg-emerald-100 flex items-center justify-center">
                   <IconForkKnife size={18} color="var(--status-ok-fg)" />
                 </div>
                 <div>
                   <div className="text-[10.5px] font-semibold uppercase tracking-wide text-slate-500">
-                    Food Donated
+                    Food Listed
                   </div>
                   <div className="text-2xl font-bold text-gray-900 mt-0.5">
                     {dash.stats.totalFoodKg}
@@ -224,21 +182,8 @@ export default function Impact() {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3.5 flex flex-col gap-2.5">
-                <div className="w-9 h-9 rounded-lg bg-violet-100 flex items-center justify-center">
-                  <IconCommunity size={18} color="var(--status-violet-fg)" />
-                </div>
-                <div>
-                  <div className="text-[10.5px] font-semibold uppercase tracking-wide text-slate-500">
-                    People Helped
-                  </div>
-                  <div className="text-2xl font-bold text-gray-900 mt-0.5">
-                    {dash.stats.peopleHelped}
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-teal-100 bg-teal-50/50 p-3.5 flex flex-col gap-2.5 relative">
+              {/* slate, not teal: only slate/emerald follow the dark theme (tailwind.config.js). */}
+              <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3.5 flex flex-col gap-2.5 relative">
                 <span className="absolute top-3 right-3 text-[9.5px] font-semibold uppercase tracking-wide text-teal-700 bg-teal-100 px-1.5 py-0.5 rounded-full">
                   Active
                 </span>
@@ -251,23 +196,6 @@ export default function Impact() {
                   </div>
                   <div className="text-2xl font-bold text-gray-900 mt-0.5">
                     {dash.activeListings}
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-3.5 flex flex-col gap-2.5 relative">
-                <span className="absolute top-3 right-3 text-[9.5px] font-semibold uppercase tracking-wide text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-full">
-                  Pending
-                </span>
-                <div className="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center">
-                  <IconInbox size={18} color="var(--status-warn-fg)" />
-                </div>
-                <div>
-                  <div className="text-[10.5px] font-semibold uppercase tracking-wide text-slate-500">
-                    Pending Requests
-                  </div>
-                  <div className="text-2xl font-bold text-gray-900 mt-0.5">
-                    {dash.pendingRequests}
                   </div>
                 </div>
               </div>

@@ -149,7 +149,16 @@ public class DonationService {
                 .toList();
     }
 
+    /** A donor an admin has blocked can't add stock, by hand or by CSV. */
+    private void ensureNotBlocked(String donorId) {
+        if (donorId == null) return;
+        userRepository.findById(donorId).filter(User::isBlocked).ifPresent(u -> {
+            throw new IllegalStateException("Your account has been blocked by an administrator, so you can't list food.");
+        });
+    }
+
     public Donation create(Donation donation) {
+        ensureNotBlocked(donation.getDonorId());
         donation.setUnit(DonationUnits.normalize(donation.getUnit()));
         if (donation.getQuantityKg() == null || donation.getQuantityKg() <= 0) {
             throw new IllegalArgumentException("Enter a quantity greater than zero.");
@@ -202,6 +211,7 @@ public class DonationService {
      * suggestion, for the donor to confirm through importReviewedRows.
      */
     public UploadResult bulkUpload(String donorId, MultipartFile file) throws IOException {
+        ensureNotBlocked(donorId);
         List<Donation> created = new ArrayList<>();
         List<CategoryCorrection> corrections = new ArrayList<>();
         List<CategoryReview> review = new ArrayList<>();
@@ -282,6 +292,7 @@ public class DonationService {
      */
     public UploadResult importReviewedRows(String donorId, List<UploadConfirmRequestDTO.Row> rows) {
         if (rows == null || rows.isEmpty()) throw new IllegalArgumentException("No rows to import.");
+        ensureNotBlocked(donorId);
         Donation donorLocation = donorLocation(donorId);
         List<Donation> created = new ArrayList<>();
         long freshSkipped = 0;

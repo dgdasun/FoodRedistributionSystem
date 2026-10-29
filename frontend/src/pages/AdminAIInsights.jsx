@@ -341,18 +341,21 @@ function SupplyDemand({ capacity }) {
         Capacity is the daily intake of {capacity.organizations} verified NGO{capacity.organizations === 1 ? "" : "s"}, as
         each one entered it when registering.
       </p>
-      <table className="sr-only">
-        <caption>Expected surplus per day against daily NGO capacity of {cap} kg</caption>
-        <tbody>
-          {data.map((d) => (
-            <tr key={d.date}>
-              <th scope="row">{d.label}</th>
-              <td>{d.surplusKg} kg</td>
-              <td>{d.shortfallKg > 0 ? `${d.shortfallKg} kg over capacity` : "within capacity"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {/* Tables ignore width/overflow, so the clipping wrapper keeps this off-screen table from widening the page. */}
+      <div className="sr-only">
+        <table>
+          <caption>Expected surplus per day against daily NGO capacity of {cap} kg</caption>
+          <tbody>
+            {data.map((d) => (
+              <tr key={d.date}>
+                <th scope="row">{d.label}</th>
+                <td>{d.surplusKg} kg</td>
+                <td>{d.shortfallKg > 0 ? `${d.shortfallKg} kg over capacity` : "within capacity"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

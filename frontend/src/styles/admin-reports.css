@@ -127,7 +127,7 @@
 /* Secondary numbers */
 .rp-mini {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   margin-bottom: 20px;
 }
@@ -234,10 +234,10 @@
 @media (max-width: 900px) {
   .rp-custom { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .rp-generate { grid-column: 1 / -1; justify-content: center; }
-  .rp-mini { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 620px) {
   .rp-custom { grid-template-columns: 1fr; }
+  .rp-mini { grid-template-columns: 1fr; }
   .rp-cover { padding: 20px 16px; }
   .rp-cover-actions { width: 100%; }
   .rp-cover-btn.primary { flex: 1; }

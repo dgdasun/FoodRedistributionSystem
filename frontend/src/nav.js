@@ -69,16 +69,15 @@ export function navItemsFor(user) {
 }
 
 /**
- * At most five tabs for the mobile bar - past that the targets get too narrow
- * to hit reliably. Profile is pinned to the last slot when the role has one,
- * because "my account" is where people expect the right-hand tab to go; the
- * remaining slots are filled from the top of the sidebar order.
+ * Splits the destinations for the mobile bar: four tabs from the top of the
+ * sidebar order, and everything else (Profile included - the topbar avatar
+ * also opens it) behind a fifth "More" tab. Past five tabs the targets get too
+ * narrow to hit, and the sidebar is hidden on phones, so whatever isn't a tab
+ * must be in `more` or it becomes unreachable.
  */
 export function bottomNavItemsFor(user) {
-  const items = navItemsFor(user).filter((i) => i.mobileTab !== false);
-  if (items.length <= 5) return items;
-
-  const profile = items.find((i) => i.to === "/profile");
-  if (!profile) return items.slice(0, 5);
-  return [...items.filter((i) => i.to !== "/profile").slice(0, 4), profile];
+  const items = navItemsFor(user);
+  const tabs = items.filter((i) => i.mobileTab !== false && i.to !== "/profile").slice(0, 4);
+  const more = items.filter((i) => !tabs.includes(i));
+  return { tabs, more };
 }

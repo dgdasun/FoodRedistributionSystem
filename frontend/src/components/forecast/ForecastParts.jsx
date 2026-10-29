@@ -369,23 +369,26 @@ export function ForecastStackedChart({ forecast, height = 300 }) {
           ))}
         </BarChart>
       </ResponsiveContainer>
-      <table className="sr-only">
-        <caption>Forecast surplus per day and category, kg</caption>
-        <thead>
-          <tr>
-            <th scope="col">Day</th>
-            {cats.map((c) => <th scope="col" key={c}>{c}</th>)}
-          </tr>
-        </thead>
-        <tbody>
-          {data.map((d) => (
-            <tr key={d.label}>
-              <th scope="row">{d.label}</th>
-              {cats.map((c) => <td key={c}>{d[c]}</td>)}
+      {/* Tables ignore width/overflow, so the clipping wrapper keeps this off-screen table from widening the page. */}
+      <div className="sr-only">
+        <table>
+          <caption>Forecast surplus per day and category, kg</caption>
+          <thead>
+            <tr>
+              <th scope="col">Day</th>
+              {cats.map((c) => <th scope="col" key={c}>{c}</th>)}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {data.map((d) => (
+              <tr key={d.label}>
+                <th scope="row">{d.label}</th>
+                {cats.map((c) => <td key={c}>{d[c]}</td>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

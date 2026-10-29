@@ -270,29 +270,6 @@
 .ad-cat-head strong { color: var(--text-dark); }
 .ad-cat-main em { display: block; margin-top: 5px; font-style: normal; font-size: 11.5px; color: var(--text-light); }
 
-/* Waste outcome */
-.ad-outcome {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 20px;
-}
-.ad-outcome-stat {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 14px 16px;
-  border-radius: 16px;
-  border-left: 4px solid var(--border);
-  background: var(--surface-sunken);
-}
-.ad-outcome-stat > span { font-size: 12px; font-weight: 600; color: var(--text-mid); }
-.ad-outcome-stat strong { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; color: var(--text-dark); }
-.ad-ok { border-left-color: var(--status-ok-fg); }
-.ad-warn { border-left-color: var(--status-warn-fg); }
-.ad-danger { border-left-color: var(--status-danger-fg); }
-.ad-outcome-bars { display: grid; gap: 22px; }
-
 /* All food donated - one tile per unit. */
 .ad-donated {
   display: grid;
@@ -332,7 +309,6 @@
 @media (max-width: 1100px) {
   .ad-unit-charts { grid-template-columns: 1fr; }
 }
-.ad-outcome-label { margin-bottom: 8px; font-size: 13px; font-weight: 600; color: var(--text-mid); }
 
 /* ---------- Responsive ---------- */
 @media (max-width: 1200px) {
@@ -346,6 +322,5 @@
   .ad-hero { padding: 22px 16px 18px; border-radius: 22px; }
   .ad-hero-kpis strong { font-size: 21px; }
   .ad-attention { grid-template-columns: 1fr; }
-  .ad-outcome { grid-template-columns: 1fr; }
   .ad-quick-btn { flex: 1 1 calc(50% - 8px); justify-content: center; }
 }

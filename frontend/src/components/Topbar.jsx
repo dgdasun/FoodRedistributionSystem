@@ -11,7 +11,15 @@ import { navItemsFor } from "../nav.js";
 import { avatarUrl } from "../avatar.js";
 import "../styles/notifications.css";
 
-const EXTRA_TITLES = { "/help": "Help & Support", "/profile": "Profile", "/browse": "Available Food" };
+// Pages a role can open without having them in its own nav (admins reach
+// Impact from the dashboard, for instance).
+const EXTRA_TITLES = {
+  "/help": "Help & Support",
+  "/profile": "Profile",
+  "/browse": "Available Food",
+  "/impact": "Impact",
+  "/forecast": "Food Forecast",
+};
 const MAX_SHOWN = 20;
 const POLL_INTERVAL_MS = 30_000;
 
@@ -28,6 +36,23 @@ const TYPE_META = {
   verification: { Icon: ShieldCheck, title: "Verification" },
   system: { Icon: Bell, title: "Notification" },
 };
+
+// Where clicking a notification takes you. Notifications carry no link, so the
+// page comes from the type and the viewer's role (donors and beneficiaries keep
+// their requests on different pages).
+function targetFor(type, role) {
+  const receiver = role === "beneficiary" || role === "farm";
+  switch (type) {
+    case "request": return receiver ? "/my-requests" : role === "donor" ? "/requests" : null;
+    case "ticket": return receiver ? "/tickets" : role === "donor" ? "/pickups" : null;
+    case "verification": return role === "admin" ? "/admin/beneficiaries" : "/profile";
+    // Expiry alerts are raised on the donor's own listings.
+    case "urgent":
+    case "warning":
+    case "info": return role === "donor" ? "/donations" : null;
+    default: return null;
+  }
+}
 
 const metaFor = (type) => (TYPE_META[type] ? { key: type, ...TYPE_META[type] } : { key: "system", ...TYPE_META.system });
 
@@ -113,6 +138,14 @@ export default function Topbar() {
     api.patch(`/notifications/${item.id}/read`, {}).catch(() => {});
   };
 
+  const openNotification = (item) => {
+    markOneRead(item);
+    const to = targetFor(item.type, user?.role);
+    if (!to) return;
+    setOpen(false);
+    navigate(to);
+  };
+
   // Opening the panel only shows the notifications; they stay unread until the
   // user clicks one or hits "Mark all read" (which is why that button exists).
   const wrapRef = useRef(null);
@@ -141,7 +174,7 @@ export default function Topbar() {
     const title = n.title || meta.title;
     const isNew = !n.read;
     return (
-      <button key={n.id} type="button" className={`notif-item${isNew ? " is-new" : ""}`} onClick={() => markOneRead(n)}>
+      <button key={n.id} type="button" className={`notif-item${isNew ? " is-new" : ""}`} onClick={() => openNotification(n)}>
         <span className={`notif-icon t-${meta.key}`}>
           <meta.Icon size={17} strokeWidth={2.2} />
         </span>

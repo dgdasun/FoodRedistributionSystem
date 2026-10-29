@@ -66,6 +66,14 @@ function timeAgo(value) {
   return new Date(t).toLocaleDateString(undefined, { day: "numeric", month: "short" });
 }
 
+// Exact moment a request came in, e.g. "Oct 28, 10:12 PM".
+function formatStamp(value) {
+  if (!value) return null;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleString(undefined, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+}
+
 function formatKg(kg) {
   const n = Number(kg) || 0;
   return Number.isInteger(n) ? n : n.toFixed(1);
@@ -78,6 +86,7 @@ function RequestCard({ request: r, onOpen }) {
   const name = r.beneficiary?.organizationName || r.beneficiary?.name || "Unknown requester";
   const isFarm = typeOf(r) === "farm";
   const ago = timeAgo(r.createdAt);
+  const stamp = formatStamp(r.createdAt);
   // Pending cards are coloured by urgency (what to act on first); decided ones by outcome.
   const stripTone = isPending ? URGENCY_TONE[urgency] : status.tone;
 
@@ -127,10 +136,11 @@ function RequestCard({ request: r, onOpen }) {
             {r.distanceKm} km away
           </span>
         )}
-        {ago && (
-          <span>
+        {stamp && (
+          <span title={`Requested ${stamp}`}>
             <IconClock size={14} color="currentColor" />
-            {ago}
+            {stamp}
+            {ago && ` · ${ago}`}
           </span>
         )}
       </div>
@@ -214,6 +224,12 @@ function ContestedItemCard({ group, ranking, onOpenAI, onOpenRequest }) {
                     {r.distanceKm != null && <span>{r.distanceKm} km</span>}
                     {typeOf(r) === "farm" && <span>Farm</span>}
                   </span>
+                  {formatStamp(r.createdAt) && (
+                    <span className="fr-subreq-time">
+                      <IconClock size={12} color="currentColor" />
+                      Requested {formatStamp(r.createdAt)}
+                    </span>
+                  )}
                 </span>
                 {rk && <span className="fr-subreq-score">{matchPercent(rk.score)}%</span>}
               </button>

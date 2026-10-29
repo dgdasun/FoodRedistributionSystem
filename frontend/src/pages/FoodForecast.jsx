@@ -291,6 +291,8 @@ function ExpiringSoon({ live }) {
   for (const d of live.data?.donations || []) {
     // Only food still in the donor's hands: not expired, not already claimed or handed over.
     if (!d.expiryDate || ["expired", "collected", "reserved"].includes(d.status)) continue;
+    // Fully requested away - nothing left to list.
+    if (!(Number(d.quantityKg) > 0)) continue;
     const ms = expiresAt(d.expiryDate) - now;
     if (ms <= 0) continue;
     const ahead = Math.round((new Date(`${d.expiryDate}T00:00:00`) - today) / DAY_MS);

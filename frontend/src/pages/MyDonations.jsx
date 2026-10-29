@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../AuthContext.jsx";
 import { api } from "../api.js";
 import { useToast } from "../components/Toast.jsx";
-import { Link } from "react-router-dom";
+
 import {
   ChevronDown, Plus, Upload, Download, X, MapPin, Package, Search, CheckCircle2, AlertTriangle,
   Loader2, PackageOpen,
@@ -11,7 +11,7 @@ import DonationTimeline from "../components/DonationTimeline.jsx";
 import Pagination from "../components/Pagination.jsx";
 import StatCard from "../components/StatCard.jsx";
 import { Stagger } from "../components/motion/Motion.jsx";
-import { IconDonations, IconSparkle, IconShieldCheck, IconWeight } from "../components/Icons.jsx";
+import { IconDonations, IconSparkle } from "../components/Icons.jsx";
 import { imageFor } from "../foodImages.js";
 import { UNITS, PACK_UNITS, unitOf, packText, packTotal } from "../units.js";
 import "../styles/food-requests.css";
@@ -23,7 +23,6 @@ const TABS = [
   { key: "all", label: "All" },
   { key: "surplus", label: "Surplus" },
   { key: "expired", label: "Expired" },
-  { key: "collected", label: "Collected" },
 ];
 
 const SORTS = [
@@ -58,6 +57,16 @@ function expiryInfo(d) {
 function formatDate(iso) {
   const d = new Date(`${iso}T00:00:00`);
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+}
+
+// createdAt is a full timestamp, so the listing shows when it was added down to the minute.
+function addedAt(stamp) {
+  const d = stamp ? new Date(stamp) : null;
+  if (!d || Number.isNaN(d.getTime())) return null;
+  return {
+    date: d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }),
+    time: d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
+  };
 }
 
 function AddItemModal({ user, onCreated, onClose }) {
@@ -255,7 +264,6 @@ function AddItemModal({ user, onCreated, onClose }) {
                 <span>Pickup location</span>
                 <strong>{donorPickup || "No location on your profile yet"}</strong>
               </div>
-              <Link to="/profile" className="dn-link">Change</Link>
             </div>
 
             {error && <p className="dn-error">{error}</p>}
@@ -413,29 +421,25 @@ export default function MyDonations() {
 
   const all = donations || [];
   const loading = donations === null;
+  // Once every unit is given out a listing drops off the list (Pickup History
+  // keeps the record of what was handed over).
+  const visibleIn = (d, t) => Number(d.quantityKg) > 0 && (t === "all" || d.status === t);
 
   const counts = useMemo(() => {
-    const c = { all: all.length };
-    all.forEach((d) => { c[d.status] = (c[d.status] || 0) + 1; });
+    const c = {};
+    TABS.forEach((t) => { c[t.key] = all.filter((d) => visibleIn(d, t.key)).length; });
     return c;
   }, [all]);
 
   const stats = useMemo(() => ({
-    published: all.filter((d) => d.published && d.status !== "expired" && d.status !== "collected").length,
-    // One total per unit: kilograms, liters and packets don't add up together.
-    live: UNITS.reduce((acc, u) => {
-      acc[u.key] = all
-        .filter((d) => d.status === "surplus" && unitOf(d).key === u.key)
-        .reduce((s, d) => s + (Number(d.quantityKg) || 0), 0);
-      return acc;
-    }, {}),
+    published: all.filter((d) => d.published && Number(d.quantityKg) > 0 && d.status !== "expired" && d.status !== "collected").length,
   }), [all]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const sortDef = SORTS.find((s) => s.key === sort) || SORTS[0];
     return all
-      .filter((d) => tab === "all" || d.status === tab)
+      .filter((d) => visibleIn(d, tab))
       .filter((d) => !q || [d.name, d.category, d.batchNumber].filter(Boolean).some((f) => f.toLowerCase().includes(q)))
       .sort(sortDef.cmp);
   }, [all, tab, query, sort]);
@@ -538,11 +542,11 @@ export default function MyDonations() {
         </div>
       </div>
 
-      <Stagger className="grid-4 stats-grid">
+      <Stagger className="grid-4 stats-grid stats-grid-2">
         <StatCard
           icon={<IconDonations size={26} color="var(--primary)" />}
           label="Total listings"
-          value={dash(counts.all || 0)}
+          value={dash(all.length)}
           sub="Everything you've added"
         />
         <StatCard
@@ -551,19 +555,6 @@ export default function MyDonations() {
           label="Surplus"
           value={dash(counts.surplus || 0)}
           sub={`${stats.published} live for NGOs`}
-        />
-        <StatCard
-          icon={<IconWeight size={26} color="var(--primary)" />}
-          label="Surplus in stock"
-          value={dash(Math.round(stats.live.kg * 10) / 10)}
-          unit="KG"
-          sub={`${Math.round(stats.live.liters * 10) / 10} L · ${stats.live.items} items/packets`}
-        />
-        <StatCard
-          icon={<IconShieldCheck size={26} color="var(--status-ok-fg)" />}
-          label="Collected"
-          value={dash(counts.collected || 0)}
-          sub={`${counts.expired || 0} expired → farms`}
         />
       </Stagger>
 
@@ -642,6 +633,7 @@ export default function MyDonations() {
         <div className="dn-list" role="table" aria-label="Your donations">
           <div className="dn-row dn-row-head" role="row">
             <span role="columnheader">Product</span>
+            <span role="columnheader">Added</span>
             <span role="columnheader">Quantity</span>
             <span role="columnheader">Expiry</span>
             <span role="columnheader">Status</span>
@@ -658,12 +650,14 @@ export default function MyDonations() {
                 <span className="dn-skel" />
                 <span className="dn-skel" />
                 <span className="dn-skel" />
+                <span className="dn-skel" />
               </div>
             ))}
 
           {!loading &&
             paged.map((d) => {
               const exp = expiryInfo(d);
+              const added = addedAt(d.createdAt);
               const open = trackingId === d.id;
               return (
                 <div key={d.id} className={open ? "dn-item open" : "dn-item"}>
@@ -677,6 +671,16 @@ export default function MyDonations() {
                           {d.batchNumber && <> · <code>{d.batchNumber}</code></>}
                         </span>
                       </div>
+                    </div>
+                    <div className="dn-added" role="cell">
+                      {added ? (
+                        <>
+                          <strong>{added.date}</strong>
+                          <span>{added.time}</span>
+                        </>
+                      ) : (
+                        <span>—</span>
+                      )}
                     </div>
                     <div className="dn-qty" role="cell">
                       <Package size={14} />

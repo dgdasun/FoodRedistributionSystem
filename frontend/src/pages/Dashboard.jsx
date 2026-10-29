@@ -8,19 +8,17 @@ import VerificationUpload from "../components/VerificationUpload.jsx";
 import BeneficiaryVerificationUpload from "../components/BeneficiaryVerificationUpload.jsx";
 import VerificationApprovedBanner from "../components/VerificationApprovedBanner.jsx";
 import LottieState from "../components/LottieState.jsx";
-import { HorizontalBarChart, ProportionBar, StatusDonut, useChartPalette } from "../components/charts/ChartKit.jsx";
+import { HorizontalBarChart, StatusDonut, useChartPalette } from "../components/charts/ChartKit.jsx";
 import { CountUp, FadeIn, GrowBar, Stagger, StaggerItem } from "../components/motion/Motion.jsx";
 import { useLiveData } from "../hooks/useLiveData.js";
 import LiveBadge from "../components/LiveBadge.jsx";
 import ForecastSummaryCard from "../components/ForecastSummaryCard.jsx";
 import AdminInsightsCard from "../components/AdminInsightsCard.jsx";
 import Section from "../components/Section.jsx";
-import { UNITS } from "../units.js";
+import { UNITS, formatQty } from "../units.js";
 import {
   IconLeafBullet,
   IconFloatingLeaf,
-  IconStatStore,
-  IconStatBowl,
   IconStatPeople,
   IconForkKnife,
   IconTrashCan,
@@ -68,6 +66,17 @@ function breakdown(parts) {
 
 const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 
+// The donor overview sends each recent listing's real state; COMPLETED and
+// SCHEDULED come from its ticket, the rest are the listing's own status.
+const RECENT_STATUS = {
+  COMPLETED: { tone: "collected", label: "Collected" },
+  SCHEDULED: { tone: "approved", label: "Pickup scheduled" },
+  SURPLUS: { tone: "surplus", label: "Surplus" },
+  EXPIRED: { tone: "expired", label: "Expired" },
+  RESERVED: { tone: "reserved", label: "Reserved" },
+  COLLECTED: { tone: "collected", label: "Collected" },
+};
+
 function DonorDashboard({ user }) {
   const { data, error, lastUpdated, isRefreshing, refresh } = useLiveData(`/dashboard/${user.id}`);
 
@@ -107,29 +116,6 @@ function DonorDashboard({ user }) {
       <VerificationApprovedBanner user={user} />
 
       {!user.verified && <VerificationUpload user={user} />}
-
-      {/* Stat Cards */}
-      <Stagger className="grid-4 stats-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
-        <StatCard
-          icon={<IconStatStore size={30} color="var(--primary)" />}
-          label="Total Donations"
-          value={stats.totalDonations}
-          sub="Batches donated"
-        />
-        <StatCard
-          icon={<IconStatBowl size={30} color="var(--primary)" />}
-          label="Total Food Donated"
-          value={stats.totalFoodKg}
-          unit="KG"
-          sub={`Equals ${stats.mealsEquivalent.toLocaleString()} meals`}
-        />
-        <StatCard
-          icon={<IconStatPeople size={30} color="var(--primary)" />}
-          label="People Helped"
-          value={stats.peopleHelped}
-          sub="Beneficiaries supported"
-        />
-      </Stagger>
 
       <Section title="Your impact" className="grid-2 cards-row" style={{ marginBottom: 0 }}>
         {/* Your Impact Card */}
@@ -216,13 +202,16 @@ function DonorDashboard({ user }) {
                 <div className="donation-info-styled">
                   <strong className="donation-name">{d.name}</strong>
                   <span className="donation-meta-text">
-                    {d.quantityKg} KG &bull; {d.pickupLocation || "Pickup location TBD"}
+                    {formatQty(d.quantityKg, d)} &bull; {d.pickupLocation || "Pickup location TBD"}
                   </span>
                   <span className="donation-date-text">
                     {new Date(d.createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
                   </span>
                 </div>
-                <span className="badge-completed">COMPLETED</span>
+                {(() => {
+                  const s = RECENT_STATUS[d.status] || { tone: String(d.status || "").toLowerCase(), label: d.status };
+                  return <span className={`badge-status ${s.tone}`}>{s.label}</span>;
+                })()}
               </div>
             ))}
           </div>
@@ -259,7 +248,7 @@ function DonorDashboard({ user }) {
                   <div className="pickup-meta-row">
                     <span className="pickup-meta-item">
                       <IconClock size={15} color="var(--primary)" />
-                      {nextPickup.pickupTime} &bull; {nextPickup.quantityKg} KG
+                      Collect by {nextPickup.time} &bull; {nextPickup.quantityKg} KG
                     </span>
                   </div>
                 </div>
@@ -294,7 +283,10 @@ function BeneficiaryDashboard({ user }) {
   const requests = requestsLive.data?.requests || [];
 
   const available = items.filter((i) => (user.role === "farm" ? i.status === "expired" : i.status !== "expired"));
-  const pendingTickets = tickets.filter((t) => t.status === "pending");
+  // A pending ticket whose collection window has closed is expired, not upcoming.
+  const pendingTickets = tickets.filter(
+    (t) => t.status === "pending" && (!t.expiresAt || new Date(t.expiresAt).getTime() > Date.now())
+  );
 
   return (
     <div className="dashboard-container">
@@ -322,7 +314,7 @@ function BeneficiaryDashboard({ user }) {
       {!user.verified &&
         (user.role === "beneficiary" ? <BeneficiaryVerificationUpload user={user} /> : <VerificationUpload user={user} />)}
 
-      <Stagger className="grid-4 stats-grid">
+      <Stagger className="grid-4 stats-grid stats-grid-3">
         <StatCard
           icon={<IconFoodPlate size={28} color="var(--primary)" />}
           label="Available Listings"
@@ -336,17 +328,13 @@ function BeneficiaryDashboard({ user }) {
           sub={`${requests.filter((r) => r.status === "pending").length} pending`}
         />
         <StatCard
-          icon={<IconTicket size={28} color="var(--primary)" />}
-          label="Active Tickets"
-          value={pendingTickets.length}
-          sub="Awaiting collection"
-        />
-        <StatCard
           icon={<IconStatPeople size={28} color="var(--primary)" />}
           label="Org Capacity"
-          value={user.handlingCapacityKg || 0}
-          unit="KG"
-          sub="Handling capacity"
+          // Accounts registered before the sign-up form asked for it have no
+          // figure; "0 KG" would read as "can take nothing".
+          value={user.handlingCapacityKg > 0 ? user.handlingCapacityKg : "—"}
+          unit={user.handlingCapacityKg > 0 ? "KG" : undefined}
+          sub={user.handlingCapacityKg > 0 ? "Food you can take per day" : "Not provided at sign-up"}
         />
       </Stagger>
 
@@ -373,7 +361,7 @@ function BeneficiaryDashboard({ user }) {
               <div className="donation-info-styled">
                 <strong className="donation-name">{d.name}</strong>
                 <span className="donation-meta-text">
-                  {d.quantityKg} KG &bull; {d.pickupLocation}
+                  {formatQty(d.quantityKg, d)} &bull; {d.pickupLocation}
                 </span>
               </div>
               <span className={`badge-status ${d.status}`}>{d.status}</span>
@@ -402,7 +390,7 @@ function BeneficiaryDashboard({ user }) {
               <div className="donation-info-styled">
                 <strong className="donation-name">{t.item?.name || "Surplus Collection"}</strong>
                 <span className="donation-meta-text">
-                  {t.quantityKg} KG &bull; {t.pickupDate} at {t.pickupTime}
+                  {formatQty(t.quantityKg, t.item)} &bull; collect by {t.pickupDate} {t.pickupTime}
                 </span>
               </div>
               <span className="badge-status pending">{t.status}</span>
@@ -480,14 +468,6 @@ function AdminDashboard({ user }) {
   const { STATUS } = useChartPalette();
   if (!data) return <div className="loading-wrap">Loading dashboard...</div>;
 
-  const foodOutcome = data.foodOutcome || {};
-  const savedKg = foodOutcome["Saved (Collected)"] || 0;
-  const wastedKg = foodOutcome["Wasted (Unclaimed Surplus)"] || 0;
-  const expiredKg = foodOutcome["Expired (Redirected to Compost/Farms)"] || 0;
-  const categories = data.categoryBreakdown || {};
-  const totalDonatedKg = Object.values(categories).reduce((a, b) => a + b, 0);
-  const activeKg = Math.max(0, Math.round((totalDonatedKg - expiredKg) * 10) / 10);
-
   const pendingCount = data.requestStatusBreakdown?.pending || 0;
   const approvedCount = data.requestStatusBreakdown?.approved || 0;
   const rejectedCount = data.requestStatusBreakdown?.rejected || 0;
@@ -502,14 +482,6 @@ function AdminDashboard({ user }) {
     { key: "pending", label: "Pending review", color: STATUS.warning, value: userStatuses.pending || 0 },
     { key: "rejected", label: "Rejected", color: STATUS.critical, value: userStatuses.rejected || 0 },
     { key: "active", label: "Active (admins)", color: STATUS.neutral, value: userStatuses.active || 0 },
-  ];
-  const surplusSegments = [
-    { key: "saved", label: "Saved", color: STATUS.good, value: savedKg },
-    { key: "wasted", label: "Wasted", color: STATUS.critical, value: wastedKg },
-  ];
-  const expiredSegments = [
-    { key: "active", label: "Rest of Donations", color: STATUS.good, value: activeKg },
-    { key: "expired", label: "Expired", color: STATUS.warning, value: expiredKg },
   ];
 
   // Each row is a queue someone has to work through; empty queues still show,
@@ -722,33 +694,6 @@ function AdminDashboard({ user }) {
             <span className="ad-chip">kg received</span>
           </div>
           <RankedBarList data={data.topOrganizations} />
-        </div>
-      </Section>
-
-      {/* Both splits answer "where did the food end up", so they live in one
-          card as two labelled rows instead of two half-empty ones. */}
-      <Section title="Waste outcome">
-        <div className="card ad-card">
-          <div className="ad-card-head">
-            <h3><span className="ad-card-icon"><IconTrashCan size={17} color="currentColor" /></span> Where the food ended up</h3>
-          </div>
-
-          <div className="ad-outcome">
-            <div className="ad-outcome-stat ad-ok"><span>Saved (collected)</span><strong>{formatKg(savedKg)} kg</strong></div>
-            <div className="ad-outcome-stat ad-warn"><span>Redirected to farms</span><strong>{formatKg(expiredKg)} kg</strong></div>
-            <div className="ad-outcome-stat ad-danger"><span>Wasted (unclaimed)</span><strong>{formatKg(wastedKg)} kg</strong></div>
-          </div>
-
-          <div className="ad-outcome-bars">
-            <div>
-              <div className="ad-outcome-label">Surplus outcome</div>
-              <ProportionBar segments={surplusSegments} unit="kg" emptyText="No surplus has been collected or written off yet." />
-            </div>
-            <div>
-              <div className="ad-outcome-label">Expired share of all donations</div>
-              <ProportionBar segments={expiredSegments} unit="kg" />
-            </div>
-          </div>
         </div>
       </Section>
     </div>

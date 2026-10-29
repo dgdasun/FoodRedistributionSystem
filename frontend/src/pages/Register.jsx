@@ -167,6 +167,7 @@ export default function Register() {
           password: v.password,
           organizationName: v.organizationName,
           organizationSize: Number(v.capacity) || 0,
+          handlingCapacityKg: Number(v.handlingCapacityKg) || 0,
           location: v.location,
           phone: v.phone,
           storageTypes: v.organizationCategory === "beneficiary" ? v.storageTypes : [],
@@ -222,7 +223,7 @@ export default function Register() {
                 "flex items-center gap-2.5 rounded-xl border-2 py-2.5 px-3 text-left transition-all",
                 isSelected
                   ? "border-emerald-600 bg-emerald-50/50 shadow-sm"
-                  : "border-slate-200 bg-white hover:border-emerald-300 hover:bg-emerald-50/30",
+                  : "border-slate-200 bg-[var(--surface)] hover:border-emerald-300 hover:bg-emerald-50/30",
               ].join(" ")}
             >
               <div

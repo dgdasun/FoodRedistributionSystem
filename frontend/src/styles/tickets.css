@@ -331,7 +331,9 @@
   .tk-actions .tk-btn { flex: 1; }
   .tk-qr { width: 112px; height: 112px; }
 }
-@media (max-width: 640px) {
+/* 900px rather than phone width: up to 900px the sidebar still takes ~300px,
+   so the card is phone-narrow and the side-by-side stub cuts the details off. */
+@media (max-width: 900px) {
   .tk-card { grid-template-columns: 1fr; }
   .tk-stub { flex-direction: row; justify-content: flex-start; gap: 14px; border-right: 0; border-bottom: 2px dashed var(--border); }
   .tk-stub::before, .tk-stub::after { top: auto; right: auto; bottom: -11px; }

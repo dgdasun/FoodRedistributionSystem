@@ -21,8 +21,6 @@ import {
   IconCalendar,
   IconWeight,
   IconTicket,
-  IconStatBowl,
-  IconStatCO2,
   IconStatStore,
   IconDocument,
 } from "../components/Icons.jsx";
@@ -303,18 +301,9 @@ function useRoleStats(user) {
     const done = (s) => !cancelled && setStats(s);
     const fail = () => !cancelled && setStats([]);
 
+    // Donors get no "Your impact" card on their profile, so there is nothing to load.
     if (user.role === "donor") {
-      api
-        .get(`/dashboard/${user.id}`)
-        .then(({ stats: s = {} }) =>
-          done([
-            { icon: <IconStatStore size={22} />, label: "Donations", value: formatNumber(s.totalDonations) },
-            { icon: <IconWeight size={20} />, label: "Food donated", value: `${formatNumber(s.totalFoodKg)} kg` },
-            { icon: <IconStatBowl size={22} />, label: "Meals provided", value: formatNumber(s.mealsEquivalent) },
-            { icon: <IconStatCO2 size={22} />, label: "CO₂ saved", value: `${formatNumber(s.co2SavedKg)} kg` },
-          ])
-        )
-        .catch(fail);
+      done([]);
     } else if (user.role === "beneficiary" || user.role === "farm") {
       Promise.all([api.get(`/requests?beneficiaryId=${user.id}`), api.get(`/tickets?beneficiaryId=${user.id}`)])
         .then(([r, t]) => {
@@ -456,6 +445,7 @@ export default function Profile() {
         </div>
 
         <aside className="pf-side">
+          {user.role !== "donor" && (
           <section className="card pf-card">
             <div className="pf-card-head">
               <h2>{isAdmin ? "Platform at a glance" : "Your impact"}</h2>
@@ -480,6 +470,7 @@ export default function Profile() {
               </div>
             )}
           </section>
+          )}
 
           {links.length > 0 && (
             <section className="card pf-card">

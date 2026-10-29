@@ -64,6 +64,12 @@ public class TicketService {
         if ("collected".equals(ticket.getStatus())) {
             throw new IllegalStateException("This ticket has already been marked as collected.");
         }
+        // Every screen shows a lapsed ticket as "Expired - not collected in
+        // time", so the scanner must not quietly accept it either.
+        if ("expired".equals(ticket.getStatus())
+                || (ticket.getExpiresAt() != null && ticket.getExpiresAt().isBefore(Instant.now()))) {
+            throw new IllegalStateException("This ticket's collection window has closed, so the pickup can't be confirmed.");
+        }
 
         ticket.setStatus("collected");
         ticket.setUpdatedAt(Instant.now());

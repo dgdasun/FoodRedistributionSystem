@@ -4,6 +4,7 @@ import { ArrowRight, ArrowUpRight } from "lucide-react";
 import Reveal from "../components/Reveal.jsx";
 import Chatbot from "../components/Chatbot.jsx";
 import Footer from "../components/Footer.jsx";
+import ThemeToggle from "../components/ThemeToggle.jsx";
 import { freshnessOf } from "../components/FreshnessMeter.jsx";
 import { api } from "../api.js";
 import { CATEGORY_IMAGE, imageFor } from "../foodImages.js";
@@ -77,7 +78,6 @@ const ROLES = [
 const STATS = [
   { Icon: IconStatStore, value: "500+", label: "kg redistributed" },
   { Icon: IconStatBowl, value: "1,000+", label: "meals provided" },
-  { Icon: IconStatCO2, value: "120+", label: "kg CO₂ saved" },
   { Icon: IconStatPeople, value: "5+", label: "communities helped" },
 ];
 
@@ -161,6 +161,7 @@ export default function Home() {
             <Link to="/browse">Available Food</Link>
           </div>
           <div className="home-nav-cta">
+            <ThemeToggle />
             <Link to="/login" className="home-btn home-btn-ghost">Log in</Link>
             <Link to="/register" className="home-btn home-btn-primary">Get Started</Link>
           </div>
