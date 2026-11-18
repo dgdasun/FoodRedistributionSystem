@@ -15,13 +15,13 @@ import {
   Store,
   TrendingUp,
 } from "lucide-react";
-import { useAuth } from "../AuthContext.jsx";
-import { api } from "../api.js";
-import { ruleFor } from "../alertEngine.js";
-import { useLiveData } from "../hooks/useLiveData.js";
-import { useToast } from "../components/Toast.jsx";
-import { SkeletonLine } from "../components/Skeleton.jsx";
-import { CountUp, FadeIn, GrowBar, Stagger, StaggerItem, motion } from "../components/motion/Motion.jsx";
+import { useAuth } from "../../AuthContext.jsx";
+import { api } from "../../api.js";
+import { ruleFor } from "../../alertEngine.js";
+import { useLiveData } from "../../hooks/useLiveData.js";
+import { useToast } from "../Toast.jsx";
+import { SkeletonLine } from "../Skeleton.jsx";
+import { CountUp, FadeIn, GrowBar, Stagger, StaggerItem, motion } from "../motion/Motion.jsx";
 import {
   buildForecast,
   dayName,
@@ -31,9 +31,9 @@ import {
   isoLocal,
   Toggle,
   urgencyFor,
-} from "../components/forecast/ForecastParts.jsx";
-import { formatQty } from "../units.js";
-import "../styles/forecast.css";
+} from "./ForecastParts.jsx";
+import { formatQty } from "../../units.js";
+import "../../styles/forecast.css";
 
 const RANGES = [
   { value: 7, label: "7 days" },
@@ -45,14 +45,15 @@ const weekday = (iso) => new Date(`${iso}T00:00:00`).toLocaleDateString("en-US",
 const kg = (v) => `${Math.round(v).toLocaleString()} kg`;
 
 /**
- * Food Forecast for donors, in plain words.
+ * Food Forecast for donors, in plain words. Shown as a section of the donor's
+ * Impact page (it used to be its own /forecast page).
  *
  * Two kinds of information sit on this page and are kept visibly apart:
  * "Expiring soon" is the donor's real stock (from /donations), while the
  * day cards and tips are estimates from the AI service (/ai/predict, this
  * donor's own history only) and carry an "AI estimate" label.
  */
-export default function FoodForecast() {
+export default function FoodForecastSection() {
   const { user } = useAuth();
   const [days, setDays] = useState(7);
   const forecastLive = useLiveData(`/ai/predict?daysAhead=${days}&donorId=${encodeURIComponent(user.id)}`, {
@@ -67,10 +68,13 @@ export default function FoodForecast() {
   const forecastFailed = !!forecastLive.error && !forecastLive.data;
 
   return (
-    <>
-      <div className="page-header ff-header">
+    <section id="food-forecast" className="ff-section">
+      <div className="ff-section-head ff-header">
         <div>
-          <h1>Food Forecast</h1>
+          <h2>
+            <span className="ff-section-icon"><Sparkles size={18} /></span>
+            Food Forecast
+          </h2>
           <p>What may go unsold in the coming days, and what to list first.</p>
         </div>
         <Toggle options={RANGES} value={days} onChange={setDays} label="How far ahead" />
@@ -137,7 +141,7 @@ export default function FoodForecast() {
       </FadeIn>
 
       <HowItWorks />
-    </>
+    </section>
   );
 }
 

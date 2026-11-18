@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { useAuth } from "../AuthContext.jsx";
 import { api } from "../api.js";
 import { imageFor } from "../foodImages.js";
@@ -7,9 +7,10 @@ import StatCard from "../components/StatCard.jsx";
 import LottieState from "../components/LottieState.jsx";
 import { SkeletonLine } from "../components/Skeleton.jsx";
 import { Stagger } from "../components/motion/Motion.jsx";
-import { IconInbox, IconWeight, IconMapPin, IconClock, IconShieldCheck, IconSparkle } from "../components/Icons.jsx";
+import { IconInbox, IconWeight, IconClock, IconShieldCheck, IconSparkle } from "../components/Icons.jsx";
 import { AIRecommendationPanel, matchPercent } from "../components/AIRecommendations.jsx";
 import { useAIRecommendations } from "../hooks/useAIRecommendations.js";
+import { useLiveData } from "../hooks/useLiveData.js";
 import RequestDetailModal from "../components/RequestDetailModal.jsx";
 import "../styles/food-requests.css";
 
@@ -130,12 +131,6 @@ function RequestCard({ request: r, onOpen }) {
       </div>
 
       <div className="fr-meta">
-        {r.distanceKm != null && (
-          <span>
-            <IconMapPin size={14} color="currentColor" />
-            {r.distanceKm} km away
-          </span>
-        )}
         {stamp && (
           <span title={`Requested ${stamp}`}>
             <IconClock size={14} color="currentColor" />
@@ -221,7 +216,6 @@ function ContestedItemCard({ group, ranking, onOpenAI, onOpenRequest }) {
                   <span className="fr-subreq-meta">
                     <strong>{formatKg(r.quantityKg)} kg</strong>
                     <span className={`fr-subreq-urg fr-pill-${URGENCY_TONE[urgency]}`}>{urgency}</span>
-                    {r.distanceKm != null && <span>{r.distanceKm} km</span>}
                     {typeOf(r) === "farm" && <span>Farm</span>}
                   </span>
                   {formatStamp(r.createdAt) && (
@@ -267,7 +261,6 @@ function LoadingCards() {
 /** Donor's "Food Requests" page: beneficiary and farm/compost requests together, reviewed through RequestDetailModal. */
 export default function Requests() {
   const { user } = useAuth();
-  const [all, setAll] = useState(null);
   const [tab, setTab] = useState(null); // null until data arrives: "To review" if anything waits, else "All"
   const [type, setType] = useState("all");
   const [query, setQuery] = useState("");
@@ -276,12 +269,11 @@ export default function Requests() {
   const [aiItemId, setAiItemId] = useState(null);
   const [selectedViaAI, setSelectedViaAI] = useState(false);
 
-  const load = () => api.get(`/requests?donorId=${user.id}`).then((d) => setAll(d.requests || []));
-
-  useEffect(() => {
-    load().catch(() => setAll([]));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user.id]);
+  // Polled so a new request (or one decided elsewhere) shows up without a reload;
+  // that is also what moves an item in or out of AI Smart Match.
+  const live = useLiveData(`/requests?donorId=${user.id}`, { intervalMs: 20000 });
+  const all = live.data ? live.data.requests || [] : live.error ? [] : null;
+  const load = live.refresh;
 
   const act = async (id, status, extra = {}) => {
     await api.patch(`/requests/${id}`, { status, ...extra });
@@ -302,10 +294,11 @@ export default function Requests() {
         return acc;
       }, {})
   );
-  // Closes itself once the item's last pending request is decided.
-  const aiItem = aiItems.find((i) => String(i.itemId) === String(aiItemId));
   // Items with competing requests: allocation for these goes through AI Smart Match only.
+  // A lone request has nothing to be ranked against, so it gets no AI matching at all.
   const contested = new Set(aiItems.filter((i) => i.pendingCount >= 2).map((i) => String(i.itemId)));
+  // Closes itself once the item is down to one pending request (or none).
+  const aiItem = aiItems.find((i) => String(i.itemId) === String(aiItemId) && contested.has(String(i.itemId)));
   const isContested = (r) => r.status === "pending" && contested.has(String(r.itemId));
 
   const aiPanelRef = useRef(null);
@@ -527,7 +520,8 @@ export default function Requests() {
           request={selected}
           onClose={() => setSelected(null)}
           onAct={act}
-          aiInsight={ai.insightFor(selected)}
+          aiInsight={isContested(selected) ? ai.insightFor(selected) : null}
+          soleRequest={selected.status === "pending" && !isContested(selected)}
           // A competing request opened from anywhere but the AI ranking is
           // view-only; the popup points back to AI Smart Match instead.
           onOpenAI={isContested(selected) && !selectedViaAI ? () => openAI(selected.itemId) : null}

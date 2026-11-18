@@ -64,7 +64,10 @@ public class RequestService {
             throw new IllegalStateException("You have already requested this item.");
         }
 
-        if ("expired".equals(item.getStatus()) && !"expired".equals(item.getListingType())) {
+        // Expired food goes to farms for feed and compost, never to NGOs for people.
+        // Decided on the item's status and the requester's role: listingType can
+        // still say "donation" on food that was listed fresh and expired later.
+        if ("expired".equals(item.getStatus()) && !"farm".equals(beneficiary.getRole())) {
             throw new IllegalArgumentException("This item has expired and is no longer available for human consumption.");
         }
         if (item.getQuantityKg() == null || item.getQuantityKg() <= 0) {

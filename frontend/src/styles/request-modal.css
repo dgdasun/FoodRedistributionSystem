@@ -125,7 +125,7 @@
   background: var(--status-ok-bg);
 }
 
-.rq-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.rq-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .rq-stat {
   display: flex;
   flex-direction: column;
@@ -263,7 +263,7 @@
 .rq-reject textarea { resize: vertical; }
 
 @media (max-width: 520px) {
-  .rq-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rq-stat strong { white-space: normal; }
   .rq-qty-row { flex-direction: column; align-items: stretch; }
   .rq-actions { grid-template-columns: 1fr; }
 }
@@ -271,3 +271,4 @@
 /* Competing request opened outside the AI ranking: view-only, points to AI Smart Match. */
 .rq-ai-only { display: flex; flex-direction: column; gap: 10px; }
 .rq-ai-only p { margin: 0; font-size: 13px; color: var(--text-mid); text-align: center; }
+.rq-sole-note { margin: 0; font-size: 12.5px; color: var(--text-mid); text-align: center; }

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useAuth } from "../AuthContext.jsx";
 import { api } from "../api.js";
 import AIForecastPanel from "../components/AIForecastPanel.jsx";
+import FoodForecastSection from "../components/forecast/FoodForecastSection.jsx";
 import ProgressRing from "../components/ProgressRing.jsx";
 import {
   IconLeafBullet,
@@ -204,9 +205,14 @@ export default function Impact() {
         </div>
       )}
 
-      <div style={{ marginTop: 10 }}>
-        <AIForecastPanel />
-      </div>
+      {/* Donors get the plain-words Food Forecast; admins keep the platform-wide model panel. */}
+      {user.role === "donor" ? (
+        <FoodForecastSection />
+      ) : (
+        <div style={{ marginTop: 10 }}>
+          <AIForecastPanel />
+        </div>
+      )}
 
     </div>
   );

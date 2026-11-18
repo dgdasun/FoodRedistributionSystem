@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Service
 public class DonationService {
@@ -130,13 +131,14 @@ public class DonationService {
             }
 
             String newStatus = ExpiryUtil.reListStatus(d.getExpiryDate(), threshold);
-            if (!newStatus.equals(d.getStatus())) {
+            // listingType is checked on its own too: rows saved as expired by
+            // create/upload never went through a status change here, so they
+            // kept "donation" and farms couldn't request them.
+            String newListingType = "expired".equals(newStatus) ? "expired"
+                    : "expired".equals(d.getListingType()) ? "donation" : d.getListingType();
+            if (!newStatus.equals(d.getStatus()) || !Objects.equals(newListingType, d.getListingType())) {
                 d.setStatus(newStatus);
-                if ("expired".equals(newStatus)) {
-                    d.setListingType("expired");
-                } else if ("expired".equals(d.getListingType())) {
-                    d.setListingType("donation");
-                }
+                d.setListingType(newListingType);
                 toSave.add(d);
             }
         }

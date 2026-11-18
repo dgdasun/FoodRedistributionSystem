@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { X, Package, Gauge, MapPin, CircleDot, ShieldCheck, Clock, Minus, Plus, Check, Ban, ArrowLeft, Sparkles } from "lucide-react";
+import { X, Package, Gauge, CircleDot, ShieldCheck, Clock, Minus, Plus, Check, Ban, ArrowLeft, Sparkles } from "lucide-react";
 import { avatarUrl } from "../avatar.js";
 import { AIInsightCard } from "./AIRecommendations.jsx";
 
@@ -19,7 +19,7 @@ const round1 = (n) => Math.round(n * 10) / 10;
  * Detail popup for one food request. Pending requests can be accepted in full,
  * partly (which sends a counter-offer), or declined with a reason.
  */
-export default function RequestDetailModal({ request, onClose, onAct, aiInsight, onOpenAI }) {
+export default function RequestDetailModal({ request, onClose, onAct, aiInsight, onOpenAI, soleRequest }) {
   const reduce = useReducedMotion();
   const beneficiary = request.beneficiary;
   const requested = request.quantityKg;
@@ -117,11 +117,6 @@ export default function RequestDetailModal({ request, onClose, onAct, aiInsight,
               <strong className={`rq-urgency rq-urgency-${urgency}`}>{urgency}</strong>
             </div>
             <div className="rq-stat">
-              <MapPin size={15} />
-              <span>Distance</span>
-              <strong>{request.distanceKm} km</strong>
-            </div>
-            <div className="rq-stat">
               <CircleDot size={15} />
               <span>Status</span>
               <strong className={`rq-status rq-status-${request.status}`}>{STATUS_LABEL[request.status] || request.status}</strong>
@@ -129,6 +124,11 @@ export default function RequestDetailModal({ request, onClose, onAct, aiInsight,
           </div>
 
           {isPending && <AIInsightCard insight={aiInsight} />}
+          {isPending && soleRequest && (
+            <p className="rq-sole-note">
+              Only one request so far - AI ranking appears when more organisations request this item.
+            </p>
+          )}
         </div>
 
         <footer className="rq-foot">
