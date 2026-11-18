@@ -1,0 +1,147 @@
+/* ---------- Food Forecast page (donor) ----------
+   Traffic lights reuse the app's status tokens, so both themes are covered:
+   red = --status-danger-*, amber = --status-warn-*, green = --status-ok-*.
+   Colour never stands alone - every badge also carries a word or an icon. */
+
+.ff-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+
+.ff-section { margin-top: 28px; }
+.ff-section-head { margin: 0 2px 12px; }
+.ff-section-head h2 {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  font-size: 18px; font-weight: 800; color: var(--text-dark); margin: 0;
+}
+.ff-section-head p { font-size: 13px; color: var(--text-mid); margin: 4px 0 0; }
+.ff-section-icon {
+  width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center;
+  background: var(--icon-chip); color: var(--primary);
+}
+.ff-estimate {
+  display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 999px;
+  font-size: 11px; font-weight: 700; letter-spacing: .02em;
+  background: var(--status-violet-bg); color: var(--status-violet-fg);
+}
+
+/* a) Summary banner */
+.ff-banner {
+  padding: 20px 22px; border-radius: var(--radius); border: 1px solid var(--sand);
+  background: linear-gradient(135deg, var(--sand-light), var(--surface));
+  box-shadow: var(--shadow-md);
+}
+.ff-banner-text { display: flex; gap: 10px; align-items: flex-start; font-size: 17px; font-weight: 600; line-height: 1.45; color: var(--text-dark); margin: 0 0 16px; }
+.ff-banner-text svg { flex-shrink: 0; margin-top: 4px; color: var(--primary); }
+.ff-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.ff-stat {
+  display: flex; flex-direction: column; gap: 4px; min-width: 0;
+  padding: 13px 15px; border-radius: var(--radius-sm); background: var(--surface); border: 1px solid var(--card-border);
+}
+.ff-stat-label { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--text-mid); }
+.ff-stat-label svg { color: var(--primary); flex-shrink: 0; }
+.ff-stat-value { font-size: 22px; font-weight: 800; color: var(--text-dark); font-variant-numeric: tabular-nums; }
+.ff-stat-value small { font-size: 13px; font-weight: 600; color: var(--text-mid); }
+.ff-stat-sub { font-size: 12px; color: var(--text-light); }
+
+/* shared states */
+.ff-state { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 26px 20px; color: var(--text-light); }
+.ff-state p { margin: 0; max-width: 460px; font-size: 14px; color: var(--text-mid); line-height: 1.5; }
+.ff-state-good svg { color: var(--status-ok-fg); }
+.ff-retry { display: inline-flex; align-items: center; gap: 6px; }
+
+/* b) Expiring soon */
+.ff-expiry { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: start; }
+.ff-col { border-top: 4px solid var(--ff-fg); padding: 14px; min-width: 0; }
+.ff-red { --ff-fg: var(--status-danger-fg); --ff-bg: var(--status-danger-bg); }
+.ff-amber { --ff-fg: var(--status-warn-fg); --ff-bg: var(--status-warn-bg); }
+.ff-green { --ff-fg: var(--status-ok-fg); --ff-bg: var(--status-ok-bg); }
+.ff-col-head { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 800; color: var(--text-dark); margin: 0 0 10px; }
+.ff-col-icon { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; background: var(--ff-bg); color: var(--ff-fg); }
+.ff-count { margin-left: auto; min-width: 24px; padding: 1px 8px; border-radius: 999px; text-align: center; font-size: 12px; background: var(--ff-bg); color: var(--ff-fg); }
+.ff-col-empty { font-size: 13px; color: var(--text-light); margin: 4px 0; }
+.ff-items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.ff-item {
+  display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 10px 12px; border-radius: var(--radius-sm); background: var(--sand-light); border: 1px solid var(--sand);
+}
+.ff-item-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ff-item-main strong { color: var(--text-dark); font-size: 14px; overflow-wrap: anywhere; }
+.ff-item-main span { font-size: 12px; color: var(--text-mid); }
+.ff-item-side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.ff-countdown { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; color: var(--ff-fg); white-space: nowrap; }
+.ff-live { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--status-ok-bg); color: var(--status-ok-fg); }
+.ff-list-btn { padding: 5px 12px; font-size: 12.5px; }
+
+/* c) Day cards */
+.ff-days {
+  display: grid; grid-template-columns: repeat(7, minmax(108px, 1fr)); gap: 10px;
+  overflow-x: auto; padding: 2px 2px 8px; scroll-snap-type: x mandatory;
+}
+.ff-days:has(> :nth-child(8)) { grid-template-columns: repeat(14, minmax(108px, 1fr)); }
+.ff-day {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 10px;
+  scroll-snap-align: start; cursor: pointer; font: inherit; color: inherit; text-align: center;
+  transition: border-color .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+.ff-day:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.ff-day.open, .ff-day:focus-visible { border-color: var(--primary); outline: none; box-shadow: 0 0 0 2px var(--primary); }
+.ff-day-name { font-size: 13px; font-weight: 800; color: var(--text-dark); text-transform: uppercase; letter-spacing: .05em; }
+.ff-day-date { font-size: 12px; color: var(--text-light); margin-top: -4px; }
+.ff-day-kg { font-size: 17px; font-weight: 800; color: var(--text-dark); font-variant-numeric: tabular-nums; }
+.ff-day-chev { color: var(--text-light); transition: transform .2s ease; }
+.ff-day.open .ff-day-chev { transform: rotate(180deg); }
+
+.ff-level {
+  display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px;
+  font-size: 11.5px; font-weight: 700; white-space: nowrap;
+}
+.ff-level-red { background: var(--status-danger-bg); color: var(--status-danger-fg); }
+.ff-level-amber { background: var(--status-warn-bg); color: var(--status-warn-fg); }
+.ff-level-green { background: var(--status-ok-bg); color: var(--status-ok-fg); }
+
+.ff-breakdown { margin-top: 12px; overflow: hidden; }
+.ff-breakdown h3 { font-size: 15px; font-weight: 800; color: var(--text-dark); margin: 0 0 12px; }
+.ff-breakdown ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+.ff-breakdown li { display: grid; grid-template-columns: 120px 1fr 64px; align-items: center; gap: 12px; }
+.ff-bd-name { font-size: 13px; font-weight: 600; color: var(--text-dark); }
+.ff-bd-kg { font-size: 13px; font-weight: 700; color: var(--text-dark); text-align: right; font-variant-numeric: tabular-nums; }
+
+/* d) Tips */
+.ff-tips { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.ff-tip { border-left: 4px solid var(--card-border); padding: 14px 16px; }
+.ff-tip-red { border-left-color: var(--status-danger-fg); }
+.ff-tip-amber { border-left-color: var(--status-warn-fg); }
+.ff-tip-green { border-left-color: var(--status-ok-fg); }
+.ff-tip-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.ff-tip-head strong { font-size: 15px; color: var(--text-dark); }
+.ff-tip p { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--text-mid); }
+
+/* e) How it works */
+.ff-how { padding: 0; }
+.ff-how summary {
+  display: flex; align-items: center; gap: 9px; padding: 15px 18px; cursor: pointer; list-style: none;
+  font-size: 15px; font-weight: 700; color: var(--text-dark);
+}
+.ff-how summary::-webkit-details-marker { display: none; }
+.ff-how summary svg:first-child { color: var(--primary); }
+.ff-how-chev { margin-left: auto; color: var(--text-light); transition: transform .2s ease; }
+.ff-how[open] .ff-how-chev { transform: rotate(180deg); }
+.ff-how-body { padding: 0 18px 16px 45px; }
+.ff-how-body p { margin: 0 0 8px; font-size: 14px; line-height: 1.55; color: var(--text-mid); }
+
+/* Dashboard teaser card */
+.ff-teaser { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.ff-teaser-text { display: flex; gap: 12px; align-items: flex-start; flex: 1; min-width: 240px; }
+.ff-teaser-text svg { flex-shrink: 0; color: var(--primary); margin-top: 2px; }
+.ff-teaser-text p { margin: 0; font-size: 15px; font-weight: 600; line-height: 1.45; color: var(--text-dark); }
+.ff-teaser-text span { display: block; font-size: 12.5px; font-weight: 500; color: var(--text-light); margin-top: 3px; }
+.ff-teaser .btn { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+
+@media (max-width: 860px) {
+  .ff-expiry { grid-template-columns: 1fr; }
+  .ff-stats { grid-template-columns: 1fr; }
+  .ff-banner-text { font-size: 15.5px; }
+  .ff-breakdown li { grid-template-columns: 96px 1fr 58px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ff-day, .ff-day-chev, .ff-how-chev { transition: none; }
+  .ff-day:hover { transform: none; }
+}

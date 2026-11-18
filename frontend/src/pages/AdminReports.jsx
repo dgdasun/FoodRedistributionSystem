@@ -11,7 +11,6 @@ import {
   IconStatPeople,
   IconTicket,
   IconInbox,
-  IconTrashCan,
   IconCommunity,
   IconShieldCheck,
 } from "../components/Icons.jsx";
@@ -362,21 +361,6 @@ export default function AdminReports() {
             <div><span className="rp-mini-icon"><IconInbox size={17} color="currentColor" /></span><strong>{s.totalRequests}</strong><span>Requests received</span></div>
             <div><span className="rp-mini-icon"><IconShieldCheck size={17} color="currentColor" /></span><strong>{s.requestApprovalRate == null ? "—" : `${s.requestApprovalRate}%`}</strong><span>Request approval rate</span></div>
             <div><span className="rp-mini-icon"><IconTicket size={17} color="currentColor" /></span><strong>{s.totalTickets}</strong><span>Pickup tickets issued</span></div>
-            {/* Kilograms and liters are different measures, so expired food sent
-                to farms gets one box for each instead of a single mixed total. */}
-            <div>
-              <span className="rp-mini-icon"><IconTrashCan size={17} color="currentColor" /></span>
-              <strong>{s.expiredKg ?? 0} kg</strong>
-              <span>
-                Expired to farms (kg)
-                {s.expiredUnsizedPackets > 0 && ` + ${s.expiredUnsizedPackets} packets`}
-              </span>
-            </div>
-            <div>
-              <span className="rp-mini-icon"><IconTrashCan size={17} color="currentColor" /></span>
-              <strong>{s.expiredLiters ?? 0} L</strong>
-              <span>Expired to farms (liters)</span>
-            </div>
           </div>
 
           {/* ---------- New members ---------- */}

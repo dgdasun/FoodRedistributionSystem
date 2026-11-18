@@ -37,6 +37,7 @@ const emptyValues = {
   phone: "",
   location: "",
   capacity: "",
+  handlingCapacityKg: "",
   storageTypes: [],
   password: "",
   confirmPassword: "",
@@ -70,7 +71,7 @@ function OrgTypeCard({ type, selected, onSelect }) {
         "flex items-center gap-2.5 p-3 rounded-xl border-2 text-left transition-all",
         selected
           ? "border-emerald-500 bg-emerald-50 ring-2 ring-emerald-100"
-          : "border-slate-200 bg-white hover:border-emerald-300 hover:bg-emerald-50/30",
+          : "border-slate-200 bg-[var(--surface)] hover:border-emerald-300 hover:bg-emerald-50/30",
       ].join(" ")}
     >
       <div
@@ -134,6 +135,7 @@ export default function BeneficiaryRegistrationForm({
     if (phoneMsg) e.phone = phoneMsg;
     if (!values.location.trim()) e.location = "City / location is required.";
     if (isBeneficiary && !values.capacity.trim()) e.capacity = "This field is required.";
+    if (!(Number(values.handlingCapacityKg) > 0)) e.handlingCapacityKg = "Enter how many kg you can take per day.";
     if (isBeneficiary && values.storageTypes.length === 0) e.storageTypes = "Please select at least one storage type.";
     const passwordMsg = validatePassword(values.password);
     if (passwordMsg) e.password = passwordMsg;
@@ -258,6 +260,22 @@ export default function BeneficiaryRegistrationForm({
         )}
       </div>
 
+      {/* Feeds the dashboard's "Org Capacity", the AI ranking and the admin's
+          supply-vs-capacity view - without it every new account showed 0 kg. */}
+      <div className="auth-input-group">
+        <FieldLabel required>{isBeneficiary ? "Food You Can Take Per Day (kg)" : "Feed / Compost You Can Take Per Day (kg)"}</FieldLabel>
+        <input
+          type="text"
+          inputMode="decimal"
+          className={fieldClass(!!showError("handlingCapacityKg"))}
+          placeholder="200"
+          value={values.handlingCapacityKg}
+          onChange={(e) => update("handlingCapacityKg", e.target.value.replace(/[^\d.]/g, ""))}
+          onBlur={() => markTouched("handlingCapacityKg")}
+        />
+        <ErrorText>{showError("handlingCapacityKg")}</ErrorText>
+      </div>
+
       {isBeneficiary && (
         <div className="auth-input-group">
           <FieldLabel required>Storage Types</FieldLabel>
@@ -272,8 +290,8 @@ export default function BeneficiaryRegistrationForm({
                     checked
                       ? "border-emerald-500 bg-emerald-50 text-emerald-700"
                       : showError("storageTypes")
-                        ? "border-rose-300 bg-white text-slate-700"
-                        : "border-slate-200 bg-white text-slate-700 hover:border-emerald-300",
+                        ? "border-rose-300 bg-[var(--surface)] text-slate-700"
+                        : "border-slate-200 bg-[var(--surface)] text-slate-700 hover:border-emerald-300",
                   ].join(" ")}
                 >
                   <input

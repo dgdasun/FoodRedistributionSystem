@@ -3,7 +3,8 @@ import { api } from "../api.js";
 import { topReasons } from "../components/AIRecommendations.jsx";
 
 /**
- * AI rankings for every item that has pending requests, keyed by item id.
+ * AI rankings for every item with two or more pending requests, keyed by item
+ * id. A lone request has nothing to be ranked against, so it gets no ranking.
  *
  * Refetches whenever the set of pending requests changes (an approval or
  * rejection), but keeps the previous rankings on screen until the new ones
@@ -17,7 +18,11 @@ export function useAIRecommendations(requests) {
   const pending = requests.filter((r) => r.status === "pending");
   // Stable key: only refetch when the pending set itself changes.
   const pendingKey = pending.map((r) => r.id).sort().join(",");
-  const itemIds = useMemo(() => [...new Set(pending.map((r) => r.itemId))], [pendingKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const itemIds = useMemo(() => {
+    const counts = {};
+    pending.forEach((r) => (counts[r.itemId] = (counts[r.itemId] || 0) + 1));
+    return Object.keys(counts).filter((id) => counts[id] >= 2);
+  }, [pendingKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (itemIds.length === 0) {
@@ -49,7 +54,7 @@ export function useAIRecommendations(requests) {
   const insightFor = (request) => {
     const ranking = request && rankings[request.itemId];
     const idx = ranking ? ranking.findIndex((e) => e.requestId === request.id) : -1;
-    if (idx < 0) return null;
+    if (idx < 0 || ranking.length < 2) return null;
     const entry = ranking[idx];
     return { ...entry, rank: idx + 1, total: ranking.length, reasons: topReasons(entry, 3) };
   };

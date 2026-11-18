@@ -267,6 +267,47 @@ span.au-role-admin { color: var(--status-violet-fg); background: var(--status-vi
 .au-verify-verified { color: var(--status-ok-fg); background: var(--status-ok-bg); }
 .au-verify-rejected { color: var(--status-danger-fg); background: var(--status-danger-bg); }
 
+/* Block / unblock (AccountAccess) */
+.au-access {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid var(--card-border);
+  background: var(--surface-sunken);
+}
+.au-access-head { display: flex; gap: 12px; color: var(--text-mid); }
+.au-access-head svg { flex-shrink: 0; margin-top: 1px; }
+.au-access-head > div { display: flex; flex-direction: column; gap: 2px; }
+.au-access-head strong { font-size: 13.5px; color: var(--text-dark); }
+.au-access-head span { font-size: 12.5px; color: var(--text-mid); }
+.au-access em { font-size: 12.5px; color: var(--text-mid); }
+.au-access-blocked { border-color: var(--status-danger-border); background: var(--status-danger-bg); }
+.au-access-blocked .au-access-head,
+.au-access-blocked .au-access-head strong { color: var(--status-danger-fg); }
+.au-access-label { font-size: 12px; font-weight: 600; color: var(--text-mid); }
+.au-access-reason {
+  width: 100%;
+  resize: vertical;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-dark);
+  font: inherit;
+  font-size: 13px;
+}
+.au-access-reason:focus { outline: 2px solid var(--ring-primary); outline-offset: 1px; }
+.au-access-error { margin: 0; font-size: 12.5px; color: var(--status-danger-fg); }
+.au-access-actions { display: flex; gap: 8px; }
+.au-access-actions .btn { flex: 1; }
+.au-access .btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
+.au-btn-danger { border: none; color: #fff; background: var(--logout-bg); }
+.au-btn-danger:hover { background: var(--logout-bg-hover); }
+.au-btn-danger-outline { border: 1px solid var(--status-danger-border); color: var(--status-danger-fg); background: var(--surface); }
+.au-btn-danger-outline:hover { background: var(--status-danger-bg); }
+
 .au-drawer-foot {
   position: sticky;
   bottom: 0;

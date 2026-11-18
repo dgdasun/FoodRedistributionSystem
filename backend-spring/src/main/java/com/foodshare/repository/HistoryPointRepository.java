@@ -7,4 +7,6 @@ import java.util.List;
 
 public interface HistoryPointRepository extends MongoRepository<HistoryPoint, String> {
     List<HistoryPoint> findAll();
+    List<HistoryPoint> findByDonorId(String donorId);
+    List<HistoryPoint> findByDonorIdIsNull();
 }

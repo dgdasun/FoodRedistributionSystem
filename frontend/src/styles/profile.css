@@ -403,6 +403,8 @@
   background: linear-gradient(180deg, var(--primary-lighter), var(--surface-sunken));
   border: 1px solid var(--card-border);
 }
+/* An odd count would leave a hole beside the last tile; let it fill the row. */
+.pf-stat:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .pf-stat-icon {
   display: grid;
   place-items: center;

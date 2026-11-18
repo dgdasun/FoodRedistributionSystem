@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { useAuth } from "../AuthContext.jsx";
 import { api } from "../api.js";
 import { imageFor } from "../foodImages.js";
@@ -7,9 +7,10 @@ import StatCard from "../components/StatCard.jsx";
 import LottieState from "../components/LottieState.jsx";
 import { SkeletonLine } from "../components/Skeleton.jsx";
 import { Stagger } from "../components/motion/Motion.jsx";
-import { IconInbox, IconWeight, IconMapPin, IconClock, IconShieldCheck, IconSparkle } from "../components/Icons.jsx";
-import { AIMatchOverview, AIRecommendationPanel } from "../components/AIRecommendations.jsx";
+import { IconInbox, IconWeight, IconClock, IconShieldCheck, IconSparkle } from "../components/Icons.jsx";
+import { AIRecommendationPanel, matchPercent } from "../components/AIRecommendations.jsx";
 import { useAIRecommendations } from "../hooks/useAIRecommendations.js";
+import { useLiveData } from "../hooks/useLiveData.js";
 import RequestDetailModal from "../components/RequestDetailModal.jsx";
 import "../styles/food-requests.css";
 
@@ -66,6 +67,14 @@ function timeAgo(value) {
   return new Date(t).toLocaleDateString(undefined, { day: "numeric", month: "short" });
 }
 
+// Exact moment a request came in, e.g. "Oct 28, 10:12 PM".
+function formatStamp(value) {
+  if (!value) return null;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleString(undefined, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+}
+
 function formatKg(kg) {
   const n = Number(kg) || 0;
   return Number.isInteger(n) ? n : n.toFixed(1);
@@ -78,6 +87,7 @@ function RequestCard({ request: r, onOpen }) {
   const name = r.beneficiary?.organizationName || r.beneficiary?.name || "Unknown requester";
   const isFarm = typeOf(r) === "farm";
   const ago = timeAgo(r.createdAt);
+  const stamp = formatStamp(r.createdAt);
   // Pending cards are coloured by urgency (what to act on first); decided ones by outcome.
   const stripTone = isPending ? URGENCY_TONE[urgency] : status.tone;
 
@@ -121,16 +131,11 @@ function RequestCard({ request: r, onOpen }) {
       </div>
 
       <div className="fr-meta">
-        {r.distanceKm != null && (
-          <span>
-            <IconMapPin size={14} color="currentColor" />
-            {r.distanceKm} km away
-          </span>
-        )}
-        {ago && (
-          <span>
+        {stamp && (
+          <span title={`Requested ${stamp}`}>
             <IconClock size={14} color="currentColor" />
-            {ago}
+            {stamp}
+            {ago && ` · ${ago}`}
           </span>
         )}
       </div>
@@ -139,6 +144,98 @@ function RequestCard({ request: r, onOpen }) {
         <span className={`fr-status fr-status-${status.tone}`}>{status.label}</span>
         <button type="button" className={isPending ? "fr-btn fr-btn-primary" : "fr-btn"} onClick={() => onOpen(r)}>
           {isPending ? "Review request" : "View details"}
+        </button>
+      </footer>
+    </article>
+  );
+}
+
+/**
+ * Stands in for every pending request on one item when two or more requesters
+ * compete for it. Those are allocated only through AI Smart Match, so the
+ * individual requests get no "Review request" button of their own here.
+ */
+function ContestedItemCard({ group, ranking, onOpenAI, onOpenRequest }) {
+  const { item, requests } = group;
+  const totalKg = requests.reduce((s, r) => s + (Number(r.quantityKg) || 0), 0);
+  // Every request gets its own row, in AI rank order; unranked ones (AI still
+  // loading or offline) fall back to urgency.
+  const rankOf = {};
+  (ranking || []).forEach((e, i) => (rankOf[e.requestId] = { rank: i + 1, score: e.score }));
+  const rows = [...requests].sort((a, b) => {
+    const ra = rankOf[a.id]?.rank ?? Infinity;
+    const rb = rankOf[b.id]?.rank ?? Infinity;
+    if (ra !== rb) return ra - rb;
+    return (URGENCY_RANK[a.urgency] ?? 2) - (URGENCY_RANK[b.urgency] ?? 2);
+  });
+
+  return (
+    <article className="fr-card fr-strip-violet fr-actionable fr-contested">
+      <header className="fr-head">
+        <div className="fr-avatar fr-avatar-ai" aria-hidden="true">
+          <IconSparkle size={20} color="currentColor" />
+        </div>
+        <div className="fr-who">
+          <div className="fr-name">{requests.length} requests for one item</div>
+          <div className="fr-org">
+            <span className="fr-type fr-type-ai">AI Smart Match</span>
+          </div>
+        </div>
+      </header>
+
+      <div className="fr-item">
+        <img src={imageFor(item?.category)} alt="" loading="lazy" />
+        <div className="fr-item-text">
+          <div className="fr-item-qty">
+            <strong>{formatKg(totalKg)} kg</strong> requested of {item?.name || "item"}
+          </div>
+          {item?.category && <div className="fr-item-cat">{item.category}</div>}
+        </div>
+      </div>
+
+      <ul className="fr-subreqs" aria-label="Requests for this item">
+        {rows.map((r) => {
+          const name = r.beneficiary?.organizationName || r.beneficiary?.name || "Unknown requester";
+          const urgency = r.urgency || "medium";
+          const rk = rankOf[r.id];
+          const top = rk?.rank === 1;
+          return (
+            <li key={r.id}>
+              <button
+                type="button"
+                className={`fr-subreq${top ? " top" : ""}`}
+                onClick={() => onOpenRequest(r)}
+                aria-label={`${name}, ${formatKg(r.quantityKg)} kg, ${urgency} urgency${rk ? `, AI rank ${rk.rank}` : ""}. View details`}
+              >
+                <span className={`fr-subreq-rank${top ? " top" : ""}`}>{rk ? `#${rk.rank}` : "–"}</span>
+                <span className="fr-subreq-main">
+                  <span className="fr-subreq-name">
+                    {name}
+                    {top && <em>Top pick</em>}
+                  </span>
+                  <span className="fr-subreq-meta">
+                    <strong>{formatKg(r.quantityKg)} kg</strong>
+                    <span className={`fr-subreq-urg fr-pill-${URGENCY_TONE[urgency]}`}>{urgency}</span>
+                    {typeOf(r) === "farm" && <span>Farm</span>}
+                  </span>
+                  {formatStamp(r.createdAt) && (
+                    <span className="fr-subreq-time">
+                      <IconClock size={12} color="currentColor" />
+                      Requested {formatStamp(r.createdAt)}
+                    </span>
+                  )}
+                </span>
+                {rk && <span className="fr-subreq-score">{matchPercent(rk.score)}%</span>}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+
+      <footer className="fr-foot">
+        <span className="fr-status fr-status-violet">Allocated by AI</span>
+        <button type="button" className="fr-btn fr-btn-primary" onClick={onOpenAI}>
+          Open AI Smart Match
         </button>
       </footer>
     </article>
@@ -164,20 +261,19 @@ function LoadingCards() {
 /** Donor's "Food Requests" page: beneficiary and farm/compost requests together, reviewed through RequestDetailModal. */
 export default function Requests() {
   const { user } = useAuth();
-  const [all, setAll] = useState(null);
   const [tab, setTab] = useState(null); // null until data arrives: "To review" if anything waits, else "All"
   const [type, setType] = useState("all");
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(null);
   const [page, setPage] = useState(1);
   const [aiItemId, setAiItemId] = useState(null);
+  const [selectedViaAI, setSelectedViaAI] = useState(false);
 
-  const load = () => api.get(`/requests?donorId=${user.id}`).then((d) => setAll(d.requests || []));
-
-  useEffect(() => {
-    load().catch(() => setAll([]));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user.id]);
+  // Polled so a new request (or one decided elsewhere) shows up without a reload;
+  // that is also what moves an item in or out of AI Smart Match.
+  const live = useLiveData(`/requests?donorId=${user.id}`, { intervalMs: 20000 });
+  const all = live.data ? live.data.requests || [] : live.error ? [] : null;
+  const load = live.refresh;
 
   const act = async (id, status, extra = {}) => {
     await api.patch(`/requests/${id}`, { status, ...extra });
@@ -198,8 +294,20 @@ export default function Requests() {
         return acc;
       }, {})
   );
-  // Closes itself once the item's last pending request is decided.
-  const aiItem = aiItems.find((i) => String(i.itemId) === String(aiItemId));
+  // Items with competing requests: allocation for these goes through AI Smart Match only.
+  // A lone request has nothing to be ranked against, so it gets no AI matching at all.
+  const contested = new Set(aiItems.filter((i) => i.pendingCount >= 2).map((i) => String(i.itemId)));
+  // Closes itself once the item is down to one pending request (or none).
+  const aiItem = aiItems.find((i) => String(i.itemId) === String(aiItemId) && contested.has(String(i.itemId)));
+  const isContested = (r) => r.status === "pending" && contested.has(String(r.itemId));
+
+  const aiPanelRef = useRef(null);
+  const openAI = (itemId) => {
+    setSelected(null);
+    setAiItemId(itemId);
+    // Wait a frame so the panel exists before scrolling to it.
+    requestAnimationFrame(() => aiPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
 
   const ofType = useMemo(() => list.filter((r) => type === "all" || typeOf(r) === type), [list, type]);
 
@@ -221,18 +329,36 @@ export default function Requests() {
       return [r.beneficiary?.organizationName, r.beneficiary?.name, r.item?.name].some((f) => (f || "").toLowerCase().includes(q));
     })
     .sort((a, b) => {
-      // Waiting requests first, most urgent on top; then newest.
+      // Waiting requests first, newest on top; the urgency badge still shows on each card.
       const pa = a.status === "pending" ? 0 : 1;
       const pb = b.status === "pending" ? 0 : 1;
       if (pa !== pb) return pa - pb;
-      const u = (URGENCY_RANK[a.urgency] ?? 2) - (URGENCY_RANK[b.urgency] ?? 2);
-      if (pa === 0 && u !== 0) return u;
       return String(b.createdAt || "").localeCompare(String(a.createdAt || ""));
     });
 
-  const totalPages = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
+  // Collapse each contested item's pending requests into one card, placed where
+  // its newest request would have been.
+  const entries = [];
+  const groups = {};
+  visible.forEach((r) => {
+    if (!isContested(r)) {
+      entries.push({ key: r.id, request: r });
+      return;
+    }
+    const id = String(r.itemId);
+    if (!groups[id]) {
+      groups[id] = { key: `item-${id}`, itemId: r.itemId, item: r.item, requests: [] };
+      entries.push({ key: groups[id].key, group: groups[id] });
+    }
+  });
+  // A group lists every pending request on the item, even ones the type filter or search hides.
+  Object.values(groups).forEach((g) => {
+    g.requests = list.filter((r) => isContested(r) && String(r.itemId) === String(g.itemId));
+  });
+
+  const totalPages = Math.max(1, Math.ceil(entries.length / PAGE_SIZE));
   const pageSafe = Math.min(page, totalPages);
-  const paged = visible.slice((pageSafe - 1) * PAGE_SIZE, pageSafe * PAGE_SIZE);
+  const paged = entries.slice((pageSafe - 1) * PAGE_SIZE, pageSafe * PAGE_SIZE);
 
   const resetPage = (fn) => (value) => {
     fn(value);
@@ -281,25 +407,6 @@ export default function Requests() {
           sub="Across pending requests"
         />
       </Stagger>
-
-      <AIMatchOverview
-        items={aiItems}
-        rankings={ai.rankings}
-        loading={ai.loading}
-        error={ai.error}
-        selectedId={aiItem?.itemId}
-        onSelect={setAiItemId}
-      />
-
-      {aiItem && (
-        <AIRecommendationPanel
-          key={aiItem.itemId}
-          itemName={aiItem.name}
-          ranking={ai.rankings[aiItem.itemId] ?? null}
-          onView={(id) => setSelected(list.find((r) => r.id === id) || null)}
-          onClose={() => setAiItemId(null)}
-        />
-      )}
 
       <div className="card fr-panel">
         <div className="fr-toolbar">
@@ -363,13 +470,49 @@ export default function Requests() {
           />
         ) : (
           <div className="fr-grid">
-            {paged.map((r) => (
-              <RequestCard key={r.id} request={r} onOpen={setSelected} />
-            ))}
+            {paged.map((e) =>
+              e.group ? (
+                <ContestedItemCard
+                  key={e.key}
+                  group={e.group}
+                  ranking={ai.rankings[e.group.itemId]}
+                  onOpenAI={() => openAI(e.group.itemId)}
+                  onOpenRequest={(r) => {
+                    setSelected(r);
+                    setSelectedViaAI(false);
+                  }}
+                />
+              ) : (
+                <RequestCard
+                  key={e.key}
+                  request={e.request}
+                  onOpen={(r) => {
+                    setSelected(r);
+                    setSelectedViaAI(false);
+                  }}
+                />
+              )
+            )}
           </div>
         )}
 
         <Pagination page={pageSafe} totalPages={totalPages} onChange={setPage} />
+      </div>
+
+      {/* Opens under the request list, right below the card that launched it. */}
+      <div ref={aiPanelRef} className="fr-ai-slot">
+        {aiItem && (
+          <AIRecommendationPanel
+            key={aiItem.itemId}
+            itemName={aiItem.name}
+            ranking={ai.rankings[aiItem.itemId] ?? null}
+            onView={(id) => {
+              setSelected(list.find((r) => r.id === id) || null);
+              setSelectedViaAI(true);
+            }}
+            onClose={() => setAiItemId(null)}
+          />
+        )}
       </div>
 
       {selected && (
@@ -377,7 +520,11 @@ export default function Requests() {
           request={selected}
           onClose={() => setSelected(null)}
           onAct={act}
-          aiInsight={ai.insightFor(selected)}
+          aiInsight={isContested(selected) ? ai.insightFor(selected) : null}
+          soleRequest={selected.status === "pending" && !isContested(selected)}
+          // A competing request opened from anywhere but the AI ranking is
+          // view-only; the popup points back to AI Smart Match instead.
+          onOpenAI={isContested(selected) && !selectedViaAI ? () => openAI(selected.itemId) : null}
         />
       )}
     </>

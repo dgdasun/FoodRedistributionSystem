@@ -50,6 +50,8 @@ public class TicketController {
             m.put("status", t.getStatus());
             m.put("qrCode", t.getQrCode());
             m.put("createdAt", t.getCreatedAt());
+            // Set when the ticket is collected (or its status otherwise changes).
+            m.put("updatedAt", t.getUpdatedAt());
             // Admin-configured QR collection window: when this ticket's pickup window closes, and its duration.
             m.put("expiresAt", t.getExpiresAt());
             m.put("collectionWindowHours",

@@ -3,12 +3,16 @@ package com.foodshare.controller;
 import com.foodshare.model.User;
 import com.foodshare.repository.UserRepository;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import org.springframework.data.domain.Sort;
 
+import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -56,5 +60,34 @@ public class AdminUserController {
                 .toList();
 
         return Map.of("users", filtered, "total", filtered.size());
+    }
+
+    /**
+     * Blocks or unblocks an account an admin has found acting suspiciously or
+     * misusing the platform. Body: {@code {"blocked": true, "reason": "..."}};
+     * a reason is required to block. Admin accounts can't be blocked, so the
+     * platform can never be left with nobody able to undo it.
+     */
+    @PatchMapping("/{id}/block")
+    public Map<String, Object> setBlocked(@PathVariable String id, @RequestBody Map<String, Object> body) {
+        User user = userRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("User not found"));
+        if ("admin".equals(user.getRole())) {
+            throw new IllegalArgumentException("Administrator accounts can't be blocked.");
+        }
+        boolean block = Boolean.TRUE.equals(body.get("blocked"));
+        if (block) {
+            String reason = body.get("reason") == null ? "" : body.get("reason").toString().trim();
+            if (reason.isEmpty()) {
+                throw new IllegalArgumentException("Please give a reason for blocking this account.");
+            }
+            user.setBlocked(true);
+            user.setBlockReason(reason);
+            user.setBlockedAt(Instant.now());
+        } else {
+            user.setBlocked(false);
+            user.setBlockReason(null);
+            user.setBlockedAt(null);
+        }
+        return Map.of("user", userRepository.save(user));
     }
 }

@@ -1,69 +1,49 @@
 /* Beneficiary verification card (BeneficiaryVerificationUpload.jsx).
-   Light values follow the spec palette; the dark theme remaps them below so
-   the card never renders as a white slab on a dark dashboard. */
+   Every colour maps onto the app's own tokens (brand greens, --status-*,
+   surfaces), so the card matches the rest of the dashboard and the dark
+   theme follows automatically. */
 
 .bv-card {
-  --bv-surface: #ffffff;
-  --bv-section: #f8fafc;
-  --bv-border: #e2e8f0;
-  --bv-border-strong: #cbd5e1;
-  --bv-heading: #1e293b;
-  --bv-text: #64748b;
-  --bv-muted-bg: #f1f5f9;
-  --bv-warn-fg: #b45309;
-  --bv-warn-bg: #fffbeb;
-  --bv-warn-border: #fcd34d;
-  --bv-warn-dot: #f59e0b;
-  --bv-reject-fg: #dc2626;
-  --bv-reject-bg: #fee2e2;
-  --bv-reject-border: #fca5a5;
-  --bv-danger: #ef4444;
-  --bv-ok-fg: #059669;
-  --bv-accent: rgb(var(--tw-f-600));
-  --bv-accent-hover: rgb(var(--tw-f-700));
-  --bv-accent-soft: rgb(var(--tw-f-500) / 0.08);
-  --bv-ring: rgb(var(--tw-f-500) / 0.2);
-  --bv-grad-from: #10b981;
-  --bv-grad-to: #166534;
-  --bv-glow: rgba(16, 185, 129, 0.35);
-  --bv-hero-bg: linear-gradient(135deg, #ecfdf5 0%, #f0fdfa 45%, #fffbeb 100%);
-  --bv-hero-blob: rgba(16, 185, 129, 0.16);
-  --bv-step-bg: rgba(255, 255, 255, 0.72);
-  --bv-step-hover-shadow: 0 2px 4px rgba(15, 23, 42, 0.04), 0 14px 28px -16px rgba(15, 23, 42, 0.22);
+  --bv-surface: var(--surface);
+  --bv-section: var(--surface-sunken);
+  --bv-border: var(--card-border);
+  --bv-border-strong: var(--sand);
+  --bv-heading: var(--text-dark);
+  --bv-text: var(--text-mid);
+  --bv-muted-bg: var(--surface-muted);
+  --bv-warn-fg: var(--status-warn-fg);
+  --bv-warn-bg: var(--status-warn-bg);
+  --bv-warn-border: var(--status-warn-border);
+  --bv-warn-dot: var(--status-warn-fg);
+  --bv-reject-fg: var(--status-danger-fg);
+  --bv-reject-bg: var(--status-danger-bg);
+  --bv-reject-border: var(--status-danger-border);
+  --bv-danger: var(--danger);
+  --bv-ok-fg: var(--status-ok-fg);
+  --bv-accent: var(--primary);
+  --bv-accent-hover: var(--primary-dark);
+  --bv-accent-soft: color-mix(in srgb, var(--primary) 8%, transparent);
+  --bv-ring: color-mix(in srgb, var(--primary) 22%, transparent);
+  --bv-grad-from: var(--accent);
+  --bv-grad-to: var(--primary-strong);
+  --bv-glow: rgba(56, 126, 1, 0.35);
+  --bv-hero-bg: linear-gradient(135deg, var(--sand-light) 0%, var(--surface) 70%);
+  --bv-hero-blob: rgba(141, 198, 63, 0.2);
+  --bv-step-bg: var(--surface);
+  --bv-step-hover-shadow: var(--shadow-md);
 
   background: var(--bv-surface);
   border: 1px solid var(--bv-border);
-  border-radius: 16px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px -12px rgba(15, 23, 42, 0.12);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
   padding: 20px 22px;
   margin-bottom: 20px;
 }
 
 :root[data-theme="dark"] .bv-card {
-  --bv-surface: var(--surface);
-  --bv-section: var(--surface-sunken);
-  --bv-border: var(--border);
-  --bv-border-strong: #3d4834;
-  --bv-heading: var(--text-dark);
-  --bv-text: var(--text-mid);
-  --bv-muted-bg: var(--surface-muted);
-  --bv-warn-fg: #fbbf24;
-  --bv-warn-bg: rgba(251, 191, 36, 0.12);
-  --bv-warn-border: rgba(251, 191, 36, 0.4);
-  --bv-warn-dot: #fbbf24;
-  --bv-reject-fg: #f87171;
-  --bv-reject-bg: rgba(248, 113, 113, 0.12);
-  --bv-reject-border: rgba(248, 113, 113, 0.4);
-  --bv-danger: #f87171;
-  --bv-ok-fg: #6ee7b7;
-  --bv-accent: var(--primary-strong);
-  --bv-accent-hover: #2e6a01;
-  --bv-glow: rgba(52, 211, 153, 0.28);
-  --bv-hero-bg: linear-gradient(135deg, rgba(16, 185, 129, 0.14) 0%, rgba(20, 184, 166, 0.07) 50%, rgba(251, 191, 36, 0.07) 100%);
-  --bv-hero-blob: rgba(52, 211, 153, 0.14);
   --bv-step-bg: var(--surface-sunken);
-  --bv-step-hover-shadow: 0 14px 28px -16px rgba(0, 0, 0, 0.6);
-  box-shadow: 0 8px 24px -12px rgba(0, 0, 0, 0.5);
+  --bv-glow: rgba(141, 198, 63, 0.28);
+  --bv-hero-blob: rgba(141, 198, 63, 0.12);
 }
 
 .bv-card--embedded,
@@ -81,7 +61,7 @@
   margin: -20px -22px 4px;
   padding: 22px 22px 20px;
   border-bottom: 1px solid var(--bv-border);
-  border-radius: 16px 16px 0 0;
+  border-radius: var(--radius) var(--radius) 0 0;
   background: var(--bv-hero-bg);
 }
 /* Soft decorative blobs behind the header copy. */
@@ -104,7 +84,7 @@
   width: 48px;
   height: 48px;
   flex-shrink: 0;
-  border-radius: 14px;
+  border-radius: var(--radius-sm);
   color: #ffffff;
   background: linear-gradient(135deg, var(--bv-grad-from), var(--bv-grad-to));
   box-shadow: 0 8px 18px -8px var(--bv-glow), inset 0 1px 0 rgba(255, 255, 255, 0.25);
@@ -192,8 +172,8 @@
   font-size: 12.5px;
   font-weight: 750;
   color: #ffffff;
-  background: linear-gradient(135deg, #34d399 0%, #14b8a6 55%, #0f766e 100%);
-  box-shadow: 0 4px 10px -4px rgba(20, 184, 166, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  background: linear-gradient(135deg, var(--bv-grad-from), var(--bv-grad-to));
+  box-shadow: 0 4px 10px -4px var(--bv-glow), inset 0 1px 0 rgba(255, 255, 255, 0.3);
   flex-shrink: 0;
 }
 .bv-step-title { font-size: 14.5px; font-weight: 650; color: var(--bv-heading); }
@@ -243,7 +223,7 @@
   font-size: 13.5px;
   color: var(--bv-heading);
   background-color: var(--bv-surface);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238A9482' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 14px center;
   border: 1px solid var(--bv-border-strong);
@@ -258,7 +238,7 @@
   outline: none;
   border-color: var(--bv-accent);
   box-shadow: 0 0 0 4px var(--bv-ring), 0 0 18px -4px var(--bv-glow);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23059669' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23387E01' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
 /* The empty option reads as a placeholder until a type is picked. */
 .bv-select:has(option[value=""]:checked) { color: var(--bv-text); }
@@ -278,7 +258,7 @@
   padding: 26px 16px 22px;
   text-align: center;
   border: 2px dashed var(--bv-border-strong);
-  border-radius: 14px;
+  border-radius: var(--radius-sm);
   background: var(--bv-surface);
   cursor: pointer;
   transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
@@ -287,8 +267,8 @@
 .bv-drop:focus-within { box-shadow: 0 0 0 4px var(--bv-ring); }
 .bv-drop:active { transform: scale(0.995); }
 .bv-drop.is-dragging {
-  border-color: #10b981;
-  background: rgba(16, 185, 129, 0.12);
+  border-color: var(--bv-accent);
+  background: var(--bv-accent-soft);
   box-shadow: 0 0 0 4px var(--bv-ring);
   transform: scale(1.01);
 }
@@ -303,7 +283,7 @@
   margin-bottom: 4px;
   border-radius: 16px;
   color: #ffffff;
-  background: linear-gradient(135deg, #34d399, #059669);
+  background: linear-gradient(135deg, var(--bv-grad-from), var(--bv-grad-to));
   box-shadow: 0 10px 20px -10px var(--bv-glow);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
@@ -322,7 +302,7 @@
   background: var(--bv-accent-soft);
   box-shadow: none;
 }
-.bv-drop--compact.is-dragging .bv-drop-icon { color: #ffffff; background: linear-gradient(135deg, #34d399, #059669); }
+.bv-drop--compact.is-dragging .bv-drop-icon { color: #ffffff; background: linear-gradient(135deg, var(--bv-grad-from), var(--bv-grad-to)); }
 @keyframes bv-float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-3px); }
@@ -469,7 +449,7 @@ a.bv-chip-name:hover { color: var(--bv-accent); text-decoration: underline; }
   margin: 2px 0 6px;
   padding: 14px;
   border: 1px solid var(--bv-accent);
-  border-radius: 14px;
+  border-radius: var(--radius-sm);
   background: var(--bv-surface);
   box-shadow: 0 0 0 3px var(--bv-accent-soft);
   animation: bv-chip-in 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.2);
@@ -525,26 +505,26 @@ a.bv-chip-name:hover { color: var(--bv-accent); text-decoration: underline; }
   width: 100%;
   padding: 14px 22px;
   border: 0;
-  border-radius: 14px;
+  border-radius: var(--radius-sm);
   font: inherit;
   font-size: 15px;
   font-weight: 700;
   letter-spacing: 0.01em;
   color: #ffffff;
-  background: linear-gradient(135deg, var(--bv-grad-from) 0%, #059669 45%, var(--bv-grad-to) 100%);
+  background: linear-gradient(135deg, var(--primary-strong) 0%, #2A6001 100%);
   background-size: 160% 100%;
   background-position: 0% 50%;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08), 0 10px 22px -10px rgba(5, 150, 105, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08), 0 10px 22px -10px rgba(56, 126, 1, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.2);
   cursor: pointer;
   transition: background-position 0.35s ease, box-shadow 0.2s ease, transform 0.12s ease;
 }
 .bv-submit:hover:not(:disabled) {
   background-position: 100% 50%;
-  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.1), 0 16px 28px -12px rgba(5, 150, 105, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.1), 0 16px 28px -12px rgba(56, 126, 1, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.2);
   transform: translateY(-1px);
 }
 .bv-submit:active:not(:disabled) { transform: translateY(1px); }
-.bv-submit:focus-visible { outline: none; box-shadow: 0 0 0 4px var(--bv-ring), 0 10px 22px -10px rgba(5, 150, 105, 0.7); }
+.bv-submit:focus-visible { outline: none; box-shadow: 0 0 0 4px var(--bv-ring), 0 10px 22px -10px rgba(56, 126, 1, 0.55); }
 .bv-submit:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; }
 .bv-submit-arrow { transition: transform 0.2s ease; }
 .bv-submit:hover:not(:disabled) .bv-submit-arrow { transform: translateX(4px); }

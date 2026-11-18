@@ -88,6 +88,7 @@ from pydantic import BaseModel
 from fastapi import HTTPException
 from app.ml.prediction import predict_surplus as ml_predict_surplus
 from app.ml.prediction import reload_model as ml_reload_model
+from app.ml.prediction import model_info as ml_model_info
 
 
 class MLSurplusRequest(BaseModel):
@@ -104,3 +105,30 @@ def surplus_ml(req: MLSurplusRequest):
         raise HTTPException(status_code=400, detail=str(e))
     except RuntimeError as e:
         raise HTTPException(status_code=503, detail=str(e))
+
+
+import subprocess
+import sys
+from pathlib import Path
+
+SERVICE_ROOT = Path(__file__).resolve().parents[1]   # train.py reads data/ and writes models/ from here
+
+
+@app.get("/model/info")
+def model_info():
+    """models/model_info.json (falls back to the bundle); never a 404 or 500 when the model is missing."""
+    try:
+        return ml_model_info()
+    except RuntimeError as e:
+        return {"available": False, "error": str(e)}
+
+
+@app.post("/model/retrain")
+def model_retrain():
+    """Re-runs app/ml/train.py on data/surplus_data.csv, then serves the new model (reload_model)."""
+    run = subprocess.run([sys.executable, "-m", "app.ml.train"], cwd=SERVICE_ROOT,
+                         capture_output=True, text=True, timeout=600)
+    if run.returncode != 0:
+        raise HTTPException(status_code=500, detail=(run.stderr or run.stdout)[-800:])
+    ml_reload_model()
+    return ml_model_info()

@@ -33,13 +33,13 @@ const DOCUMENT_ACCEPT = ".pdf,.jpg,.jpeg,.png";
 // Matches spring.servlet.multipart.max-file-size on the backend.
 const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
 
-function validateDocumentFile(file) {
+export function validateDocumentFile(file) {
   if (!/\.(pdf|jpe?g|png)$/i.test(file.name)) return `${file.name}: only PDF, JPG or PNG files are accepted.`;
   if (file.size > MAX_DOCUMENT_BYTES) return `${file.name}: file must be 10 MB or smaller.`;
   return "";
 }
 
-function formatSize(bytes) {
+export function formatSize(bytes) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -56,7 +56,7 @@ function FileTypeIcon({ name }) {
   );
 }
 
-function FieldError({ children }) {
+export function FieldError({ children }) {
   return (
     <div className="bv-error" role="alert">
       <AlertCircle size={14} aria-hidden="true" />
@@ -66,7 +66,7 @@ function FieldError({ children }) {
 }
 
 /** A file-picker label that also accepts files dropped onto it. */
-function Dropzone({ multiple = false, compact = false, invalid, disabled, onFiles, children }) {
+export function Dropzone({ multiple = false, compact = false, invalid, disabled, onFiles, children }) {
   const [dragging, setDragging] = useState(false);
   const className = ["bv-drop", compact && "bv-drop--compact", dragging && "is-dragging", invalid && "is-invalid"]
     .filter(Boolean)
@@ -104,7 +104,7 @@ function Dropzone({ multiple = false, compact = false, invalid, disabled, onFile
   );
 }
 
-function FileChip({ name, meta, metaOk, metaTitle, ready, href, action, onRemove, removeDisabled, removeLabel, removeTitle, removing, RemoveIcon = X }) {
+export function FileChip({ name, meta, metaOk, metaTitle, ready, href, action, onRemove, removeDisabled, removeLabel, removeTitle, removing, RemoveIcon = X }) {
   return (
     <li className="bv-chip">
       <FileTypeIcon name={name} />

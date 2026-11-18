@@ -26,7 +26,6 @@
 }
 button.st-preset:hover { border-color: var(--ring-primary); box-shadow: var(--shadow-md); transform: translateY(-1px); }
 .st-preset.active { border-color: var(--primary); background: var(--primary-lighter); box-shadow: 0 0 0 3px var(--ring-primary); }
-.st-custom { cursor: default; }
 .st-preset-icon {
   flex-shrink: 0;
   display: grid;

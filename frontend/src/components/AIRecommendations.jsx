@@ -27,7 +27,7 @@ function reasonFor(key, entry) {
     case "urgency":
       return `${capitalize(entry.urgency || "medium")} urgency`;
     case "distance":
-      return entry.distanceKm ? `Only ${round1(entry.distanceKm)} km away` : "Close to pickup";
+      return "Close to pickup";
     case "orgSize":
       return "Serves many people";
     case "capacity":
@@ -129,11 +129,6 @@ function RequestChips({ entry }) {
     <div className="ai-chips">
       {entry.urgency && <span className={`ai-chip ai-chip-${entry.urgency}`}>{capitalize(entry.urgency)}</span>}
       {entry.quantityKg > 0 && <span className="ai-chip">{round1(entry.quantityKg)} kg</span>}
-      {entry.distanceKm > 0 && (
-        <span className="ai-chip">
-          <MapPin size={11} /> {round1(entry.distanceKm)} km
-        </span>
-      )}
     </div>
   );
 }
@@ -346,88 +341,5 @@ export function AIInsightCard({ insight }) {
         </>
       )}
     </div>
-  );
-}
-
-/**
- * Overview strip for the Food Requests page: one card per item with pending
- * requests, showing the AI's top pick. Picking a card opens the full ranking.
- */
-export function AIMatchOverview({ items, rankings, loading, error, selectedId, onSelect }) {
-  const reduce = useReducedMotion();
-  return (
-    <section className="ai-overview">
-      <header className="ai-overview-head">
-        <div className="ai-overview-icon">
-          <Sparkles size={20} />
-        </div>
-        <div>
-          <h3>AI Smart Match</h3>
-          <p>
-            {items.length
-              ? `${items.length} ${items.length === 1 ? "item has" : "items have"} pending requests. Pick one to see who the AI recommends.`
-              : "Ranks pending requests by urgency, proximity, people served, capacity and fair share."}
-          </p>
-        </div>
-        {loading && <span className="ai-overview-status">Analyzing…</span>}
-      </header>
-
-      {error && <div className="ai-offline">{error}</div>}
-
-      {items.length === 0 ? (
-        <div className="ai-overview-empty">
-          <Check size={16} /> All caught up. No pending requests need a decision.
-        </div>
-      ) : (
-        <div className="ai-item-grid">
-          {items.map(({ itemId, name, pendingCount }, i) => {
-            const ranking = rankings[itemId];
-            const top = ranking?.[0];
-            const reason = top && topReasons(top, 1)[0];
-            const active = String(selectedId) === String(itemId);
-            return (
-              <motion.button
-                type="button"
-                key={itemId}
-                className={active ? "ai-item-card active" : "ai-item-card"}
-                onClick={() => onSelect(active ? null : itemId)}
-                aria-pressed={active}
-                initial={reduce ? false : { opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: reduce ? 0 : i * 0.04 }}
-              >
-                <div className="ai-item-head">
-                  <strong>{name}</strong>
-                  <span className="ai-chip">{pendingCount} pending</span>
-                </div>
-                {top ? (
-                  <div className="ai-item-pick">
-                    <ScoreRing score={top.score} size={42} stroke={4} />
-                    <div>
-                      <span className="ai-item-label">
-                        <Crown size={11} /> Top pick
-                      </span>
-                      <strong>{top.beneficiaryName}</strong>
-                      {reason && <span className="ai-item-reason">{reason}</span>}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="ai-item-pick ai-item-pick-loading">
-                    <span className="ai-skeleton ai-skeleton-ring" />
-                    <div>
-                      <span className="ai-skeleton" style={{ width: "50%" }} />
-                      <span className="ai-skeleton" style={{ width: "80%" }} />
-                    </div>
-                  </div>
-                )}
-                <span className="ai-item-cta">
-                  {active ? "Hide ranking" : "View ranking"} <ChevronDown size={14} />
-                </span>
-              </motion.button>
-            );
-          })}
-        </div>
-      )}
-    </section>
   );
 }

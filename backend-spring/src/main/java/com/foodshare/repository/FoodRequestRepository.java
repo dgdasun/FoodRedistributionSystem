@@ -11,4 +11,5 @@ public interface FoodRequestRepository extends MongoRepository<FoodRequest, Stri
     List<FoodRequest> findByItemIdAndStatusOrderByCreatedAtDesc(String itemId, String status);
     List<FoodRequest> findByStatusOrderByCreatedAtDesc(String status);
     List<FoodRequest> findByItemIdInOrderByCreatedAtDesc(List<String> itemIds);
+    boolean existsByItemIdAndBeneficiaryId(String itemId, String beneficiaryId);
 }

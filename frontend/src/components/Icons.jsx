@@ -679,58 +679,6 @@ export function GraphicEarthSprout({ size = 52, className = "" }) {
   );
 }
 
-// Bottom Left Sidebar Salad Bowl Illustration
-export function GraphicSidebarSalad({ className = "" }) {
-  return (
-    <svg width="180" height="130" viewBox="0 0 180 130" fill="none" className={className}>
-      {/* Background branch leaves */}
-      <path
-        d="M20 90C35 70 45 40 40 15"
-        stroke="#D3E7BA"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-      <path
-        d="M40 30C48 25 58 28 60 38C52 42 44 38 40 30Z"
-        fill="#D3E7BA"
-      />
-      <path
-        d="M30 60C38 55 48 58 50 68C42 72 34 68 30 60Z"
-        fill="#D3E7BA"
-      />
-
-      {/* Floating Green Heart */}
-      <path
-        d="M90 35C90 35 76 23 76 13C76 7.5 80.5 3 86 3C88.5 3 90 4.5 90 4.5C90 4.5 91.5 3 94 3C99.5 3 104 7.5 104 13C104 23 90 35 90 35Z"
-        fill="#559805"
-      />
-
-      {/* Veggies in Bowl */}
-      {/* Lettuce / Greens */}
-      <circle cx="70" cy="58" r="16" fill="#B5D686" />
-      <circle cx="110" cy="58" r="16" fill="#85B840" />
-      <circle cx="90" cy="52" r="18" fill="#559805" />
-      {/* Carrot slices / Tomato */}
-      <circle cx="65" cy="54" r="7" fill="#F97316" />
-      <circle cx="115" cy="54" r="8" fill="#EF4444" />
-      {/* Cucumber / Avocado */}
-      <circle cx="85" cy="46" r="6" fill="#A3E635" />
-      <circle cx="98" cy="48" r="5" fill="#FDE047" />
-      {/* Mushroom */}
-      <path d="M75 48C75 42 83 42 83 48H75Z" fill="#FDE68A" />
-
-      {/* Green Salad Bowl */}
-      <path
-        d="M35 62C35 98 60 114 90 114C120 114 145 98 145 62H35Z"
-        fill="#387E01"
-      />
-      {/* Bowl Rim Highlight */}
-      <ellipse cx="90" cy="62" rx="55" ry="6" fill="#559805" />
-      <ellipse cx="90" cy="62" rx="52" ry="4" fill="#559805" opacity="0.6" />
-    </svg>
-  );
-}
-
 // Upload Outline (CSV / file upload)
 export function IconUpload({ size = 16, color = "currentColor", className = "" }) {
   return (

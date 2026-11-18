@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import { useAuth } from "../AuthContext.jsx";
 import { api } from "../api.js";
 import { BrandWordmark } from "../components/Icons.jsx";
@@ -41,6 +42,10 @@ export default function Login() {
         {/* Left Hero Column */}
         <div className="auth-hero-panel">
           <div className="auth-hero-overlay" />
+          <Link to="/" className="auth-back-link">
+            <ArrowLeft size={16} aria-hidden="true" />
+            Back to home
+          </Link>
           <div className="auth-hero-content">
             <span className="auth-hero-badge">AI Powered</span>
             <h1 className="auth-hero-title">

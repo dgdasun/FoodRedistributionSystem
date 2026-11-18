@@ -50,6 +50,12 @@ public class DonationController {
         if (donorId != null) donations = donations.stream().filter(d -> donorId.equals(d.getDonorId())).toList();
         if (status != null) donations = donations.stream().filter(d -> status.equals(d.getStatus())).toList();
         if (published != null) donations = donations.stream().filter(d -> d.isPublished() == published).toList();
+        // The public listing only shows what can still be requested: once approvals
+        // have taken the stock to 0 the item drops off Browse (web and mobile).
+        // The donor's own list (?donorId=) still shows it.
+        if (Boolean.TRUE.equals(published)) {
+            donations = donations.stream().filter(d -> d.getQuantityKg() != null && d.getQuantityKg() > 0).toList();
+        }
 
         List<Map<String, Object>> enriched = donations.stream().map(this::withDaysUntilExpiry).toList();
         return Map.of("donations", enriched);

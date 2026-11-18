@@ -5,6 +5,9 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 
 @Document(collection = "tickets")
 public class Ticket {
@@ -82,8 +85,13 @@ public class Ticket {
         this.pickupLocation = pickupLocation;
     }
 
+    // Tickets used to be stamped with a placeholder "tomorrow, 10:00 AM". The
+    // real deadline is the end of the collection window, so whenever that is
+    // known it wins - which also corrects tickets saved with the placeholder.
+    private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("h:mm a", Locale.ENGLISH);
+
     public LocalDate getPickupDate() {
-        return pickupDate;
+        return expiresAt != null ? LocalDate.ofInstant(expiresAt, ZoneId.systemDefault()) : pickupDate;
     }
 
     public void setPickupDate(LocalDate pickupDate) {
@@ -91,7 +99,7 @@ public class Ticket {
     }
 
     public String getPickupTime() {
-        return pickupTime;
+        return expiresAt != null ? TIME_FORMAT.format(expiresAt.atZone(ZoneId.systemDefault())) : pickupTime;
     }
 
     public void setPickupTime(String pickupTime) {
@@ -130,8 +138,13 @@ public class Ticket {
         this.updatedAt = updatedAt;
     }
 
+    /**
+     * Older (seeded) tickets have no window end; without one they would stay
+     * "active" forever, so their window closes at the end of the pickup day.
+     */
     public Instant getExpiresAt() {
-        return expiresAt;
+        if (expiresAt != null || pickupDate == null) return expiresAt;
+        return pickupDate.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant();
     }
 
     public void setExpiresAt(Instant expiresAt) {

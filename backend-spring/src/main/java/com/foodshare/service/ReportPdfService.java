@@ -391,21 +391,14 @@ public class ReportPdfService {
         table.addCell(metricCell("NEW MEMBERS (TOTAL)", formatCount(toDouble(summary.get("membersJoined"))), PALE_GREEN));
         document.add(table);
 
-        // Second row has five boxes so expired food to farms can show kilograms
-        // and liters side by side - they are different measures, never summed.
-        PdfPTable activity = new PdfPTable(5);
+        PdfPTable activity = new PdfPTable(3);
         activity.setWidthPercentage(100);
-        activity.setWidths(new float[]{1, 1, 1, 1, 1});
+        activity.setWidths(new float[]{1, 1, 1});
         activity.setSpacingAfter(12);
         activity.addCell(metricCell("REQUESTS RECEIVED", formatCount(toDouble(summary.get("totalRequests"))), Color.WHITE));
         Object rate = summary.get("requestApprovalRate");
         activity.addCell(metricCell("REQUEST APPROVAL RATE", rate == null ? "-" : formatCount(toDouble(rate)) + "%", Color.WHITE));
         activity.addCell(metricCell("PICKUP TICKETS ISSUED", formatCount(toDouble(summary.get("totalTickets"))), Color.WHITE));
-        long unsized = (long) toDouble(summary.get("expiredUnsizedPackets"));
-        activity.addCell(metricCell("EXPIRED TO FARMS (KG)",
-                formatKg(toDouble(summary.get("expiredKg"))) + (unsized > 0 ? " + " + unsized + " pkts" : ""), Color.WHITE));
-        activity.addCell(metricCell("EXPIRED TO FARMS (LITERS)",
-                formatNumber(toDouble(summary.get("expiredLiters"))) + " L", Color.WHITE));
         document.add(activity);
     }
 

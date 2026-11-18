@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
-  Search, X, Mail, Phone, MapPin, Building2, CalendarDays, ShieldCheck, FileText, Copy, Check, ChevronRight, Users,
+  Search, X, Mail, Phone, MapPin, Building2, CalendarDays, ShieldCheck, FileText, Copy, Check, ChevronRight, Users, Ban, Unlock,
 } from "lucide-react";
+import { api } from "../api.js";
+import { useToast } from "../components/Toast.jsx";
 import { useLiveData } from "../hooks/useLiveData.js";
 import LiveBadge from "../components/LiveBadge.jsx";
 import LottieState from "../components/LottieState.jsx";
@@ -31,6 +33,7 @@ const STATUS_FILTERS = [
   { value: "pending", label: "Pending review" },
   { value: "rejected", label: "Rejected" },
   { value: "active", label: "Active (admins)" },
+  { value: "blocked", label: "Blocked" },
 ];
 
 const SORTS = [
@@ -77,7 +80,8 @@ function Avatar({ user, size = 40 }) {
 }
 
 function StatusPill({ user }) {
-  const s = STATUS_META[statusOf(user)];
+  // A block overrides the verification state - it is what the admin needs to see first.
+  const s = user.blocked ? { label: "Blocked", tone: "danger" } : STATUS_META[statusOf(user)];
   return (
     <span className={`au-pill au-pill-${s.tone}`}>
       <i />
@@ -113,8 +117,99 @@ function CopyButton({ value, label }) {
   );
 }
 
+/**
+ * Block / unblock an account an admin has found acting suspiciously or
+ * misusing the platform. A blocked account can't sign in, request or list
+ * food, and is signed out of any open session. Admin accounts can't be blocked.
+ */
+function AccountAccess({ user, onUpdated }) {
+  const toast = useToast();
+  const [confirming, setConfirming] = useState(false);
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const save = async (blocked) => {
+    setError("");
+    if (blocked && !reason.trim()) {
+      setError("Please give a reason for blocking this account.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await api.patch(`/admin/users/${user.id}/block`, { blocked, reason: reason.trim() });
+      onUpdated(res.user);
+      setConfirming(false);
+      setReason("");
+      toast.success(blocked ? `${user.name}'s account has been blocked.` : `${user.name}'s account has been unblocked.`);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (user.blocked) {
+    return (
+      <div className="au-access au-access-blocked">
+        <div className="au-access-head">
+          <Ban size={18} />
+          <div>
+            <strong>Account blocked</strong>
+            <span>Since {joinedOn(user.blockedAt)} · can't sign in, request or list food</span>
+          </div>
+        </div>
+        {user.blockReason && <em>“{user.blockReason}”</em>}
+        {error && <p className="au-access-error">{error}</p>}
+        <button type="button" className="btn btn-outline" onClick={() => save(false)} disabled={busy}>
+          <Unlock size={15} /> {busy ? "Unblocking…" : "Unblock account"}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="au-access">
+      <div className="au-access-head">
+        <ShieldCheck size={18} />
+        <div>
+          <strong>Account access</strong>
+          <span>Block this account if it acts suspiciously or misuses the platform.</span>
+        </div>
+      </div>
+      {confirming ? (
+        <>
+          <label className="au-access-label" htmlFor="au-block-reason">Reason (shown to the user when they try to sign in)</label>
+          <textarea
+            id="au-block-reason"
+            className="au-access-reason"
+            rows={3}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="e.g. Repeatedly requesting food and not collecting it"
+            autoFocus
+          />
+          {error && <p className="au-access-error">{error}</p>}
+          <div className="au-access-actions">
+            <button type="button" className="btn btn-outline" onClick={() => { setConfirming(false); setError(""); }} disabled={busy}>
+              Cancel
+            </button>
+            <button type="button" className="btn au-btn-danger" onClick={() => save(true)} disabled={busy}>
+              <Ban size={15} /> {busy ? "Blocking…" : "Confirm block"}
+            </button>
+          </div>
+        </>
+      ) : (
+        <button type="button" className="btn au-btn-danger-outline" onClick={() => setConfirming(true)}>
+          <Ban size={15} /> Block account
+        </button>
+      )}
+    </div>
+  );
+}
+
 /** Side panel with everything stored on one account. */
-function UserDrawer({ user, onClose }) {
+function UserDrawer({ user, onClose, onUpdated }) {
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
@@ -188,6 +283,8 @@ function UserDrawer({ user, onClose }) {
               </div>
             </div>
           )}
+
+          {user.role !== "admin" && <AccountAccess user={user} onUpdated={onUpdated} />}
         </div>
 
         <div className="au-drawer-foot">
@@ -238,7 +335,7 @@ export default function AdminUsers() {
     const q = query.trim().toLowerCase();
     const list = users
       .filter((u) => !role || u.role === role)
-      .filter((u) => !status || statusOf(u) === status)
+      .filter((u) => !status || (status === "blocked" ? u.blocked : statusOf(u) === status))
       .filter((u) => !q || [u.name, u.email, u.organizationName, u.location].filter(Boolean).some((f) => f.toLowerCase().includes(q)));
     const byDate = (a, b) => String(a.createdAt || "").localeCompare(String(b.createdAt || ""));
     if (sort === "name") return [...list].sort((a, b) => String(a.name).localeCompare(String(b.name)));
@@ -392,7 +489,16 @@ export default function AdminUsers() {
         )}
       </div>
 
-      {selected && <UserDrawer user={selected} onClose={() => setSelected(null)} />}
+      {selected && (
+        <UserDrawer
+          user={selected}
+          onClose={() => setSelected(null)}
+          onUpdated={(u) => {
+            setSelected(u);
+            refresh();
+          }}
+        />
+      )}
     </div>
   );
 }

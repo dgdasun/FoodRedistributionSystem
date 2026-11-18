@@ -162,6 +162,20 @@
   box-shadow: 0 6px 14px -8px rgba(56, 126, 1, 0.8);
 }
 
+/* Guest switch between surplus and expired listings */
+.bf-kind { align-self: flex-start; max-width: 100%; }
+.bf-kind button { padding: 10px 16px; font-size: 14px; }
+.bf-kind-count {
+  min-width: 22px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  text-align: center;
+  background: var(--surface);
+  color: var(--text-mid);
+}
+.bf-kind button.active .bf-kind-count { background: rgba(255, 255, 255, 0.2); color: #fff; }
+
 /* ---------- Notices ---------- */
 .bf-notice {
   display: flex;
@@ -171,6 +185,9 @@
   border-radius: 18px;
   border: 1px solid var(--card-border);
   background: var(--surface);
+  /* Buttons drop below the text once it would get narrower than ~240px,
+     instead of squeezing it to a word per line (tablet + sidebar). */
+  flex-wrap: wrap;
 }
 .bf-notice-icon {
   flex-shrink: 0;
@@ -182,7 +199,7 @@
   color: var(--primary);
   background: var(--icon-chip);
 }
-.bf-notice-text { flex: 1; min-width: 0; }
+.bf-notice-text { flex: 1 1 240px; min-width: 0; }
 .bf-notice-text strong { font-size: 14px; color: var(--text-dark); }
 .bf-notice-text p { margin: 2px 0 0; font-size: 13px; color: var(--text-mid); }
 .bf-notice-actions { display: flex; gap: 8px; flex-shrink: 0; }

@@ -167,10 +167,27 @@ export default function AdminSettings() {
     );
   }, [settings, categoryRules]);
 
+  // Picking Custom keeps it selected even while the values still match a preset.
+  const [customMode, setCustomMode] = useState(false);
+  const customActive = customMode || !activePreset;
+
   const updateRuleHours = (key, field, hours) =>
     setCategoryRules((prev) => ({ ...prev, [key]: { ...prev[key], [field]: hours } }));
 
+  const chooseCustom = () => {
+    setCustomMode(true);
+    // Bring back the admin's own saved values if they were custom, instead of leaving a preset's.
+    const savedPreset = Object.values(PRESETS).some(
+      (p) => sameGlobal(saved.global, p.global) && sameRules(saved.rules, p.categoryRules)
+    );
+    if (activePreset && !savedPreset) discard();
+    const first = document.getElementById(`${CATEGORY_DEFS[0].key}-expiry`);
+    first?.scrollIntoView({ behavior: "smooth", block: "center" });
+    first?.focus({ preventScroll: true });
+  };
+
   const applyPreset = (presetKey) => {
+    setCustomMode(false);
     const preset = PRESETS[presetKey];
     setSettings((prev) => ({ ...prev, ...preset.global }));
     setCategoryRules((prev) => {
@@ -234,7 +251,7 @@ export default function AdminSettings() {
       {/* ---------- Presets ---------- */}
       <section className="st-presets">
         {Object.entries(PRESETS).map(([key, p]) => {
-          const active = activePreset === key;
+          const active = !customMode && activePreset === key;
           return (
             <button type="button" key={key} className={active ? "st-preset active" : "st-preset"} onClick={() => applyPreset(key)} aria-pressed={active}>
               <span className="st-preset-icon"><p.Icon size={20} /></span>
@@ -250,13 +267,13 @@ export default function AdminSettings() {
             </button>
           );
         })}
-        <div className={activePreset ? "st-preset st-custom" : "st-preset st-custom active"} aria-hidden={!!activePreset}>
+        <button type="button" className={customActive ? "st-preset st-custom active" : "st-preset st-custom"} onClick={chooseCustom} aria-pressed={customActive}>
           <span className="st-preset-icon"><IconClock size={20} color="currentColor" /></span>
           <span className="st-preset-text">
-            <strong>Custom{!activePreset && <em><Check size={11} strokeWidth={3} /> Current</em>}</strong>
+            <strong>Custom{customActive && <em><Check size={11} strokeWidth={3} /> Current</em>}</strong>
             <span>Edit any value below to fine-tune a single category.</span>
           </span>
-        </div>
+        </button>
       </section>
 
       {/* ---------- Category rules ---------- */}
@@ -371,7 +388,7 @@ export default function AdminSettings() {
             <strong>Unsaved changes</strong>
             <span>
               {[rulesDirty && "category rules", globalDirty && "global fallback"].filter(Boolean).join(" and ")}
-              {activePreset ? ` · ${PRESETS[activePreset].label} preset` : ""}
+              {activePreset && !customMode ? ` · ${PRESETS[activePreset].label} preset` : ""}
             </span>
           </span>
           <button type="button" className="st-btn st-btn-ghost" onClick={discard} disabled={saving}>

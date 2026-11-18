@@ -1,0 +1,97 @@
+/* ---------- Admin AI Insights ----------
+   Builds on forecast.css (section heads, stat cards, states) and only adds
+   what this page has of its own: tabs, alerts, tables and the model card.
+   Status colours reuse the app's --status-* tokens, so dark mode is covered. */
+
+.aii-tabs {
+  display: inline-flex; gap: 4px; padding: 4px; margin-bottom: 18px;
+  border-radius: 999px; background: var(--surface); border: 1px solid var(--card-border);
+}
+.aii-tabs button {
+  display: inline-flex; align-items: center; gap: 7px; padding: 8px 18px; border-radius: 999px; border: 0;
+  background: transparent; color: var(--text-mid); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+  transition: background .18s ease, color .18s ease;
+}
+.aii-tabs button:hover { color: var(--text-dark); }
+.aii-tabs button.active { background: var(--primary); color: #fff; }
+:root[data-theme="dark"] .aii-tabs button.active { color: #0E1409; }
+.aii-tabs button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+.aii-section-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+
+.aii-summary-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.aii-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+/* Supply vs demand */
+.aii-alerts { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.aii-alert {
+  display: flex; gap: 9px; align-items: flex-start; margin: 0 0 12px; padding: 11px 13px;
+  border-radius: var(--radius-sm); font-size: 14px; line-height: 1.45; color: var(--text-dark);
+}
+.aii-alerts .aii-alert { margin: 0; }
+.aii-alert svg { flex-shrink: 0; margin-top: 2px; }
+.aii-alert-red { background: var(--status-danger-bg); border: 1px solid color-mix(in oklab, var(--status-danger-fg) 30%, transparent); }
+.aii-alert-red svg { color: var(--status-danger-fg); }
+.aii-alert-green { background: var(--status-ok-bg); border: 1px solid color-mix(in oklab, var(--status-ok-fg) 30%, transparent); }
+.aii-alert-green svg { color: var(--status-ok-fg); }
+.aii-foot { font-size: 12.5px; color: var(--text-light); margin: 10px 0 0; }
+
+/* Tables (top donors, evaluation) */
+.aii-table-card { padding: 6px 0; }
+.aii-table-scroll { overflow-x: auto; }
+.aii-table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+.aii-table th {
+  text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--text-light); padding: 10px 16px; border-bottom: 1px solid var(--card-border); white-space: nowrap;
+}
+.aii-table td { padding: 12px 16px; border-bottom: 1px solid var(--card-border); color: var(--text-mid); vertical-align: top; }
+.aii-table tr:last-child td { border-bottom: 0; }
+.aii-table td strong { color: var(--text-dark); }
+.aii-table .num { text-align: right; }
+.aii-sub { display: block; font-size: 12px; color: var(--text-light); margin-top: 2px; }
+.aii-rank { width: 1%; font-weight: 800; color: var(--text-dark); }
+.aii-best td { background: var(--sand-light); }
+.aii-chip {
+  display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 700;
+  background: var(--status-ok-bg); color: var(--status-ok-fg);
+}
+
+/* Health */
+.aii-health { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; border-left: 4px solid var(--aii-fg); }
+.aii-health.on { --aii-fg: var(--status-ok-fg); --aii-bg: var(--status-ok-bg); }
+.aii-health.off { --aii-fg: var(--status-danger-fg); --aii-bg: var(--status-danger-bg); }
+.aii-health p { flex: 1; min-width: 240px; margin: 0; font-size: 14px; line-height: 1.5; color: var(--text-mid); }
+.aii-status {
+  display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px;
+  font-size: 14px; font-weight: 800; background: var(--aii-bg); color: var(--aii-fg);
+}
+.aii-dot { width: 9px; height: 9px; border-radius: 50%; background: currentColor; }
+.aii-status.on .aii-dot { animation: aii-pulse 1.8s ease-in-out infinite; }
+@keyframes aii-pulse { 50% { opacity: .35; } }
+
+/* Model card */
+.aii-retrain { display: inline-flex; align-items: center; gap: 7px; }
+.aii-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin: 0 0 6px; }
+.aii-facts div { padding: 11px 13px; border-radius: var(--radius-sm); background: var(--sand-light); border: 1px solid var(--sand); }
+.aii-facts dt { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-light); }
+.aii-facts dd { margin: 4px 0 0; font-size: 15px; font-weight: 700; color: var(--text-dark); }
+.aii-sub-title { font-size: 14px; font-weight: 800; color: var(--text-dark); margin: 18px 0 8px; }
+.aii-features { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px 14px; }
+.aii-features li { display: flex; align-items: baseline; gap: 8px; font-size: 13px; color: var(--text-mid); }
+.aii-features code {
+  font-size: 12px; padding: 1px 6px; border-radius: 5px; background: var(--sand-light); border: 1px solid var(--sand); color: var(--text-dark);
+}
+.aii-model .aii-table th, .aii-model .aii-table td { padding-left: 4px; padding-right: 4px; }
+.aii-verdict { margin: 12px 0 0; font-size: 14px; color: var(--text-mid); }
+.aii-verdict strong { color: var(--status-ok-fg); }
+
+.aii-confirm { max-width: 460px; }
+.aii-confirm-text { margin: 0; font-size: 14px; line-height: 1.55; color: var(--text-mid); }
+
+@media (max-width: 960px) { .aii-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) {
+  .aii-stats { grid-template-columns: 1fr; }
+  .aii-tabs { display: flex; }
+  .aii-tabs button { flex: 1; justify-content: center; }
+}
+@media (prefers-reduced-motion: reduce) { .aii-status.on .aii-dot { animation: none; } }

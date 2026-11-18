@@ -35,6 +35,24 @@ function statusOf(ticket, now) {
   return "pending";
 }
 
+/**
+ * The moment that matters for each ticket: when it was actually handed over,
+ * or when its collection window closes (or closed). `day` is that moment's
+ * local date, which the timeline groups by.
+ */
+function whenOf(ticket, status) {
+  const stamp = status === "collected" ? ticket.updatedAt || ticket.expiresAt : ticket.expiresAt;
+  const at = stamp ? new Date(stamp) : null;
+  const valid = at && !Number.isNaN(at.getTime());
+  const label = { collected: "Collected", pending: "Collect by", expired: "Expired" }[status];
+  return {
+    at: valid ? at : null,
+    // en-CA formats as YYYY-MM-DD, the shape formatDay expects.
+    day: valid ? at.toLocaleDateString("en-CA") : ticket.pickupDate || "",
+    text: valid ? `${label} ${at.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}` : null,
+  };
+}
+
 function formatDay(isoDate) {
   if (!isoDate) return "Date to be confirmed";
   const d = new Date(`${isoDate}T00:00:00`);
@@ -47,7 +65,7 @@ function formatKg(kg) {
   return Number.isInteger(n) ? n : n.toFixed(1);
 }
 
-function TicketRow({ ticket, status }) {
+function TicketRow({ ticket, status, when }) {
   const meta = STATUS_META[status];
   const item = ticket.item || {};
   return (
@@ -66,10 +84,10 @@ function TicketRow({ ticket, status }) {
           <span className="ph-code">#{ticket.id}</span>
         </div>
         <div className="ph-meta">
-          {ticket.pickupTime && (
+          {when.text && (
             <span>
               <IconClock size={14} color="currentColor" />
-              {ticket.pickupTime}
+              {when.text}
             </span>
           )}
           <span className="ph-meta-loc">
@@ -126,9 +144,12 @@ export default function PickupHistory() {
   const withStatus = useMemo(
     () =>
       (tickets || [])
-        .map((t) => ({ ticket: t, status: statusOf(t, now) }))
+        .map((t) => {
+          const status = statusOf(t, now);
+          return { ticket: t, status, when: whenOf(t, status) };
+        })
         // Newest pickup first.
-        .sort((a, b) => String(b.ticket.pickupDate || "").localeCompare(String(a.ticket.pickupDate || ""))),
+        .sort((a, b) => (b.when.at?.getTime() || 0) - (a.when.at?.getTime() || 0)),
     [tickets, now]
   );
 
@@ -156,7 +177,7 @@ export default function PickupHistory() {
   // Group the current page by pickup day for the timeline.
   const groups = [];
   paged.forEach((entry) => {
-    const day = entry.ticket.pickupDate || "";
+    const day = entry.when.day;
     const last = groups[groups.length - 1];
     if (last && last.day === day) last.items.push(entry);
     else groups.push({ day, items: [entry] });
@@ -262,8 +283,8 @@ export default function PickupHistory() {
                   {formatDay(g.day)}
                 </h2>
                 <div className="ph-list">
-                  {g.items.map(({ ticket, status }) => (
-                    <TicketRow key={ticket.id} ticket={ticket} status={status} />
+                  {g.items.map(({ ticket, status, when }) => (
+                    <TicketRow key={ticket.id} ticket={ticket} status={status} when={when} />
                   ))}
                 </div>
               </section>

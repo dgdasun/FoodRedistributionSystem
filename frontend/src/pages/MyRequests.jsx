@@ -210,7 +210,6 @@ export default function MyRequests() {
           icon={<IconShieldCheck size={26} color="var(--status-ok-fg)" />}
           label="Approved"
           value={dash(counts.approved)}
-          sub="Tickets ready to collect"
         />
         <StatCard
           icon={<IconWeight size={26} color="var(--primary)" />}

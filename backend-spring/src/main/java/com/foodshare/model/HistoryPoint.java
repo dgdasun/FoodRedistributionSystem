@@ -15,6 +15,8 @@ public class HistoryPoint {
     @Id
     private String id;
 
+    /** Donor whose inventory this point records; each donor's forecast uses only their own points. */
+    private String donorId;
     private String category;
     private LocalDate date;
     private Double quantityKg;
@@ -34,6 +36,14 @@ public class HistoryPoint {
 
     public void setId(String id) {
         this.id = id;
+    }
+
+    public String getDonorId() {
+        return donorId;
+    }
+
+    public void setDonorId(String donorId) {
+        this.donorId = donorId;
     }
 
     public String getCategory() {

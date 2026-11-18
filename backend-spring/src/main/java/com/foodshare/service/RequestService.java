@@ -14,7 +14,6 @@ import com.foodshare.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
@@ -49,6 +48,9 @@ public class RequestService {
     public FoodRequest submit(FoodRequest request) {
         User beneficiary = userRepository.findById(request.getBeneficiaryId())
                 .orElseThrow(() -> new IllegalArgumentException("Beneficiary not found"));
+        if (beneficiary.isBlocked()) {
+            throw new IllegalStateException("Your account has been blocked by an administrator, so you can't request food.");
+        }
         if (!beneficiary.isVerified()) {
             throw new IllegalStateException("Your organization must be verified by an administrator before you can request food.");
         }
@@ -56,8 +58,23 @@ public class RequestService {
         Donation item = donationRepository.findById(request.getItemId())
                 .orElseThrow(() -> new IllegalArgumentException("Item not found"));
 
-        if ("expired".equals(item.getStatus()) && !"expired".equals(item.getListingType())) {
+        // One request per organization per item, so a single beneficiary can't
+        // crowd out others in the donor's queue.
+        if (requestRepository.existsByItemIdAndBeneficiaryId(item.getId(), beneficiary.getId())) {
+            throw new IllegalStateException("You have already requested this item.");
+        }
+
+        // Expired food goes to farms for feed and compost, never to NGOs for people.
+        // Decided on the item's status and the requester's role: listingType can
+        // still say "donation" on food that was listed fresh and expired later.
+        if ("expired".equals(item.getStatus()) && !"farm".equals(beneficiary.getRole())) {
             throw new IllegalArgumentException("This item has expired and is no longer available for human consumption.");
+        }
+        if (item.getQuantityKg() == null || item.getQuantityKg() <= 0) {
+            throw new IllegalArgumentException("This item is no longer available - all of it has already been given out.");
+        }
+        if (request.getQuantityKg() == null || request.getQuantityKg() <= 0) {
+            throw new IllegalArgumentException("Please request a quantity greater than 0.");
         }
 
         request.setStatus("pending");
@@ -119,6 +136,9 @@ public class RequestService {
             } else {
                 double qty = approvedQuantityKg != null ? approvedQuantityKg : request.getQuantityKg();
                 if (item != null) qty = Math.min(qty, item.getQuantityKg());
+                if (qty <= 0) {
+                    throw new IllegalArgumentException("Nothing left to give - this item's stock is already 0.");
+                }
                 request.setApprovedQuantityKg(qty);
 
                 if (qty < request.getQuantityKg()) {
@@ -171,14 +191,15 @@ public class RequestService {
         ticket.setBeneficiaryId(request.getBeneficiaryId());
         ticket.setQuantityKg(quantityKg);
         ticket.setPickupLocation(item.getPickupLocation());
-        ticket.setPickupDate(LocalDate.now().plusDays(1));
-        ticket.setPickupTime("10:00 AM");
         ticket.setStatus("pending");
         ticket.setQrCode("FSQR-" + ticket.getId() + "-" + item.getId() + "-" + request.getBeneficiaryId());
         Instant now = Instant.now();
         ticket.setCreatedAt(now);
         int collectionWindowHours = settingsService.resolveCollectionWindowHours(item.getCategory());
         ticket.setExpiresAt(now.plus(collectionWindowHours, ChronoUnit.HOURS));
+        // Stored for readers of the raw document; the getters derive both from expiresAt.
+        ticket.setPickupDate(ticket.getPickupDate());
+        ticket.setPickupTime(ticket.getPickupTime());
         ticketRepository.save(ticket);
     }
 

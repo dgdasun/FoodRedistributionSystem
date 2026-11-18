@@ -277,7 +277,9 @@
   .mr-actions { grid-column: 2 / -1; justify-content: flex-start; }
   .mr-actions:empty { display: none; }
 }
-@media (max-width: 640px) {
+/* 900px, not phone width: between 620-900px the sidebar is still showing, so
+   the list is only ~420px wide and the multi-column row overlaps itself. */
+@media (max-width: 900px) {
   .mr-main { grid-template-columns: 48px minmax(0, 1fr); gap: 10px 12px; padding: 14px 14px 14px 18px; }
   .mr-thumb { width: 48px; height: 48px; }
   .mr-qty { grid-column: 2; flex-direction: row; align-items: baseline; gap: 6px; }

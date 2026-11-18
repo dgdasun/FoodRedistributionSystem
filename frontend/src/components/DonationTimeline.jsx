@@ -75,7 +75,7 @@ function buildSteps({ item, requests, ticket }) {
     key: "scheduled",
     label: "Pickup scheduled",
     detail: ticket
-      ? `Ticket ${ticket.id} · ${ticket.pickupDate || "date TBC"} ${ticket.pickupTime || ""}`.trim()
+      ? `Ticket ${ticket.id} · collect by ${ticket.pickupDate || "date TBC"} ${ticket.pickupTime || ""}`.trim()
       : "A collection ticket is issued once a request is approved",
     done: !!ticket,
   });
