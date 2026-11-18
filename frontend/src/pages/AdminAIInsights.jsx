@@ -1,25 +1,19 @@
 import React, { useState } from "react";
 import {
-  Activity,
   AlertTriangle,
-  BrainCircuit,
   CalendarDays,
   CheckCircle2,
   CloudOff,
-  Database,
   HandHeart,
   RefreshCw,
   Scale,
-  Server,
   Sparkles,
   Store,
   TrendingUp,
   Users,
 } from "lucide-react";
 import { Bar, CartesianGrid, Cell, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { api } from "../api.js";
 import { useLiveData } from "../hooks/useLiveData.js";
-import { useToast } from "../components/Toast.jsx";
 import { SkeletonLine } from "../components/Skeleton.jsx";
 import { ChartTooltip, HorizontalBarChart, useChartPalette } from "../components/charts/ChartKit.jsx";
 import { CountUp, FadeIn, Stagger, StaggerItem, useReducedMotion } from "../components/motion/Motion.jsx";
@@ -31,49 +25,23 @@ const RANGES = [
   { value: 7, label: "7 days" },
   { value: 14, label: "14 days" },
 ];
-const TABS = [
-  { key: "overview", label: "Overview", Icon: Sparkles },
-  { key: "model", label: "Model", Icon: BrainCircuit },
-];
 
 /**
  * AI Insights for admins.
  *
- * Overview answers the planning questions in plain terms - how much surplus
- * is coming across all donors, whether verified NGOs can absorb it, who it
- * comes from, and whether allocations are being shared fairly. Model holds
- * the technical detail: service health, evaluation scores and retraining.
+ * Answers the planning questions in plain terms - how much surplus is coming
+ * across all donors, whether verified NGOs can absorb it, who it comes from,
+ * and whether allocations are being shared fairly.
  */
 export default function AdminAIInsights() {
-  const [tab, setTab] = useState("overview");
-
   return (
     <>
       <div className="page-header">
         <h1>AI Insights</h1>
-        <p>Where surplus is heading across the platform, and how the forecast behind it is performing.</p>
+        <p>Where surplus is heading across the platform, and whether NGOs can take it in.</p>
       </div>
 
-      <div className="aii-tabs" role="tablist" aria-label="AI Insights sections">
-        {TABS.map(({ key, label, Icon }) => (
-          <button
-            key={key}
-            type="button"
-            role="tab"
-            id={`aii-tab-${key}`}
-            aria-selected={tab === key}
-            aria-controls={`aii-panel-${key}`}
-            className={tab === key ? "active" : ""}
-            onClick={() => setTab(key)}
-          >
-            <Icon size={16} aria-hidden="true" /> {label}
-          </button>
-        ))}
-      </div>
-
-      <div role="tabpanel" id={`aii-panel-${tab}`} aria-labelledby={`aii-tab-${tab}`}>
-        {tab === "overview" ? <OverviewTab /> : <ModelTab />}
-      </div>
+      <OverviewTab />
     </>
   );
 }
@@ -419,224 +387,6 @@ function Fairness({ rows }) {
     <div className="card">
       <HorizontalBarChart data={data} height={Math.max(140, rows.length * 44)} unit="allocations" labelWidth={170} allowDecimals={false} />
       <p className="aii-foot">Allocations each organization received in the last 30 days.</p>
-    </div>
-  );
-}
-
-/* ====================== Model ====================== */
-
-/** What each model input means, for an admin who did not build the model. */
-const FEATURE_TEXT = {
-  dow: "Day of the week",
-  month: "Month of the year",
-  r_lag1: "Yesterday's surplus vs the 7-day average",
-  r_lag7: "Same day last week vs the 7-day average",
-  cat_code: "Food category",
-};
-
-const MODEL_LABEL = { LinearRegression: "Linear Regression", RandomForest: "Random Forest" };
-const label = (m) => MODEL_LABEL[m] || m;
-
-function ModelTab() {
-  const health = useLiveData("/ai/admin/health", { intervalMs: 30000 });
-  const info = useLiveData("/ai/admin/model-info", { intervalMs: 300000 });
-  const [confirming, setConfirming] = useState(false);
-  const [training, setTraining] = useState(false);
-  const toast = useToast();
-
-  const retrain = async () => {
-    setTraining(true);
-    try {
-      const next = await api.post("/ai/admin/retrain");
-      toast.success(`Model retrained: ${label(next.model)}, average error ±${next.mae} kg.`);
-      info.refresh();
-      health.refresh();
-    } catch (e) {
-      toast.error(e.message || "Retraining failed.");
-    } finally {
-      setTraining(false);
-      setConfirming(false);
-    }
-  };
-
-  const online = health.data?.online;
-  const m = info.data;
-  const offline = m?.available === false;
-
-  return (
-    <>
-      <FadeIn as="section" className="ff-section">
-        <SectionHead icon={<Server size={18} />} title="AI service status" />
-        {!health.data && !health.error ? (
-          <CardSkeleton height={40} />
-        ) : (
-          <div className={`card aii-health ${online ? "on" : "off"}`}>
-            <span className={`aii-status ${online ? "on" : "off"}`}>
-              <span className="aii-dot" aria-hidden="true" />
-              {online ? "Online" : "Offline"}
-            </span>
-            <p>
-              {online
-                ? `The Python forecasting service is answering (${health.data.responseMs} ms). Forecasts come from the trained model.`
-                : "The Python forecasting service is not answering. The system automatically falls back to the simple Linear Regression trend model, and forecasts return to the trained model as soon as the service is back."}
-            </p>
-            <button type="button" className="btn btn-outline btn-sm ff-retry" onClick={health.refresh}>
-              <RefreshCw size={14} aria-hidden="true" /> Check again
-            </button>
-          </div>
-        )}
-      </FadeIn>
-
-      <FadeIn as="section" className="ff-section">
-        <SectionHead
-          icon={<BrainCircuit size={18} />}
-          title="Surplus model"
-          action={
-            <button
-              type="button"
-              className="btn btn-primary aii-retrain"
-              onClick={() => setConfirming(true)}
-              disabled={training || !online}
-              title={online ? undefined : "The AI service must be online to retrain"}
-            >
-              <RefreshCw size={15} className={training ? "fc-spin" : ""} aria-hidden="true" />
-              {training ? "Retraining…" : "Retrain model"}
-            </button>
-          }
-        />
-        {!m && !info.error ? (
-          <CardSkeleton height={240} />
-        ) : (info.error && !m) || offline ? (
-          <ErrorCard
-            onRetry={info.refresh}
-            message="Model details are unavailable because the AI service is offline."
-          />
-        ) : (
-          <ModelCard m={m} />
-        )}
-      </FadeIn>
-
-      {confirming && (
-        <div className="rq-overlay" onClick={() => !training && setConfirming(false)}>
-          <div
-            className="rq-modal aii-confirm"
-            onClick={(e) => e.stopPropagation()}
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="aii-confirm-title"
-            aria-describedby="aii-confirm-text"
-          >
-            <div className="rq-head">
-              <div className="rq-head-icon"><RefreshCw size={20} /></div>
-              <div className="rq-head-text">
-                <h3 id="aii-confirm-title">Retrain the surplus model?</h3>
-                <span>Usually takes a few seconds.</span>
-              </div>
-            </div>
-            <div className="rq-body">
-              <p id="aii-confirm-text" className="aii-confirm-text">
-                The model is trained again on the full dataset and the best one is kept. Forecasts switch to the new
-                model straight away; nothing else changes.
-              </p>
-            </div>
-            <div className="rq-foot">
-              <div className="rq-actions">
-                <button type="button" className="btn btn-outline" onClick={() => setConfirming(false)} disabled={training}>
-                  Cancel
-                </button>
-                <button type="button" className="btn btn-primary" onClick={retrain} disabled={training} autoFocus>
-                  {training ? "Retraining…" : "Retrain now"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
-}
-
-function ModelCard({ m }) {
-  const evaluation = m.evaluation || [];
-  const baseline = evaluation.find((e) => e.model.startsWith("Baseline"));
-  const best = evaluation.find((e) => e.model === m.model);
-  const lower = baseline && best && baseline.mae > 0 ? Math.round((1 - best.mae / baseline.mae) * 100) : null;
-  const trained = m.trainedAt
-    ? new Date(m.trainedAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })
-    : "—";
-
-  return (
-    <div className="card aii-model">
-      <dl className="aii-facts">
-        <div>
-          <dt><BrainCircuit size={14} aria-hidden="true" /> Model</dt>
-          <dd>{label(m.model)}</dd>
-        </div>
-        <div>
-          <dt><Database size={14} aria-hidden="true" /> Training dataset</dt>
-          <dd>{m.dataset || "Kaggle Store Item Demand Forecasting dataset"}</dd>
-        </div>
-        <div>
-          <dt><Activity size={14} aria-hidden="true" /> Last trained</dt>
-          <dd>{trained}</dd>
-        </div>
-        <div>
-          <dt><CalendarDays size={14} aria-hidden="true" /> Train / test rows</dt>
-          <dd>
-            {m.trainRows ? `${m.trainRows.toLocaleString()} / ${m.testRows.toLocaleString()}` : "—"}
-          </dd>
-        </div>
-      </dl>
-
-      {m.features?.length > 0 && (
-        <>
-          <h3 className="aii-sub-title">Features used</h3>
-          <ul className="aii-features">
-            {m.features.map((f) => (
-              <li key={f}>
-                <code>{f}</code>
-                <span>{FEATURE_TEXT[f] || f}</span>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-
-      <h3 className="aii-sub-title">Evaluation on held-out days</h3>
-      {evaluation.length ? (
-        <>
-          <div className="aii-table-scroll">
-            <table className="aii-table">
-              <thead>
-                <tr>
-                  <th scope="col">Model</th>
-                  <th scope="col" className="num">MAE (kg)</th>
-                  <th scope="col" className="num">RMSE (kg)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {evaluation.map((e) => (
-                  <tr key={e.model} className={e.model === m.model ? "aii-best" : undefined}>
-                    <td>
-                      {label(e.model)}
-                      {e.model === m.model && <span className="aii-chip">In use</span>}
-                    </td>
-                    <td className="num">{e.mae.toFixed(2)}</td>
-                    <td className="num">{e.rmse.toFixed(2)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {lower != null && (
-            <p className="aii-verdict">
-              {label(m.model)} error is <strong>{lower}% lower</strong> than the baseline (a plain 7-day average).
-            </p>
-          )}
-        </>
-      ) : (
-        <p className="aii-foot">No evaluation is stored with this model yet. Retrain it to record one.</p>
-      )}
     </div>
   );
 }

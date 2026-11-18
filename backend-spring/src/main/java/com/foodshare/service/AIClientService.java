@@ -67,6 +67,14 @@ public class AIClientService {
      * recent allocation history.
      */
     public List<RecommendationDTO> rankRequests(Donation item, List<FoodRequest> pendingRequests, List<User> beneficiaries) {
+        // Nothing to compare with fewer than two requests: skip the AI call and
+        // return them unscored (score 0, no factors) in the same format.
+        if (pendingRequests.size() < 2) {
+            List<RecommendationDTO> ranking = fallbackRanking(pendingRequests, beneficiaries);
+            addRequestContext(ranking, pendingRequests);
+            return ranking;
+        }
+
         List<Map<String, Object>> requestPayload = new ArrayList<>();
         for (FoodRequest r : pendingRequests) {
             Map<String, Object> m = new HashMap<>();

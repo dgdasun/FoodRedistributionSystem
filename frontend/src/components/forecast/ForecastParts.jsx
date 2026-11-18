@@ -28,7 +28,7 @@ export function dayName(iso) {
   return ahead < 7 ? new Date(`${iso}T00:00:00`).toLocaleDateString("en-US", { weekday: "long" }) : fmtLong(iso);
 }
 
-/** Plain-words summary of a forecast, shared by the Food Forecast page and its dashboard card. */
+/** Plain-words summary of a forecast, shared by the Food Forecast section on Impact and its dashboard card. */
 export function forecastSentence(forecast, days) {
   if (!forecast.rows.length) return null;
   const peak = forecast.dayTotals.reduce((a, b) => (b.kg > a.kg ? b : a));

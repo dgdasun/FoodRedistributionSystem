@@ -18,7 +18,6 @@ const EXTRA_TITLES = {
   "/profile": "Profile",
   "/browse": "Available Food",
   "/impact": "Impact",
-  "/forecast": "Food Forecast",
 };
 const MAX_SHOWN = 20;
 const POLL_INTERVAL_MS = 30_000;

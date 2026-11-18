@@ -6,7 +6,7 @@ import { buildForecast, forecastSentence } from "./forecast/ForecastParts.jsx";
 import { SkeletonLine } from "./Skeleton.jsx";
 import "../styles/forecast.css";
 
-/** Dashboard teaser for the Food Forecast page: one sentence from the same data, and a way in. */
+/** Dashboard teaser for the Food Forecast section on Impact: one sentence from the same data, and a way in. */
 export default function ForecastSummaryCard({ donorId }) {
   const { data, error } = useLiveData(`/ai/predict?daysAhead=7&donorId=${encodeURIComponent(donorId)}`, {
     intervalMs: 60000,
@@ -32,7 +32,7 @@ export default function ForecastSummaryCard({ donorId }) {
           </p>
         )}
       </div>
-      <Link to="/forecast" className="btn btn-primary">
+      <Link to="/impact" className="btn btn-primary">
         View full forecast <ArrowRight size={16} aria-hidden="true" />
       </Link>
     </div>

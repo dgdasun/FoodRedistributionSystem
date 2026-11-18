@@ -27,7 +27,7 @@ function reasonFor(key, entry) {
     case "urgency":
       return `${capitalize(entry.urgency || "medium")} urgency`;
     case "distance":
-      return entry.distanceKm ? `Only ${round1(entry.distanceKm)} km away` : "Close to pickup";
+      return "Close to pickup";
     case "orgSize":
       return "Serves many people";
     case "capacity":
@@ -129,11 +129,6 @@ function RequestChips({ entry }) {
     <div className="ai-chips">
       {entry.urgency && <span className={`ai-chip ai-chip-${entry.urgency}`}>{capitalize(entry.urgency)}</span>}
       {entry.quantityKg > 0 && <span className="ai-chip">{round1(entry.quantityKg)} kg</span>}
-      {entry.distanceKm > 0 && (
-        <span className="ai-chip">
-          <MapPin size={11} /> {round1(entry.distanceKm)} km
-        </span>
-      )}
     </div>
   );
 }

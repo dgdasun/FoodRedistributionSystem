@@ -16,7 +16,6 @@ import MyRequests from "./pages/MyRequests.jsx";
 import Tickets from "./pages/Tickets.jsx";
 import Impact from "./pages/Impact.jsx";
 import PickupHistory from "./pages/PickupHistory.jsx";
-import FoodForecast from "./pages/FoodForecast.jsx";
 import Profile from "./pages/Profile.jsx";
 import AdminUsers from "./pages/AdminUsers.jsx";
 import AdminVerifications from "./pages/AdminVerifications.jsx";
@@ -78,7 +77,7 @@ function AppRoutes() {
       <Route path="/requests/beneficiary" element={<Navigate to="/requests" replace />} />
       <Route path="/requests/farm" element={<Navigate to="/requests" replace />} />
       <Route path="/pickups" element={<Protected roles={["donor"]}><PickupHistory /></Protected>} />
-      <Route path="/forecast" element={<Protected roles={["donor"]}><FoodForecast /></Protected>} />
+      <Route path="/forecast" element={<Navigate to="/impact" replace />} />
 
       {/* Beneficiary / farm — also public: guests and pending accounts can browse read-only */}
       <Route path="/browse" element={<BrowseRoute />} />

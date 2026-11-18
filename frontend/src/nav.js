@@ -1,4 +1,4 @@
-import { BrainCircuit, CalendarClock } from "lucide-react";
+import { BrainCircuit } from "lucide-react";
 import {
   IconDashboard,
   IconDonations,
@@ -27,8 +27,6 @@ export const NAV_BY_ROLE = {
     { to: "/donations", label: "My Donations", short: "Donations", Icon: IconDonations },
     { to: "/requests", label: "Food Requests", short: "Requests", Icon: IconInbox },
     { to: "/pickups", label: "Pickup History", short: "History", Icon: IconTruck },
-    // Sidebar only: the phone bar keeps its five tabs, and the dashboard card links here.
-    { to: "/forecast", label: "Food Forecast", short: "Forecast", Icon: CalendarClock, mobileTab: false },
     { to: "/impact", label: "Impact", short: "Impact", Icon: IconImpact },
     { to: "/profile", label: "Profile", short: "Profile", Icon: IconUser },
   ],
